@@ -1,5 +1,15 @@
 # DGX Spark Steam Gaming Setup
 
+## Status
+
+| Component | Status | Version |
+|-----------|--------|---------|
+| Vulkan (modeset=1) | Verified | Vulkan 1.4.328 / NVIDIA GB10 |
+| FEX-Emu | Installed | fex-emu-armv8.4 (PPA) |
+| Steam | Installed + Launched | 1.0.0.81 |
+| Box64 | Installed | v0.4.1 (Dynarec, armv9.2-a) |
+| Proton | Pending | Configure Proton 10.0-2 beta |
+
 ## System Info
 - **Hardware:** NVIDIA DGX Spark (GB10 Grace Blackwell Superchip)
 - **CPU:** 10x Cortex-X925 + 10x Cortex-A725 (20 cores, aarch64)
@@ -66,13 +76,24 @@ Using the NVIDIA-endorsed FEX autoinstaller:
 cd ~
 git clone https://github.com/esullivan-nvidia/fex_autoinstall.git
 cd fex_autoinstall
-./install.sh
+bash fex_autoinstall_poc.sh
 ```
 
-Alternative: Canonical ARM64 Steam Snap (bundles FEX):
+This script handles:
+- FEX PPA + `fex-emu-armv8.4` and `fex-emu-wine` packages
+- Steam `.deb` from repo.steampowered.com
+- FEX RootFS (Ubuntu 24.04 x86_64 sysroot)
+- GPU thunking config (`~/.fex-emu/Config.json`) — Vulkan/GL calls bypass emulation
+- AppArmor profiles for FEXBash and Steam
+- x86_64 NVIDIA driver libs + DLSS DLLs copied into RootFS
+- ARM64 patch applied to `/usr/lib/steam/bin_steam.sh`
+
+**Launch Steam:**
 ```bash
-snap install steam  # from ARM64 channel
+FEXBash steam
 ```
+
+Note: The desktop shortcut does not work — always launch from terminal via `FEXBash steam`.
 
 ### Step 3: Build Box64 from Source (Cortex-X925 optimized)
 
@@ -86,11 +107,19 @@ cmake .. \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DBOX32=ON \
   -DBOX32_BINFMT=ON \
-  -DCMAKE_C_FLAGS="-march=armv9.2-a+crc+sve2-aes+sve2-bitperm+sve2-sha3+sve2-sm4+memtag+profile" \
-  -DCMAKE_CXX_FLAGS="-march=armv9.2-a+crc+sve2-aes+sve2-bitperm+sve2-sha3+sve2-sm4+memtag+profile"
+  -DCMAKE_C_FLAGS="-march=armv9.2-a+crc+sve2-aes+sve2-bitperm+sve2-sha3+sve2-sm4+memtag+profile"
 make -j$(nproc)
 sudo make install
+sudo systemctl daemon-reload
 sudo systemctl restart systemd-binfmt
+```
+
+Installs to `/usr/local/bin/box64` with binfmt handlers for x86_64 and i386 ELFs.
+
+**Verify:**
+```bash
+box64 --version
+# Box64 arm64 v0.4.1 ... with Dynarec
 ```
 
 ### Step 4: Configure Steam for Gaming
@@ -117,7 +146,7 @@ The 273 GB/s memory bandwidth is the main bottleneck for rasterization. DLSS is 
 
 - [FEX Autoinstaller (NVIDIA)](https://github.com/esullivan-nvidia/fex_autoinstall)
 - [Vulkan Fix Gist](https://gist.github.com/solatticus/14313d9629c4896abfdf57aaf421a07a)
-- [Box64 v0.4.0](https://github.com/ptitSeb/box64)
+- [Box64 v0.4.1](https://github.com/ptitSeb/box64)
 - [Canonical ARM64 Steam Snap](https://discourse.ubuntu.com/t/call-for-testing-steam-snap-for-arm64/74719)
 - [Level1Techs GB10 Gaming How-To](https://forum.level1techs.com/t/nvidia-spark-gb10-msi-edgexpert-running-steam-games-cyberpunk-2077-doom-eternal-and-more-quickie-how-to/240557)
 - [NVIDIA Developer Forum: Vulkan on GB10](https://forums.developer.nvidia.com/t/vulkan-on-nvidia-dgx-spark-gb10-working-repeatable/356570)
