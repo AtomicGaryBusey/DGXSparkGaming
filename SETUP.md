@@ -128,13 +128,56 @@ box64 --version
 2. Enable **DLSS 4 + Multi-Frame Generation** in supported games
 3. Target **5120x1440 @ 120Hz** (HDMI 2.1a limit without DSC on Linux)
 
-## Performance Reference
+## Game Compatibility
 
-| Game | Without DLSS | With DLSS 4 + MFG |
-|------|-------------|-------------------|
-| Cyberpunk 2077 | ~50 FPS @ 1080p medium | 175+ FPS |
+### Why DLSS 4 Matters
 
-The 273 GB/s memory bandwidth is the main bottleneck for rasterization. DLSS is effectively mandatory for demanding titles.
+The GB10's main bottleneck is memory bandwidth (273 GB/s vs ~900+ GB/s on a discrete RTX 5070). Without DLSS, the GPU is bandwidth-starved. With DLSS 4 Multi-Frame Generation, the GPU renders at a lower internal resolution and generates 3 out of every 4 frames via AI on the Tensor Cores — sidestepping the bottleneck entirely. Cyberpunk goes from ~50 FPS to 175+ FPS. DLSS is effectively mandatory for demanding titles.
+
+### Confirmed Working on DGX Spark
+
+| Game | Performance | Notes |
+|------|------------|-------|
+| **Cyberpunk 2077** | 175+ FPS (DLSS 4 MFG, path tracing, 1080p high) | ~50 FPS without DLSS. THE showpiece — full ray-traced Night City on a mini ARM PC. |
+| **Returnal** | Smooth gameplay | PS5 exclusive running through x86 emulation + Proton. Opening videos slow, gameplay smooth. |
+| **Clair Obscur: Expedition 33** | Playable | Unreal Engine 5 RPG, one of the prettiest games of 2025. |
+| **Counter-Strike 2** | Smooth, multi-hour sessions | Competitive multiplayer FPS, no notable issues. |
+| **Satisfactory** | Very smooth | Large open-world factory builder. |
+| **Doom Eternal** | Smooth | id Tech 7, runs well at 1440p high settings. |
+| **Outer Wilds** | Smooth, 20+ min sessions | No notable performance issues. |
+| **Soul Calibur VI** | Runs great | — |
+| **Marvel Cosmic Invasion** | No notable issues | — |
+| **Hollow Knight: Silksong** | Very smooth | — |
+| **PEAK** | Stable | Consistent across multiple test sessions. |
+| **Half-Life 2** | Smooth | — |
+| **Portal 2** | Smooth | — |
+| **Dota 2** | Smooth | — |
+| **Factorio** | Runs perfectly | — |
+| **Garry's Mod** | Smooth | — |
+| **Brotato** | Runs perfectly | — |
+| **Vampire Survivors** | Runs great | — |
+| **Golf with your Friends** | 100+ FPS | — |
+
+Console emulation also works: Skate 3 (PS3 via RPCS3) at 60 FPS, Forza Motorsport (Xbox via Xemu) at 30 FPS @ 1080p.
+
+### Likely to Work (DLSS 4 MFG + Proton Gold/Platinum, unconfirmed on Spark)
+
+| Game | Why It Would Impress |
+|------|---------------------|
+| **Alan Wake 2** | Arguably the best-looking game ever made. Full path tracing. Proton Gold. |
+| **Black Myth: Wukong** | Stunning visuals, path tracing, DLSS 4 support. |
+| **God of War Ragnarok** | Sony's flagship visual showcase on PC. |
+| **Hogwarts Legacy** | Beautiful open world with RT reflections. Proton Gold. |
+| **Indiana Jones and the Great Circle** | id Tech engine, DLSS 4 support. |
+| **Half-Life 2 RTX** | Path-traced remake of a classic. |
+| **S.T.A.L.K.E.R. 2** | Unreal Engine 5, atmospheric visuals. |
+| **FINAL FANTASY XVI** | Spectacular visual effects. |
+| **SILENT HILL 2 Remake** | Unreal Engine 5, atmospheric horror. |
+
+### Known Not to Launch
+
+- Lara Croft: Angel of Darkness
+- Lara Croft and the Guardian of Light
 
 ## Other Game Clients on ARM64
 
