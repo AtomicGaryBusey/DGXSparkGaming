@@ -169,10 +169,16 @@ Console emulation also works: Skate 3 (PS3 via RPCS3) at 60 FPS, Forza Motorspor
 | **God of War Ragnarok** | Sony's flagship visual showcase on PC. |
 | **Hogwarts Legacy** | Beautiful open world with RT reflections. Proton Gold. |
 | **Indiana Jones and the Great Circle** | id Tech engine, DLSS 4 support. |
-| **Half-Life 2 RTX** | Path-traced remake of a classic. |
+| ~~Half-Life 2 RTX~~ | Crashes — see Known Issues below. |
 | **S.T.A.L.K.E.R. 2** | Unreal Engine 5, atmospheric visuals. |
 | **FINAL FANTASY XVI** | Spectacular visual effects. |
 | **SILENT HILL 2 Remake** | Unreal Engine 5, atmospheric horror. |
+
+### Known Issues
+
+| Game | Issue |
+|------|-------|
+| **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
 
 ### Known Not to Launch
 
