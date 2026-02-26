@@ -136,6 +136,38 @@ box64 --version
 
 The 273 GB/s memory bandwidth is the main bottleneck for rasterization. DLSS is effectively mandatory for demanding titles.
 
+## Other Game Clients on ARM64
+
+The Cortex-X925/A725 cores in the DGX Spark do not support 32-bit ARM instructions, so Box86 is not an option. All x86 translation must go through FEX-Emu or Box64 (with BOX32 mode for 32-bit x86).
+
+### Confirmed Working on ARM64
+
+| Client | Translation Layer | Notes |
+|--------|-------------------|-------|
+| **Steam** | FEX-Emu | Best supported path. NVIDIA autoinstaller + Canonical ARM64 Snap both work. |
+| **Heroic Games Launcher** (Epic/GOG/Amazon) | Box64 + Wine/Proton | Confirmed on ARM64 SBCs. No official ARM64 binary — must compile from source. Box64 v0.2.2+ required for Electron/libcef. |
+| **CrossOver ARM64 Preview** | Native ARM64 Wine | Commercial. Mentioned working on DGX OS in Level1Techs thread. No emulation layer needed for the launcher itself. |
+| **Battle.net** | Box64 v0.4.0+ Wine | Partially working — "getting stable," some games launch. |
+
+### Likely to Work (manual setup required)
+
+| Client | Notes |
+|--------|-------|
+| **Lutris** | Python/GTK app, ARM64 packages exist. Tries to download x86 runners by default — needs manual config to use Box64/FEX Wine runners. |
+| **Minigalaxy** (lightweight GOG client) | Pure Python/GTK, should run natively on ARM64. Games still need Box64/FEX. |
+| **GOG direct installers** | Shell script installers work via `box64 script.sh`. Linux-native GOG games through Box64, Windows titles through Box64 + Wine. |
+
+### Known Not to Work
+
+| Client | Why |
+|--------|-----|
+| **Bottles** | Flatpak is x86_64 only, bundled Wine runners have no ARM64 builds. |
+| **EA App** | Windows-only, poor Wine compatibility even on x86 Linux. |
+| **Ubisoft Connect** | Same — no confirmed ARM64 reports. |
+| **Epic Games Store** (native client) | Barely works on x86 Wine. Use Heroic instead. |
+| **GOG Galaxy** | No Linux client exists (any architecture). |
+| **itch.io app** | No ARM64 build. Unconfirmed via emulation. |
+
 ## Display Notes
 
 - HDMI 2.1a only (no DisplayPort) — limits ultrawide refresh rate
