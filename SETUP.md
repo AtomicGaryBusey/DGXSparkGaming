@@ -124,9 +124,40 @@ box64 --version
 
 ### Step 4: Configure Steam for Gaming
 
-1. Use **Proton 10.0-2 beta** as the compatibility layer
+1. Use **Proton 10.0** (stable, not Experimental) as the compatibility layer
 2. Enable **DLSS 4 + Multi-Frame Generation** in supported games
 3. Target **5120x1440 @ 120Hz** (HDMI 2.1a limit without DSC on Linux)
+
+## ARM64 Compatibility Guidelines
+
+Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK or VKD3D → FEX-Emu Vulkan thunk → native ARM64 NVIDIA driver. Not all Vulkan extensions are thunked in FEX-Emu, so games that use newer extensions will crash. These guidelines maximize success:
+
+### What Works Best
+
+- **DX11 games** — Translated by DXVK to Vulkan. DXVK uses a mature, well-tested subset of Vulkan that FEX's thunks fully support. This is the sweet spot.
+- **Older DX9/DX10 games** — Also go through DXVK, same well-tested path.
+- **Proton 10.0 stable** — Use this, not Proton Experimental. All confirmed working games use 10.0.
+
+### What Breaks
+
+- **Native Vulkan games** — May use `VK_EXT_descriptor_buffer` and other extensions that FEX's `libvulkan-host.so` doesn't thunk. Calls return null → crash.
+- **DX12 games** — Translated by VKD3D-Proton, which uses newer Vulkan extensions (descriptor buffers, etc.) that hit the same thunk gaps.
+- **RTX Remix titles** — Dual-process bridge architecture (32-bit client ↔ 64-bit server via shared memory IPC) breaks under x86→ARM64 translation.
+- **Proton Experimental** — More aggressive feature usage, less tested on ARM64.
+
+### Key Environment Variables (auto-set by Proton)
+
+- `DXVK_ENABLE_NVAPI=1` — Makes DXVK expose NVIDIA GPU identity (GB10, 93 GB VRAM). Without this, games see "Unknown GPU" or fail detection.
+- `Vulkan: 1` in `~/.fex-emu/Config.json` — FEX thunks forward Vulkan calls directly to native ARM64 driver instead of JIT-emulating them. Critical for performance and correctness.
+- `fsync` — Wine's futex-based sync, supported by the 6.17 kernel. Active on all working games.
+
+### Troubleshooting Tips
+
+- If a game crashes at startup, try adding `-force d3d11` or `-dx11` to launch options (game-specific flag) to avoid DX12/Vulkan native paths.
+- Use **Proton 10.0**, not Experimental.
+- The `vkGetPhysicalDeviceDescriptorSizeEXT` error in Steam logs is the telltale sign of a FEX thunk gap — the game requires unthunked Vulkan extensions.
+- Pressure-vessel Vulkan layer warnings (`nvidia_layers.json not in overrides`) are harmless — they fire on both working and broken games.
+- Steam's own GPU topology shows `llvmpipe` — this is normal on ARM64 (the Steam UI runs under FEX). Games inside Proton see the real GPU via DXVK+NVAPI.
 
 ## Game Compatibility
 
@@ -157,6 +188,7 @@ The GB10's main bottleneck is memory bandwidth (273 GB/s vs ~900+ GB/s on a disc
 | **Brotato** | Runs perfectly | — |
 | **Vampire Survivors** | Runs great | — |
 | **Golf with your Friends** | 100+ FPS | — |
+| **Age of Empires II DE** | Smooth, 39+ min sessions | DX11 via DXVK. GPU detected as NVIDIA GB10 (93 GB VRAM). Clean exits, no crashes. |
 
 Console emulation also works: Skate 3 (PS3 via RPCS3) at 60 FPS, Forza Motorsport (Xbox via Xemu) at 30 FPS @ 1080p.
 
@@ -179,6 +211,20 @@ Console emulation also works: Skate 3 (PS3 via RPCS3) at 60 FPS, Forza Motorspor
 | Game | Issue |
 |------|-------|
 | **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
+| **No Man's Sky** | Crashes ~16 seconds into launch, never renders a frame. `vkGetPhysicalDeviceDescriptorSizeEXT` and `vkWriteResourceDescriptorsEXT` return null — FEX's Vulkan thunk doesn't implement `VK_EXT_descriptor_buffer`. Game uses Vulkan natively, hitting unthunked extensions. Try `-force d3d11` launch option to force DX11/DXVK path. |
+
+### Compatibility Test Plan
+
+These games are selected to validate the hypothesis that DX11 games (via DXVK) work reliably on the ARM64/FEX stack, while native Vulkan and DX12 games crash due to unthunked `VK_EXT_descriptor_buffer` extensions. Doom Eternal (native Vulkan, confirmed working) suggests the issue is extension-specific, not all native Vulkan.
+
+| # | Game | Graphics API | What It Tests | Expected | Result |
+|---|------|-------------|---------------|----------|--------|
+| 1 | **Shadow of the Tomb Raider** | DX11 + DX12 | Same game, two API paths. Best single test of the hypothesis. | DX11 works, DX12 crashes | — |
+| 2 | **Red Dead Redemption 2** | Vulkan native + DX12 | Native Vulkan without RTX Remix complexity. Tests if NMS crash is extension-specific. | Likely crashes (both modes) | — |
+| 3 | **The Witcher 3** (next-gen) | DX11 / DX12 RT | Classic DX11 vs next-gen DX12 RT mode. Another dual-API split test. | DX11 works, DX12 crashes | — |
+| 4 | **Halo Infinite** | DX12 only | Pure VKD3D-Proton, no DX11 fallback. | Crashes | — |
+| 5 | **Sekiro: Shadows Die Twice** | DX11 only | Demanding DX11 positive control. | Works | — |
+| 6 | **Lord of the Rings Online** | DX9/DX11 | Oldest engine in the set (2007 MMO). Floor test for the DXVK path. | Works | — |
 
 ### Known Not to Launch
 
@@ -216,6 +262,19 @@ The Cortex-X925/A725 cores in the DGX Spark do not support 32-bit ARM instructio
 | **Epic Games Store** (native client) | Barely works on x86 Wine. Use Heroic instead. |
 | **GOG Galaxy** | No Linux client exists (any architecture). |
 | **itch.io app** | No ARM64 build. Unconfirmed via emulation. |
+
+## Native ARM64 Games (No Translation Overhead)
+
+These games run natively on ARM64 — no FEX-Emu, Box64, Proton, or DXVK in the loop. The entire stack is native: ARM64 binary → native OpenGL/Vulkan → native NVIDIA driver → GPU. This eliminates the x86 translation bottleneck entirely and avoids all Vulkan thunk gaps.
+
+| Game | Install | Why It's Interesting on Spark |
+|------|---------|-------------------------------|
+| **Minecraft Java Edition** | `flatpak install flathub org.prismlauncher.PrismLauncher` | Java runs natively on ARM64. PrismLauncher handles LWJGL ARM64 library swapping automatically. With 128 GB RAM and the GB10, this may be the best Minecraft machine ever built — massive render distances, heavy shader packs (Iris/Sodium) at native speed. |
+| **SuperTuxKart** | `sudo apt install supertuxkart` or Flatpak | Native Vulkan renderer, ARM64 builds available. Good native performance benchmark. |
+| **0 A.D.** | `sudo apt install 0ad` | Open-source RTS (Age of Empires-like). CPU-heavy with large battles — 10x Cortex-X925 cores shine without translation overhead. |
+| **OpenMW** (Morrowind engine) | Build from source or Flatpak | Open-source Morrowind reimplementation. Native ARM64, OpenGL. Load the entire game with texture mods into 128 GB RAM. |
+| **Veloren** | Build from source (Rust) | Voxel RPG, Vulkan via wgpu. Good test of native Vulkan performance vs translated games. |
+| **Xonotic** | Flatpak (aarch64) | Arena FPS, Darkplaces engine, OpenGL. Good for raw frame rate testing without translation. |
 
 ## Display Notes
 
