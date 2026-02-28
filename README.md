@@ -178,6 +178,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Lord of the Rings Online** | DX11 | Smooth, maxed out | DX11 via DXVK. Launcher patches from game servers fine. No launch options needed. |
 | **Oblivion Remastered** | DX12 | 100+ FPS, near-max, ultrawide | UE5 via VKD3D-Proton. Frame Generation available and working. Stunning at max settings. |
 | **Brotato** | DX11 | Smooth, fullscreen | No issues. |
+| **S.T.A.L.K.E.R.: Clear Sky** | DX9 | ~25 FPS, playable | X-Ray engine is very CPU-heavy under FEX. Requires R1 renderer (DX9 fixed-function) — R3/DX10.1 causes extreme shader compilation stalls. CFORM level loading is very slow. Fullscreen alt-tab crashes (X-Ray engine bug). ~25 FPS in gameplay. Enhanced Edition may fare better — needs further testing. |
 | **Balatro** | DX11 | Smooth, fullscreen | No issues. |
 | **Unreal Tournament 2004** | DX9 | Playable, maxed settings | DX9 via DXVK. Lower FPS than expected for a 2004 title — likely FEX translation overhead on the old engine's CPU-heavy code paths. |
 | **Golf with your Friends** | DX11 | 100+ FPS, maxed settings | DX11 via DXVK. No launch options needed. |
