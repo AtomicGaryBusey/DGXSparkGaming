@@ -178,7 +178,8 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Golf with your Friends** | DX11 | 100+ FPS, maxed settings | DX11 via DXVK. No launch options needed. |
 | **Lord of the Rings Online** | DX11 | Smooth, maxed out | DX11 via DXVK. Launcher patches from game servers fine. No launch options needed. |
 | **Oblivion Remastered** | DX12 | 100+ FPS, near-max, ultrawide | UE5 via VKD3D-Proton. Frame Generation available and working. Stunning at max settings. |
-| **S.T.A.L.K.E.R.: Clear Sky** | DX9 | ~25 FPS, playable | X-Ray engine is very CPU-heavy under FEX. Requires R1 renderer (DX9 fixed-function) — R3/DX10.1 causes extreme shader compilation stalls. CFORM level loading is very slow. Fullscreen alt-tab crashes (X-Ray engine bug). ~25 FPS in gameplay. Enhanced Edition may fare better — needs further testing. |
+| **S.T.A.L.K.E.R.: Clear Sky** | DX9 | ~25 FPS, playable | Original X-Ray engine. Very CPU-heavy under FEX. Requires R1 renderer — R3/DX10.1 causes extreme shader compilation stalls. CFORM loading very slow. **Use Enhanced Edition instead.** |
+| **S.T.A.L.K.E.R.: Clear Sky - Enhanced Edition** | DX11 | Smooth, high FPS | Much better than original. Fast loading, high FPS. Known issue: fire particle effects cause texture loading glitches (cosmetic, under investigation). Enhanced Editions are the way to go over original X-Ray engine. |
 | **Sekiro: Shadows Die Twice** | DX11 | Smooth, maxed out | DX11 via DXVK. No launch options needed. |
 | **Shadow of the Tomb Raider** | DX12 | Smooth, maxed settings | **Do not use native Linux port** — Feral's Vulkan renderer is ~1 FPS under FEX. Force Proton 10.0 (DX12 → VKD3D-Proton). Missing dialogue fix: change Steam language to French, download voice pack, launch, switch voice back to English in-game. |
 | **The Witcher 3** (next-gen) | DX12 | Gorgeous, near-max | RT + DLSS Quality + Frame Gen via VKD3D-Proton. See launch options below. |
