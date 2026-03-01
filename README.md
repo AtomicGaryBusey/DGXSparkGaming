@@ -175,12 +175,17 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Balatro** | DX11 | Smooth, fullscreen | No issues. |
 | **BioShock Remastered** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **Brotato** | DX11 | Smooth, fullscreen | No issues. |
+| **Data Center Demo** | DX11 | Smooth, maxed settings | No issues. |
+| **Crab Champions** | DX11 | Smooth, maxed, 5120x1440 | UE4 via DXVK. Flawless at full ultrawide. |
+| **Crysis** | DX10 | Choppy, maxed, 1920x1080 | CryEngine 1 via DXVK. Runs but inconsistent FPS — smooth in some areas, choppy in others (especially water). CPU-heavy engine + translation overhead likely the bottleneck. **TODO:** Retest at 5120x1440 ultrawide. |
 | **Cyberpunk 2077** | DX12 | 175+ FPS (DLSS 4 MFG, path tracing, 3840x1080) | ~50 FPS without DLSS. Launch options: `PROTON_ENABLE_NGX_UPDATER=1 PROTON_ENABLE_NVAPI=1 %command%`. NGX updater pulls DLSS 4 MFG from driver 580 automatically. |
 | **Golf with your Friends** | DX11 | 100+ FPS, maxed settings | DX11 via DXVK. No launch options needed. |
 | **Lord of the Rings Online** | DX11 | Smooth, maxed out | DX11 via DXVK. Launcher patches from game servers fine. No launch options needed. |
 | **Lost Planet: Extreme Condition** | DX10 | Smooth, maxed settings | DX10 via DXVK. No issues. |
 | **Mafia II: Definitive Edition** | DX11 | Smooth, maxed settings | DX11 via DXVK. High FPS, no issues. |
 | **Painkiller: Black Edition** | DX9 | Smooth, maxed (640x480) | Must use 640x480 — higher resolutions render in a tiny portion of the window. Changing resolution in-game crashes to desktop. Other settings maxed, runs well. |
+| **RV There Yet?** | DX11 | Smooth, maxed settings | UE4 via DXVK. No issues. |
+| **PEAK** | Vulkan | Smooth when stable, maxed settings | Native Vulkan (Unity). Frequent crashes to desktop and server disconnects — also observed on Windows machines in the same session. Game-wide stability issues, not Spark-specific. **TODO:** Retest with DX11/DX12 renderer — may be more stable via DXVK/VKD3D. |
 | **Oblivion Remastered** | DX12 | 100+ FPS, near-max, ultrawide | UE5 via VKD3D-Proton. Frame Generation available and working. Stunning at max settings. |
 | **S.T.A.L.K.E.R.: Call of Pripyat** | DX9 | Smooth, 1280x1024 | R2.5 renderer (High preset). Most polished X-Ray engine build, runs well. |
 | **S.T.A.L.K.E.R.: Clear Sky** | DX9 | Choppy, playable indoors | Original X-Ray engine. R2 renderer (High preset, 1280x1024) loads faster than R3 but chugs outdoors. 45s framerate stabilization after load. **Use Enhanced Edition instead.** |
@@ -190,6 +195,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **S.T.A.L.K.E.R.: Shadow of Chornobyl - Enhanced Edition** | DX11 | Smooth, high FPS, ultrawide | DLSS Max Performance. Same cutscene rendering bug as other EEs (yellow rectangles, Escape to skip). Gameplay smooth, looks great at full ultrawide. Enhanced Editions recommended over originals. |
 | **Sekiro: Shadows Die Twice** | DX11 | Smooth, maxed out | DX11 via DXVK. No launch options needed. |
 | **Shadow of the Tomb Raider** | DX12 | Smooth, maxed settings | **Do not use native Linux port** — Feral's Vulkan renderer is ~1 FPS under FEX. Force Proton 10.0 (DX12 → VKD3D-Proton). Missing dialogue fix: change Steam language to French, download voice pack, launch, switch voice back to English in-game. |
+| **Sledding Game Demo** | DX11 | Smooth, maxed, 300 Hz | Online multiplayer tested. No issues. |
 | **The Witcher 3** (next-gen) | DX12 | Gorgeous, near-max | RT + DLSS Quality + Frame Gen via VKD3D-Proton. See launch options below. |
 | **Unreal Tournament 2004** | DX9 | Playable, maxed settings | DX9 via DXVK. Lower FPS than expected for a 2004 title — likely FEX translation overhead on the old engine's CPU-heavy code paths. |
 
@@ -269,6 +275,75 @@ These games are selected to validate the hypothesis that DX11 games (via DXVK) w
 | 4 | **Halo Infinite** | DX12 only | Pure VKD3D-Proton, no DX11 fallback. | Crashes | **Confirmed.** `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked. Crashes on both Proton 10.0 and Experimental. |
 | 5 | **Sekiro: Shadows Die Twice** | DX11 only | Demanding DX11 positive control. | Works | **Confirmed.** Maxed out, no issues. |
 | 6 | **Lord of the Rings Online** | DX9/DX11 | Oldest engine in the set (2007 MMO). Floor test for the DXVK path. | Works | **Confirmed.** Maxed out, no issues. |
+
+### Installed — Not Yet Tested
+
+Games installed on this system but not yet launched/tested. Grouped by expected compatibility based on graphics API. Sorted alphabetically within each group.
+
+**DX9/DX10/DX11 — Expected to Work (DXVK sweet spot):**
+
+| Game | API | Notes |
+|------|-----|-------|
+| Burnout Paradise: The Ultimate Box | DX9 | Criterion racer, should be straightforward |
+| Counter-Strike: Source | DX9 | Source engine, likely fine |
+| Crysis 2: Game of the Year | DX9/DX11 | CryEngine 3, DX11 Ultra upgrade |
+| Crysis Warhead | DX9/DX10 | CryEngine 1, same expectations as Crysis |
+| CS2D | DX/OpenGL | 2D top-down game, trivial |
+| Dark Souls: Prepare to Die Edition | DX9 | Original port, notoriously bad even on x86 |
+| Dark Souls II: Scholar of the First Sin | DX11 | From Software, DX11 via DXVK |
+| Dark Souls III | DX11 | From Software, DX11 via DXVK — high confidence |
+| Far Cry | DX9 | CryEngine 1 (2004), very old |
+| Far Cry 2 | DX9/DX10 | Dunia Engine |
+| Far Cry 3 | DX9/DX11 | Dunia Engine 2 |
+| Far Cry 3: Blood Dragon | DX11 | Same engine as FC3 |
+| Far Cry 4 | DX11 | Dunia Engine |
+| Far Cry 5 | DX11 | Dunia Engine |
+| Far Cry New Dawn | DX11 | Same engine as FC5 |
+| Far Cry Primal | DX11 | Dunia Engine |
+| Half-Life | OpenGL/D3D | GoldSrc engine (1998) |
+| Half-Life: Source Deathmatch | DX9 | Source engine |
+| Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
+| Hellpoint | DX11 | Unity engine |
+| Just Cause 3 | DX11 | Avalanche engine, open world |
+| Left 4 Dead | DX9 | Source engine |
+| Quake 2 (remaster) | DX11/Vulkan | KEX engine remaster — test DX11 mode first |
+| Space Engineers | DX11 | Voxel sandbox, CPU-heavy |
+| Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
+| Supermarket Together | DX11 | Unity co-op game |
+| The Elder Scrolls Online | DX11 | MMO (Zenimax Online dir), may need launcher work |
+| The Witcher | DX9 | Aurora Engine (2007), old but janky |
+| The Witcher 2 | DX9 | RED Engine, DX9 |
+
+**DX12 — May Work (VKD3D-Proton, mixed results):**
+
+| Game | API | Notes |
+|------|-----|-------|
+| Control | DX11/DX12 | Northlight Engine. Try DX11 mode first — DX12 mode with RT is the showcase but may hit thunk gaps |
+| Death Stranding: Director's Cut | DX12 | Decima Engine. DLSS support. |
+| Elden Ring: Nightreign | DX12 | Same engine as Elden Ring — base game crashes (descriptor_buffer). Expect same result. |
+| Far Cry 6 | DX12 | Dunia Engine, DX12 primary renderer |
+| Grand Theft Auto V Enhanced | DX12 | New RAGE engine build, DX12-only. Rockstar Launcher may be an obstacle (same issue as RDR2). |
+| RoboCop: Rogue City | DX12 | UE5 — same engine as Black Myth: Wukong. Likely crashes. |
+| Strange Brigade | DX12/Vulkan | Asura Engine. Has Vulkan renderer — test both. |
+
+**Vulkan / OpenGL — Uncertain:**
+
+| Game | API | Notes |
+|------|-----|-------|
+| DOOM (2016) | Vulkan | id Tech 6. Doom Eternal (id Tech 7) works — good sign, but different engine version. |
+| DOOM 3 | OpenGL | id Tech 4, OpenGL renderer |
+| DOOM 3 BFG Edition | OpenGL | id Tech 4 remaster, OpenGL |
+| Prey (2006) | OpenGL | id Tech 4 variant (Human Head), old |
+| Quake II RTX | Vulkan (RT) | RTX path tracing via Vulkan — may hit thunk gaps like other RT titles |
+
+**Classic Doom (KEX Engine Rereleases) — Likely Trivial:**
+
+| Game | API | Notes |
+|------|-----|-------|
+| Doom 2 | Vulkan/OpenGL | KEX engine rerelease, extremely lightweight |
+| Final Doom | Vulkan/OpenGL | KEX engine rerelease |
+| Master Levels of Doom | Vulkan/OpenGL | KEX engine rerelease |
+| Ultimate Doom | Vulkan/OpenGL | KEX engine rerelease |
 
 ### Known Not to Launch
 
