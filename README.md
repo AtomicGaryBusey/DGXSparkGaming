@@ -176,6 +176,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **BioShock Remastered** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **Brotato** | DX11 | Smooth, fullscreen | No issues. |
 | **Dark Souls II: Scholar of the First Sin** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
+| **DOOM (2016)** | Vulkan | Smooth, maxed, 5120x1440 | id Tech 6, native Vulkan renderer. Incredible performance. Confirms id Tech Vulkan works on Spark (id Tech 7/Doom Eternal also works). |
 | **Data Center Demo** | DX11 | Smooth, maxed settings | No issues. |
 | **Counter-Strike: Source** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. Gameplay excellent. Video stress test crashes to desktop (silent exit), but actual gameplay is stable and smooth. |
 | **Crab Champions** | DX11 | Smooth, maxed, 5120x1440 | UE4 via DXVK. Flawless at full ultrawide. |
@@ -187,6 +188,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Lost Planet: Extreme Condition** | DX10 | Smooth, maxed settings | DX10 via DXVK. No issues. |
 | **Mafia II: Definitive Edition** | DX11 | Smooth, maxed settings | DX11 via DXVK. High FPS, no issues. |
 | **Painkiller: Black Edition** | DX9 | Smooth, maxed (640x480) | Must use 640x480 — higher resolutions render in a tiny portion of the window. Changing resolution in-game crashes to desktop. Other settings maxed, runs well. |
+| **Quake II RTX** | Vulkan (RT) | Smooth, maxed settings | Full path-traced ray tracing via Vulkan. Works perfectly — id Tech Vulkan + RT extensions all thunked correctly. |
 | **RV There Yet?** | DX11 | Smooth, maxed settings | UE4 via DXVK. No issues. |
 | **PEAK** | Vulkan | Smooth when stable, maxed settings | Native Vulkan (Unity). Frequent crashes to desktop and server disconnects — also observed on Windows machines in the same session. Game-wide stability issues, not Spark-specific. **TODO:** Retest with DX11/DX12 renderer — may be more stable via DXVK/VKD3D. |
 | **Oblivion Remastered** | DX12 | 100+ FPS, near-max, ultrawide | UE5 via VKD3D-Proton. Frame Generation available and working. Stunning at max settings. |
@@ -330,11 +332,9 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 
 | Game | API | Notes |
 |------|-----|-------|
-| DOOM (2016) | Vulkan | id Tech 6. Doom Eternal (id Tech 7) works — good sign, but different engine version. |
 | DOOM 3 | OpenGL | id Tech 4, OpenGL renderer |
 | DOOM 3 BFG Edition | OpenGL | id Tech 4 remaster, OpenGL |
 | Prey (2006) | OpenGL | id Tech 4 variant (Human Head), old |
-| Quake II RTX | Vulkan (RT) | RTX path tracing via Vulkan — may hit thunk gaps like other RT titles |
 
 **Classic Doom (KEX Engine Rereleases) — Likely Trivial:**
 
