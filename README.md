@@ -175,11 +175,14 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Balatro** | DX11 | Smooth, fullscreen | No issues. |
 | **BioShock Remastered** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **Brotato** | DX11 | Smooth, fullscreen | No issues. |
+| **Dark Souls II: Scholar of the First Sin** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **Data Center Demo** | DX11 | Smooth, maxed settings | No issues. |
+| **Counter-Strike: Source** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. Gameplay excellent. Video stress test crashes to desktop (silent exit), but actual gameplay is stable and smooth. |
 | **Crab Champions** | DX11 | Smooth, maxed, 5120x1440 | UE4 via DXVK. Flawless at full ultrawide. |
 | **Crysis** | DX10 | Choppy, maxed, 1920x1080 | CryEngine 1 via DXVK. Runs but inconsistent FPS — smooth in some areas, choppy in others (especially water). CPU-heavy engine + translation overhead likely the bottleneck. **TODO:** Retest at 5120x1440 ultrawide. |
 | **Cyberpunk 2077** | DX12 | 175+ FPS (DLSS 4 MFG, path tracing, 3840x1080) | ~50 FPS without DLSS. Launch options: `PROTON_ENABLE_NGX_UPDATER=1 PROTON_ENABLE_NVAPI=1 %command%`. NGX updater pulls DLSS 4 MFG from driver 580 automatically. |
 | **Golf with your Friends** | DX11 | 100+ FPS, maxed settings | DX11 via DXVK. No launch options needed. |
+| **Left 4 Dead** | DX9 | Playable, 25-30 FPS, 5120x1440 | Source engine via DXVK. Maxed settings but low FPS — similar to UT2004, older CPU-heavy engines suffer under translation. **TODO:** Retest with lower settings to find optimal balance. |
 | **Lord of the Rings Online** | DX11 | Smooth, maxed out | DX11 via DXVK. Launcher patches from game servers fine. No launch options needed. |
 | **Lost Planet: Extreme Condition** | DX10 | Smooth, maxed settings | DX10 via DXVK. No issues. |
 | **Mafia II: Definitive Edition** | DX11 | Smooth, maxed settings | DX11 via DXVK. High FPS, no issues. |
@@ -261,6 +264,8 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
 | **Halo Infinite** | DX12-only. Crashes at launch — `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. Same `VK_EXT_descriptor_buffer` gap as NMS and Wukong. Fails on both Proton 10.0 and Proton Experimental. |
 | **No Man's Sky** | Crashes ~16 seconds into launch, never renders a frame. `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. `-force d3d11` launch option does not help — game still probes Vulkan extensions and crashes. Tested on Proton 10.0 and Experimental. |
+| **Dark Souls: Prepare to Die Edition** | DX9 via DXVK. Crashes at launch — GStreamer deadlock in Wine's media pipeline during intro video playback. Log shows `Trying to join task from its thread would deadlock`. The infamously bad PC port uses Windows Media Foundation for videos, which Wine handles via GStreamer — the threading model breaks under FEX translation. |
+| **Dark Souls III** | DX11 via DXVK. Launches and renders the intro cutscene, but crashes to desktop at the cutscene-to-gameplay transition every time. Crash occurs whether skipping or watching the cutscene, and with movie files removed entirely. No crash dump or Vulkan extension error — silent exit. Surprising given Sekiro (same studio, same API) works flawlessly. |
 | **Red Dead Redemption 2** | Requires Proton Experimental (Proton 10.0 can't launch Rockstar Launcher). Gets to main menu on Vulkan renderer, but crashes with `EXCEPTION_FLT_INVALID_OPERATION` (0xc0000090) during world load — FPU translation issue under FEX. DX12 mode fails to get past the launcher. Freezes when changing graphics settings. Neither renderer is viable. |
 
 ### Compatibility Test Plan
@@ -285,13 +290,9 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Game | API | Notes |
 |------|-----|-------|
 | Burnout Paradise: The Ultimate Box | DX9 | Criterion racer, should be straightforward |
-| Counter-Strike: Source | DX9 | Source engine, likely fine |
 | Crysis 2: Game of the Year | DX9/DX11 | CryEngine 3, DX11 Ultra upgrade |
 | Crysis Warhead | DX9/DX10 | CryEngine 1, same expectations as Crysis |
 | CS2D | DX/OpenGL | 2D top-down game, trivial |
-| Dark Souls: Prepare to Die Edition | DX9 | Original port, notoriously bad even on x86 |
-| Dark Souls II: Scholar of the First Sin | DX11 | From Software, DX11 via DXVK |
-| Dark Souls III | DX11 | From Software, DX11 via DXVK — high confidence |
 | Far Cry | DX9 | CryEngine 1 (2004), very old |
 | Far Cry 2 | DX9/DX10 | Dunia Engine |
 | Far Cry 3 | DX9/DX11 | Dunia Engine 2 |
@@ -305,7 +306,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
 | Hellpoint | DX11 | Unity engine |
 | Just Cause 3 | DX11 | Avalanche engine, open world |
-| Left 4 Dead | DX9 | Source engine |
 | Quake 2 (remaster) | DX11/Vulkan | KEX engine remaster — test DX11 mode first |
 | Space Engineers | DX11 | Voxel sandbox, CPU-heavy |
 | Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
