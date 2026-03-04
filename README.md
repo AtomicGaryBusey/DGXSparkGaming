@@ -184,6 +184,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Cyberpunk 2077** | DX12 | 175+ FPS (DLSS 4 MFG, path tracing, 3840x1080) | ~50 FPS without DLSS. Launch options: `PROTON_ENABLE_NGX_UPDATER=1 PROTON_ENABLE_NVAPI=1 %command%`. NGX updater pulls DLSS 4 MFG from driver 580 automatically. |
 | **Golf with your Friends** | DX11 | 100+ FPS, maxed settings | DX11 via DXVK. No launch options needed. |
 | **Hellpoint** | DX11 | Smooth, maxed, 5120x1440 | Unity engine via DXVK. No issues. |
+| **Just Cause 3** | DX11 | Smooth, maxed, 5120x1440 | Avalanche engine via DXVK. No issues. |
 | **Left 4 Dead** | DX9 | Playable, 25-30 FPS, 5120x1440 | Source engine via DXVK. Maxed settings but low FPS — similar to UT2004, older CPU-heavy engines suffer under translation. **TODO:** Retest with lower settings to find optimal balance. |
 | **Lord of the Rings Online** | DX11 | Smooth, maxed out | DX11 via DXVK. Launcher patches from game servers fine. No launch options needed. |
 | **Lost Planet: Extreme Condition** | DX10 | Smooth, maxed settings | DX10 via DXVK. No issues. |
@@ -310,7 +311,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Half-Life | OpenGL/D3D | GoldSrc engine (1998) |
 | Half-Life: Source Deathmatch | DX9 | Source engine |
 | Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
-| Just Cause 3 | DX11 | Avalanche engine, open world |
 | Quake 2 (remaster) | DX11/Vulkan | KEX engine remaster — test DX11 mode first |
 | Space Engineers | DX11 | Voxel sandbox, CPU-heavy |
 | Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
