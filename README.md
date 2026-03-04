@@ -202,6 +202,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **S.T.A.L.K.E.R.: Shadow of Chornobyl - Enhanced Edition** | DX11 | Smooth, high FPS, ultrawide | DLSS Max Performance. Same cutscene rendering bug as other EEs (yellow rectangles, Escape to skip). Gameplay smooth, looks great at full ultrawide. Enhanced Editions recommended over originals. |
 | **Sekiro: Shadows Die Twice** | DX11 | Smooth, maxed out | DX11 via DXVK. No launch options needed. |
 | **Shadow of the Tomb Raider** | DX12 | Smooth, maxed settings | **Do not use native Linux port** — Feral's Vulkan renderer is ~1 FPS under FEX. Force Proton 10.0 (DX12 → VKD3D-Proton). Missing dialogue fix: change Steam language to French, download voice pack, launch, switch voice back to English in-game. |
+| **Supermarket Together** | DX11 | Smooth, maxed, 5120x1440 | Unity engine via DXVK. No issues. |
 | **Space Engineers** | DX11 | Smooth initially, unstable at max | DX11 via DXVK. Runs well at full ultrawide with high settings. "Photo" quality preset causes grinding halt after a few minutes (had to Alt+F4). **TODO:** Retest with High preset instead of Photo/Extreme to find stable ceiling. |
 | **Sledding Game Demo** | DX11 | Smooth, maxed, 300 Hz | Online multiplayer tested. No issues. |
 | **The Witcher 3** (next-gen) | DX12 | Gorgeous, near-max | RT + DLSS Quality + Frame Gen via VKD3D-Proton. See launch options below. |
@@ -314,7 +315,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
 | Quake 2 (remaster) | DX11/Vulkan | KEX engine remaster — test DX11 mode first |
 | Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
-| Supermarket Together | DX11 | Unity co-op game |
 | The Elder Scrolls Online | DX11 | MMO (Zenimax Online dir), may need launcher work |
 | The Witcher | DX9 | Aurora Engine (2007), old but janky |
 | The Witcher 2 | DX9 | RED Engine, DX9 |
