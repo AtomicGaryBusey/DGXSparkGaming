@@ -203,6 +203,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Master Levels for DOOM II** | DOS | Smooth | Launches in MS-DOS emulation. Plays very well. |
 | **Mafia II: Definitive Edition** | DX11 | Smooth, maxed settings | DX11 via DXVK. High FPS, no issues. |
 | **Painkiller: Black Edition** | DX9 | Smooth, maxed (640x480) | Must use 640x480 — higher resolutions render in a tiny portion of the window. Changing resolution in-game crashes to desktop. Other settings maxed, runs well. |
+| **Quake 2** (remaster) | Vulkan | Smooth, maxed, 5120x1440 | KEX engine remaster, Vulkan renderer. No issues. |
 | **Quake II RTX** | Vulkan (RT) | Smooth, maxed settings | Full path-traced ray tracing via Vulkan. Works perfectly — id Tech Vulkan + RT extensions all thunked correctly. |
 | **RV There Yet?** | DX11 | Smooth, maxed settings | UE4 via DXVK. No issues. |
 | **PEAK** | Vulkan | Smooth when stable, maxed settings | Native Vulkan (Unity). Frequent crashes to desktop and server disconnects — also observed on Windows machines in the same session. Game-wide stability issues, not Spark-specific. **TODO:** Retest with DX11/DX12 renderer — may be more stable via DXVK/VKD3D. |
@@ -325,7 +326,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Half-Life | OpenGL/D3D | GoldSrc engine (1998) |
 | Half-Life: Source Deathmatch | DX9 | Source engine |
 | Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
-| Quake 2 (remaster) | DX11/Vulkan | KEX engine remaster — test DX11 mode first |
 | Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
 | The Elder Scrolls Online | DX11 | MMO (Zenimax Online dir), may need launcher work |
 | The Witcher | DX9 | Aurora Engine (2007), old but janky |
