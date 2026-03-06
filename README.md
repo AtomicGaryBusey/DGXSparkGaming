@@ -180,10 +180,12 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **DOOM + DOOM II** (remastered) | KEX | Smooth | Non-DOS remastered version. Runs great. |
 | **DOOM II** (non-DOS) | KEX | Playable, choppy menus | Non-DOS version. Menus and loading screens choppy, but gameplay itself is smooth. |
 | **DOOM (2016)** | Vulkan | Smooth, maxed, 5120x1440 | id Tech 6, native Vulkan renderer. Incredible performance. Confirms id Tech Vulkan works on Spark (id Tech 7/Doom Eternal also works). |
+| **Esoteric Ebb** | DX11 | Smooth, maxed settings | Unity 6 (IL2CPP) via DXVK. No issues. |
 | **Data Center Demo** | DX11 | Smooth, maxed settings | No issues. |
 | **Control** | DX12 | Smooth, near-max, 5120x1440 | Northlight Engine via VKD3D-Proton. Ray tracing on (medium — higher tanks FPS). DX12 auto-enabled with RT. Another DX12+RT title working via VKD3D-Proton alongside Witcher 3 and Oblivion Remastered. |
 | **Death Stranding: Director's Cut** | DX12 | Smooth, maxed settings, DLSS on | Decima Engine via VKD3D-Proton. Max resolution the game supports (doesn't support full 5120x1440 ultrawide). All settings maxed with DLSS enabled. |
 | **CS2D** | DX/OpenGL | Smooth | 2D top-down game. No issues. |
+| **Counter-Strike 2** | DX11 | Smooth, maxed, 5120x1440 | Source 2 engine via DXVK. Native Linux build doesn't work (Steam Linux Runtime/Sniper), requires Proton 10. No issues. |
 | **Counter-Strike: Source** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. Gameplay excellent. Video stress test crashes to desktop (silent exit), but actual gameplay is stable and smooth. |
 | **Crab Champions** | DX11 | Smooth, maxed, 5120x1440 | UE4 via DXVK. Flawless at full ultrawide. |
 | **Crysis 2: Game of the Year** | DX11 | Smooth visually, maxed, 5120x1440 | CryEngine 3 via DXVK. Renders great at full ultrawide, snappy menus. Audio is choppy and desynchronizes. **TODO:** Investigate audio issue. |
@@ -195,6 +197,8 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Hexen: Beyond Heretic** | DOS | Smooth | Classic DOS version. No issues. |
 | **Heretic: Shadow of the Serpent Riders** | DOS | Smooth | Classic DOS version. No issues. |
 | **Heretic + Hexen** (remastered) | KEX | Smooth | KEX remaster (SDL3). Both Heretic and Hexen from the same launcher. No issues. |
+| **Half-Life** | OpenGL | Smooth, maxed, 5120x1440 | GoldSrc engine via DXVK. No issues. |
+| **Half-Life: Source Deathmatch** | DX9 | Smooth, 1920x1080 windowed | Source engine via DXVK. Fullscreen at 5120x1440 causes main-loop stall and cross-thread pipe deadlock, freezing Gnome session. Launch options: `%command% -windowed -noborder -w 1920 -h 1080 -threads 1`. |
 | **Hellpoint** | DX11 | Smooth, maxed, 5120x1440 | Unity engine via DXVK. No issues. |
 | **Just Cause 3** | DX11 | Smooth, maxed, 5120x1440 | Avalanche engine via DXVK. No issues. |
 | **Left 4 Dead** | DX9 | Playable, 25-30 FPS, 5120x1440 | Source engine via DXVK. Maxed settings but low FPS — similar to UT2004, older CPU-heavy engines suffer under translation. **TODO:** Retest with lower settings to find optimal balance. |
@@ -204,7 +208,9 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Mafia II: Definitive Edition** | DX11 | Smooth, maxed settings | DX11 via DXVK. High FPS, no issues. |
 | **Painkiller: Black Edition** | DX9 | Smooth, maxed (640x480) | Must use 640x480 — higher resolutions render in a tiny portion of the window. Changing resolution in-game crashes to desktop. Other settings maxed, runs well. |
 | **Quake 2** (remaster) | Vulkan | Smooth, maxed, 5120x1440 | KEX engine remaster, Vulkan renderer. No issues. |
+| **Quake III Arena** | OpenGL | Smooth, maxed, 1600x1024 | id Tech 3 engine. Limited resolution options (r_mode 11 max). No issues otherwise. |
 | **Quake II RTX** | Vulkan (RT) | Smooth, maxed settings | Full path-traced ray tracing via Vulkan. Works perfectly — id Tech Vulkan + RT extensions all thunked correctly. |
+| **RoboCop: Rogue City** | DX12 | Smooth, 5120x1440 w/ DLSS+FG | UE5 via VKD3D-Proton. Requires DLSS and Frame Generation for smooth performance at full ultrawide. Another DX12+DLSS UE5 title working alongside Oblivion Remastered. |
 | **RV There Yet?** | DX11 | Smooth, maxed settings | UE4 via DXVK. No issues. |
 | **PEAK** | Vulkan | Smooth when stable, maxed settings | Native Vulkan (Unity). Frequent crashes to desktop and server disconnects — also observed on Windows machines in the same session. Game-wide stability issues, not Spark-specific. **TODO:** Retest with DX11/DX12 renderer — may be more stable via DXVK/VKD3D. |
 | **Oblivion Remastered** | DX12 | 100+ FPS, near-max, ultrawide | UE5 via VKD3D-Proton. Frame Generation available and working. Stunning at max settings. |
@@ -280,7 +286,7 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 
 | Game | Issue |
 |------|-------|
-| **Black Myth: Wukong** | DX12-only (Unreal Engine 5, no DX11 fallback). Crashes ~18 seconds in during level load — gets to loading screen with cloud icons but dies when renderer hits VKD3D-Proton descriptor_buffer gap. Both regular and compatibility mode crash identically. Needs FEX `VK_EXT_descriptor_buffer` support. |
+| **Black Myth: Wukong** | DX12-only (UE5). Crashes ~50s in during level load. Root cause: game ships AMD-optimized compute shaders that hard-require `WaveSize(64)` (AMD wavefront width) with no Wave32 fallback. NVIDIA GPUs (including GB10) only support Wave32 (subgroup size 32). VKD3D-Proton correctly rejects the pipeline: `Required WaveSize range [64, 64], but supported range is [32, 32]`. Not an ARM/FEX issue — would fail on any NVIDIA GPU via VKD3D-Proton. Descriptor_buffer thunk gap (original diagnosis) was a red herring. Needs Game Science to add Wave32 shader permutations, or a VKD3D-Proton workaround to emulate Wave64 on Wave32 hardware. |
 | **Elden Ring** | DX12-only. Same `VK_EXT_descriptor_buffer` crash as Halo Infinite — identical EasyAntiCheat loading screen followed by crash. |
 | **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
 | **Halo Infinite** | DX12-only. Crashes at launch — `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. Same `VK_EXT_descriptor_buffer` gap as NMS and Wukong. Fails on both Proton 10.0 and Proton Experimental. |
@@ -323,8 +329,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Far Cry 5 | DX11 | Dunia Engine — Ubisoft Connect blocker expected |
 | Far Cry New Dawn | DX11 | Same engine as FC5 — Ubisoft Connect blocker expected |
 | Far Cry Primal | DX11 | Dunia Engine — Ubisoft Connect blocker expected |
-| Half-Life | OpenGL/D3D | GoldSrc engine (1998) |
-| Half-Life: Source Deathmatch | DX9 | Source engine |
 | Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
 | Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
 | The Elder Scrolls Online | DX11 | MMO (Zenimax Online dir), may need launcher work |
@@ -338,7 +342,6 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 | Elden Ring: Nightreign | DX12 | Same engine as Elden Ring — base game crashes (descriptor_buffer). Expect same result. |
 | Far Cry 6 | DX12 | Dunia Engine, DX12 primary renderer — Ubisoft Connect blocker expected |
 | Grand Theft Auto V Enhanced | DX12 | New RAGE engine build, DX12-only. Rockstar Launcher may be an obstacle (same issue as RDR2). |
-| RoboCop: Rogue City | DX12 | UE5 — same engine as Black Myth: Wukong. Likely crashes. |
 
 **Vulkan / OpenGL — Uncertain:**
 
