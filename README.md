@@ -198,6 +198,10 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Heretic: Shadow of the Serpent Riders** | DOS | Smooth | Classic DOS version. No issues. |
 | **Heretic + Hexen** (remastered) | KEX | Smooth | KEX remaster (SDL3). Both Heretic and Hexen from the same launcher. No issues. |
 | **Half-Life** | OpenGL | Smooth, maxed, 5120x1440 | GoldSrc engine via DXVK. No issues. |
+| **Half-Life 2** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
+| **Half-Life 2: Episode One** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
+| **Half-Life 2: Episode Two** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
+| **Half-Life 2: Lost Coast** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
 | **Half-Life: Source Deathmatch** | DX9 | Smooth, 1920x1080 windowed | Source engine via DXVK. Fullscreen at 5120x1440 causes main-loop stall and cross-thread pipe deadlock, freezing Gnome session. Launch options: `%command% -windowed -noborder -w 1920 -h 1080 -threads 1`. |
 | **Hellpoint** | DX11 | Smooth, maxed, 5120x1440 | Unity engine via DXVK. No issues. |
 | **Just Cause 3** | DX11 | Smooth, maxed, 5120x1440 | Avalanche engine via DXVK. No issues. |
@@ -222,10 +226,12 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **S.T.A.L.K.E.R.: Shadow of Chornobyl - Enhanced Edition** | DX11 | Smooth, high FPS, ultrawide | DLSS Max Performance. Same cutscene rendering bug as other EEs (yellow rectangles, Escape to skip). Gameplay smooth, looks great at full ultrawide. Enhanced Editions recommended over originals. |
 | **Sekiro: Shadows Die Twice** | DX11 | Smooth, maxed out | DX11 via DXVK. No launch options needed. |
 | **Shadow of the Tomb Raider** | DX12 | Smooth, maxed settings | **Do not use native Linux port** — Feral's Vulkan renderer is ~1 FPS under FEX. Force Proton 10.0 (DX12 → VKD3D-Proton). Missing dialogue fix: change Steam language to French, download voice pack, launch, switch voice back to English in-game. |
+| **Star Wars: The Old Republic** | DX9 | Smooth, maxed, 5120x1440, 120 FPS | HeroEngine via DXVK. First launch takes 10+ minutes compiling Vulkan shaders. No issues after that. |
 | **Strange Brigade** | Vulkan | Smooth, maxed, 5120x1440 | Asura Engine, native Vulkan renderer. DX12 mode crashes to desktop (silent exit). Vulkan mode runs perfectly. |
 | **Supermarket Together** | DX11 | Smooth, maxed, 5120x1440 | Unity engine via DXVK. No issues. |
 | **Space Engineers** | DX11 | Smooth initially, unstable at max | DX11 via DXVK. Runs well at full ultrawide with high settings. "Photo" quality preset causes grinding halt after a few minutes (had to Alt+F4). **TODO:** Retest with High preset instead of Photo/Extreme to find stable ceiling. |
 | **Sledding Game Demo** | DX11 | Smooth, maxed, 300 Hz | Online multiplayer tested. No issues. |
+| **Thomas & Friends: Wonders of Sodor** | DX11 | Smooth, maxed, 5120x1440 | No launch options or Proton changes needed. No issues. |
 | **The Witcher 3** (next-gen) | DX12 | Gorgeous, near-max | RT + DLSS Quality + Frame Gen via VKD3D-Proton. See launch options below. |
 | **Unreal Tournament 2004** | DX9 | Playable, maxed settings | DX9 via DXVK. Lower FPS than expected for a 2004 title — likely FEX translation overhead on the old engine's CPU-heavy code paths. |
 
@@ -320,33 +326,312 @@ These games are selected to validate the hypothesis that DX11 games (via DXVK) w
 
 Games installed on this system but not yet launched/tested. Grouped by expected compatibility based on graphics API. Sorted alphabetically within each group.
 
-**DX9/DX10/DX11 — Expected to Work (DXVK sweet spot):**
+**Priority flags:** Games marked with :star: are high-priority — they test specific engine/API hypotheses or are particularly interesting showcase titles.
+
+**DX11 — Expected to Work (DXVK sweet spot):**
 
 | Game | API | Notes |
 |------|-----|-------|
-| Far Cry 3: Blood Dragon | DX11 | Same engine as FC3 — Ubisoft Connect blocker, but DX11 renderer works when bypassed |
-| Far Cry 4 | DX11 | Dunia Engine — Ubisoft Connect blocker expected |
-| Far Cry 5 | DX11 | Dunia Engine — Ubisoft Connect blocker expected |
-| Far Cry New Dawn | DX11 | Same engine as FC5 — Ubisoft Connect blocker expected |
-| Far Cry Primal | DX11 | Dunia Engine — Ubisoft Connect blocker expected |
-| Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2 |
-| Star Wars: The Old Republic | DX9 | MMO, HeroEngine — may need launcher workarounds |
-| The Elder Scrolls Online | DX11 | MMO (Zenimax Online dir), may need launcher work |
-| The Witcher | DX9 | Aurora Engine (2007), old but janky |
-| The Witcher 2 | DX9 | RED Engine, DX9 |
+| :star: Aliens vs. Predator | DX11 | Demanding DX11 shooter (Rebellion, 2010). Good stress test. |
+| :star: Borderlands GOTY Enhanced | DX11 | UE/DX11, popular co-op. Enhanced version should be smoother than original. |
+| :star: Darksiders Warmastered Edition | DX11 | Remastered DX11 path. Vigil/THQ. |
+| :star: Ghostrunner | DX11/DX12 | UE4 with RTX. DX11 should work, DX12 uncertain. |
+| :star: Hellblade: Senua's Sacrifice | DX11 | UE4. Visually stunning. |
+| :star: L.A. Noire | DX11 | Rockstar DX11. Tests whether Rockstar's FPU issues (seen in RDR2) affect DX11 titles too. |
+| :star: Mafia: Definitive Edition | DX11 | Illusion Engine remake. |
+| :star: Mirror's Edge | DX9/11 | Unreal Engine 3 (DICE). |
+| Age of Empires III: Definitive Edition | DX11 | Bang! Engine. Same family as AoE2 DE (which works). |
+| Alien Shooter 2: Reloaded | DX9 | Top-down shooter, lightweight. |
+| American Truck Simulator | DX11 | SCS engine. Driving sim. |
+| ASTRONEER | DX11 | UE4. |
+| Back 4 Blood | DX11 | UE4. L4D spiritual successor. |
+| Bulletstorm: Full Clip Edition | DX11 | UE3. |
+| Anomaly Warzone Earth | DX9/11 | Tower offense, lightweight. |
+| A.R.E.S. | DX9 | Side-scroller. |
+| Bionic Commando Rearmed | DX9 | Capcom platformer remaster. |
+| Blocks That Matter | DX9 | Indie puzzle. |
+| Bunch Of Heroes | DX11 | Co-op top-down shooter. |
+| Cloning Clyde | DX9 | XBLA port. |
+| Command & Conquer Remastered | DX11 | Classic RTS remaster. |
+| Company of Heroes / Legacy Edition | DX9/11 | Essence Engine (Relic). |
+| Containment: The Zombie Puzzler | DX9 | Puzzle game. |
+| Critical Mass | DX9 | Puzzle game. |
+| Data Jammers: FastForward | DX9 | Indie racing. |
+| Dead Horde | DX9 | Co-op zombie shooter. |
+| Defense Grid: The Awakening | DX9 | Tower defense classic. |
+| Delve Deeper | DX9 | Strategy. |
+| Dino D-Day | DX9 | Source engine multiplayer. Should work like other Source games. |
+| Dune: Spice Wars | DX11 | Shiro Games RTS. |
+| EDGE | DX9 | Indie puzzle platformer. |
+| Eufloria / Eufloria HD | DX9/11 | Ambient strategy. |
+| Far Cry 3: Blood Dragon | DX11 | Same engine as FC3 — Ubisoft Connect blocker, but DX11 renderer works when bypassed. |
+| Far Cry 4 | DX11 | Dunia Engine — Ubisoft Connect blocker expected. |
+| Far Cry 5 | DX11 | Dunia Engine — Ubisoft Connect blocker expected. |
+| Far Cry New Dawn | DX11 | Same engine as FC5 — Ubisoft Connect blocker expected. |
+| Far Cry Primal | DX11 | Dunia Engine — Ubisoft Connect blocker expected. |
+| Flight Control HD | DX9 | Casual port. |
+| Foreign Legion: Buckets of Blood | DX9 | Indie shooter. |
+| Fortix 2 | DX9 | Arcade puzzle. |
+| Geometry Wars: Retro Evolved | DX9 | Twin-stick shooter. |
+| Ghostbusters: The Video Game | DX9 | Infernal Engine. |
+| GRAV | DX9/11 | UE4. |
+| HOARD | DX9 | Arcade strategy. |
+| Hydrophobia: Prophecy | DX11 | Third-person action. |
+| inMomentum | DX9 | Parkour FPS. |
+| Ironclads: Chincha Islands War 1866 | DX9 | Naval strategy. |
+| Lead and Gold | DX9 | Third-person multiplayer shooter. |
+| Monday Night Combat | DX11 | UE3 class-based shooter. |
+| Nuclear Dawn | DX9 | Source engine FPS/RTS hybrid. Should work like other Source games. |
+| Orcs Must Die! | DX9/11 | UE3 tower defense. |
+| Painkiller Overdose | DX9 | Same engine as Painkiller Black. |
+| Painkiller: Redemption | DX9 | Same engine as Painkiller Black. |
+| Really Big Sky | DX9 | Twin-stick shooter. |
+| Revenge of the Titans | DX9 | Tower defense. |
+| RoboBlitz | DX9 | UE3. |
+| Runespell: Overture | DX9 | RPG/card game. |
+| Sanctum | DX9 | UE3 FPS/tower defense. |
+| Scoregasm | DX9 | Twin-stick shooter. |
+| Shattered Horizon | DX10 | DX10-only space FPS. Interesting DX10 test. |
+| Sniper Elite | DX9 | Asura Engine. Same engine family as Strange Brigade (which works on Vulkan). |
+| Snuggle Truck | DX9 | Physics puzzle. |
+| Steel Storm: Burning Retribution | DX9 | Top-down shooter. |
+| Stroke of Fate: Operation Valkyrie | DX9 | Adventure. |
+| Swords and Soldiers HD | DX9 | Side-scrolling RTS. |
+| Tobe's Vertical Adventure | DX9 | Platformer. |
+| Trapped Dead | DX9 | Isometric zombie RTS. |
+| TRAUMA | DX9 | Point-and-click puzzle. |
+| Unstoppable Gorg | DX9 | Tower defense. |
+| Vertex Dispenser | DX9 | Abstract strategy. |
+| Your Doodles Are Bugged! | DX9 | Puzzle. |
+| Zombie Shooter | DX9 | Top-down shooter. |
+| Zombie Shooter 2 | DX9 | Top-down shooter. |
+
+**DX9 — Major Titles (DXVK, high interest):**
+
+| Game | API | Notes |
+|------|-----|-------|
+| :star: Batman: Arkham Asylum GOTY | DX9 | UE3, major AAA. High-profile DX9 DXVK test. |
+| :star: Bully: Scholarship Edition | DX9 | Rockstar DX9. Tests Rockstar FPU behavior (RDR2 has FPU crash). |
+| :star: Call of Duty 4: Modern Warfare | DX9 | IW3 engine, classic FPS. Interesting engine test. |
+| :star: GTA IV: The Complete Edition | DX9 | RAGE engine. Infamously bad PC port + GFWL. Rockstar FPU test. |
+| :star: GTA San Andreas | DX9 | RenderWare. Classic Rockstar. |
+| :star: Mass Effect (2007) | DX9 | UE3, BioWare classic. |
+| :star: Neverwinter Nights 2: Platinum | DX9 | Electron Engine (Obsidian). Complex RPG. |
+| Alpha Prime | DX9 | Czech FPS (id Tech-like). |
+| Battlefield 2 | DX9 | Refractor 2 engine (DICE). Old but interesting. |
+| Borderlands GOTY | DX9 | UE2.5. Original version, may have quirks the Enhanced version fixed. |
+| Darksiders | DX9 | Original DX9 version. |
+| Dead Island | DX9 | Chrome Engine 5. |
+| Depths of Peril | DX9 | Indie ARPG. |
+| Deus Ex: Game of the Year Edition | DX9 | Unreal Engine 1 (1999). Classic immersive sim. |
+| Deus Ex: Invisible War | DX9 | Ion Storm, modified Unreal engine. |
+| DiRT | DX9 | EGO engine (Codemasters). |
+| Duke Nukem Forever | DX9 | Heavily modified UE2.5. |
+| GTA III | DX9 | RenderWare. |
+| GTA 2 | DX9 | 2D top-down, very old. |
+| GTA | DX9 | 2D top-down, original. |
+| Half-Life 2: Deathmatch | DX9 | Source engine, same as HL2. |
+| Hard Reset | DX9 | Flying Wild Hog. Same devs as Shadow Warrior reboot. |
+| Hitman: Blood Money | DX9 | Glacier engine (IO Interactive). |
+| Indigo Prophecy (Fahrenheit) | DX9 | Quantic Dream, early cinematic adventure. |
+| Jade Empire: Special Edition | DX9 | BioWare, Odyssey Engine variant. |
+| Just Cause | DX9 | Avalanche engine (precursor to JC3 which works). |
+| Majesty 2 Collection | DX9 | Fantasy RTS. |
+| Manhunt | DX9 | RenderWare (Rockstar). Another Rockstar FPU test. |
+| Max Payne 2 | DX9 | MAX-FX engine (Remedy). |
+| Medal of Honor: Airborne | DX9 | UE3. |
+| Medal of Honor (2010) SP + MP | DX9 | UE3 (SP) / Frostbite 1 (MP). Interesting dual-engine. |
+| Midnight Club II | DX9 | RAGE predecessor (Rockstar). |
+| Mount & Blade | DX9 | Custom engine. |
+| Panzer Dragoon: Remake | DX9/11 | UE4 remake. |
+| PAYDAY: The Heist | DX9 | Diesel engine. |
+| Psychonauts | DX9 | Double Fine, custom engine. |
+| Red Orchestra: Ostfront 41-45 | DX9 | UE2.5. |
+| Saints Row 2 | DX9 | Notoriously bad PC port. Interesting stress test. |
+| Sonic Adventure DX | DX9 | Dreamcast port. |
+| Star Wars: Battlefront 2 Classic | DX9 | Pandemic, classic. |
+| Star Wars: Empire at War Gold | DX9 | Petroglyph RTS. |
+| Street Fighter IV | DX9 | MT Framework (Capcom). |
+| The Elder Scrolls IV: Oblivion GOTY (2009) | DX9 | Gamebryo engine. Not the UE5 remaster. |
+| The Witcher | DX9 | Aurora Engine (BioWare/CD Projekt, 2007). |
+| The Witcher 2 | DX9 | RED Engine. |
+| Titan Quest / Anniversary / Immortal Throne | DX9 | Iron Lore ARPG. Three versions installed. |
+| ToCA Race Driver 3 | DX9 | Codemasters. |
+| Torchlight | DX9 | OGRE engine. Diablo-like ARPG. |
+| Trine | DX9 | Frozenbyte custom engine. |
+| Unreal Gold | DX9 | Unreal Engine 1 (1998). |
+| Unreal II: The Awakening | DX9 | Unreal Engine 2. |
+| Unreal Tournament GOTY | DX9 | Unreal Engine 1. |
+
+**id Tech Engine Family — Diagnostic Priority:**
+
+These test the id Tech 4 FPU crash pattern (DOOM 3, BFG, Prey all crash on x87 FPU validation) and whether id Tech 5 inherits the issue. id Tech 3 (Q3A) and id Tech 6+ (DOOM 2016, Eternal) work fine.
+
+| Game | Engine | Notes |
+|------|--------|-------|
+| :star: Quake 4 | id Tech 4 | **Critical test.** Same engine as DOOM 3 which crashes on x87 FPU. Will it crash too? |
+| :star: RAGE | id Tech 5 (OpenGL) | **Critical test.** Bridges broken id Tech 4 and working id Tech 6. Does id Tech 5 still have x87 FPU checks? |
+| :star: The Chronicles of Riddick: Assault on Dark Athena | Modified id Tech 4 (Starbreeze) | Third-party id Tech 4 variant. Tests if the FPU issue is in shared engine code or id-specific. |
+| :star: DEATHLOOP | Void Engine (id Tech variant) | Arkane's id Tech fork. Tests whether Arkane's branch has FPU issues. Vulkan renderer. |
+| Return to Castle Wolfenstein | id Tech 3 (OpenGL) | Q3A (same engine) works. Should confirm id Tech 3 is solid. |
+| Daikatana | id Tech 2 (Quake II engine) | Ion Storm. |
+| HeXen II | id Tech 2 (Quake engine) | Raven Software. |
+| Hexen: Deathkings of the Dark Citadel | id Tech 1 | Hexen expansion. |
+| Quake | id Tech 1/2 | Original Quake, very lightweight. |
+| Quake II expansion packs (Ground Zero, The Reckoning) | KEX (remaster) | Same engine as working Quake 2 remaster. Should work. |
+| Quake III: Team Arena | id Tech 3 | Expansion for working Q3A. |
+| Quake Mission Packs (Scourge of Armagon, Dissolution of Eternity) | id Tech 1 | Original Quake expansions. |
+| DOOM 3: Resurrection of Evil | id Tech 4 | Expansion — same engine as broken DOOM 3. Expect same FPU crash. |
+
+**Source Engine — Expected to Work (HL2, CS:S, etc. all confirmed):**
+
+| Game | Notes |
+|------|-------|
+| Counter-Strike | GoldSrc (HL1 engine). |
+| Counter-Strike: Condition Zero | GoldSrc. |
+| Darkest Hour: Europe '44-'45 | Red Orchestra mod (UE2.5). |
+| Day of Defeat: Source | Source engine. |
+| Deathmatch Classic | GoldSrc. |
+| Garry's Mod | Source engine. Community-reported working. |
+| Half-Life: Blue Shift | GoldSrc. |
+| Half-Life: Opposing Force | GoldSrc. |
+| Half-Life: Source | Source engine remake of HL1. |
+| Portal | Source engine. Should work like HL2/Portal 2. |
+| Portal 2 | Source engine. Should work. |
+| Team Fortress Classic | GoldSrc. |
+| Zeno Clash | Source engine. |
+
+**OpenGL / HPL Engine — Uncertain (FEX GL thunks enabled):**
+
+| Game | API | Notes |
+|------|-----|-------|
+| :star: Amnesia: The Dark Descent | OpenGL (HPL2) | Frictional Games. Tests HPL2 engine under FEX GL thunks. |
+| :star: Star Wars: Knights of the Old Republic | OpenGL | BioWare Odyssey Engine. Classic RPG. |
+| Aliens versus Predator Classic 2000 | OpenGL | Very old (1999). |
+| Penumbra: Overture / Black Plague / Requiem | OpenGL (HPL1) | Frictional Games, predecessor to Amnesia. |
+| Serious Sam Classics: Revolution | OpenGL | Serious Engine 1. |
+| Serious Sam Classic: The First Encounter | OpenGL | Serious Engine 1. |
+| Serious Sam Classic: The Second Encounter | OpenGL | Serious Engine 1. |
+
+**DX11 Remasters / Newer (DXVK):**
+
+| Game | API | Notes |
+|------|-----|-------|
+| Serious Sam Fusion 2017 | DX11/Vulkan | Serious Engine 4. May use Vulkan natively. |
+| Serious Sam HD: The First Encounter | DX9/11 | Serious Engine 3. |
+| Serious Sam HD: The Second Encounter | DX9/11 | Serious Engine 3. |
+| Serious Sam: The Random Encounter | DX9 | RPG spinoff. |
+| Serious Sam Double D XXL | DX9 | Side-scroller spinoff. |
 
 **DX12 — May Work (VKD3D-Proton, mixed results):**
 
 | Game | API | Notes |
 |------|-----|-------|
 | Elden Ring: Nightreign | DX12 | Same engine as Elden Ring — base game crashes (descriptor_buffer). Expect same result. |
-| Far Cry 6 | DX12 | Dunia Engine, DX12 primary renderer — Ubisoft Connect blocker expected |
+| Far Cry 6 | DX12 | Dunia Engine, DX12 primary renderer — Ubisoft Connect blocker expected. |
 | Grand Theft Auto V Enhanced | DX12 | New RAGE engine build, DX12-only. Rockstar Launcher may be an obstacle (same issue as RDR2). |
 
-**Vulkan / OpenGL — Uncertain:**
+**Classic / DOS / ScummVM / Point-and-Click:**
 
-| Game | API | Notes |
-|------|-----|-------|
+| Game | Notes |
+|------|-------|
+| Commander Keen Complete Pack | DOS. |
+| Delta Force 1 / 2 / Land Warrior / Task Force Dagger | Voxel engine (NovaLogic). |
+| Harvester | DOS FMV adventure (1996). |
+| Indiana Jones and the Fate of Atlantis | ScummVM/DOS. LucasArts classic. |
+| Indiana Jones and the Last Crusade | ScummVM/DOS. LucasArts classic. |
+| Loom | ScummVM/DOS. LucasArts classic. |
+| The Dig | ScummVM/DOS. LucasArts classic. |
+| The Secret of Monkey Island: Special Edition | DX9 remaster with classic mode. |
+| Star Wars: Dark Forces | DOS (Build engine variant). |
+| Star Wars: Jedi Knight: Dark Forces II | DX (DirectDraw/D3D, 1997). |
+| Star Wars: Jedi Knight: Mysteries of the Sith | DX (same engine as JK:DF2). |
+| Star Wars: Starfighter | DX9. |
+| Wolfenstein 3D: Spear of Destiny | DOS. |
+| X-COM: UFO Defense / Terror from the Deep / Interceptor / Apocalypse / Enforcer | DOS-era strategy classics. |
+
+**Indie / Lightweight / 2D (likely to work, low priority):**
+
+| Game | Notes |
+|------|-------|
+| And Yet It Moves | Physics platformer. |
+| Armikrog | Point-and-click (Pencil Test Studios). |
+| Aquaria | 2D metroidvania. |
+| Atom Zombie Smasher | Strategy. |
+| Beat Hazard | Twin-stick music shooter. |
+| Before the Echo | Rhythm RPG. |
+| Ben There, Dan That! / Time Gentlemen, Please! | Point-and-click comedy. |
+| Binding of Isaac | Flash-based roguelike. |
+| BIT.TRIP RUNNER | Rhythm platformer. |
+| Blackwell Legacy / Unbound / Convergence | AGS adventure games. |
+| Botanicula | Amanita Design, point-and-click. |
+| Braid | DX9 puzzle platformer. |
+| Breath of Death VII / Cthulhu Saves the World | Retro RPGs. |
+| Cave Story+ | Classic indie platformer. |
+| Chains | Physics puzzle. |
+| Cogs | 3D puzzle. |
+| Crayon Physics Deluxe | Physics sandbox. |
+| Cricket Revolution | Sports. |
+| Crysis Wars | DX10. Multiplayer standalone for Crysis Warhead. |
+| Darwinia / Multiwinia / Uplink / DEFCON | Introversion Software bundle. |
+| Dinner Date | Experimental narrative. |
+| Disciples II: Gallean's Return | Turn-based strategy. |
+| Dungeons of Dredmor | Roguelike. |
+| Dwarf Fortress | SDL/OpenGL. Very lightweight graphically. |
+| Eets | Puzzle. |
+| Fate of the World | Strategy. |
+| FOTONICA | First-person runner. |
+| Fractal: Make Blooms Not War | Puzzle. |
+| Freedom Force / vs. the 3rd Reich | Irrational Games, superhero RTS. |
+| Frozen Synapse | Turn-based tactics. |
+| Gemini Rue | AGS adventure. |
+| Gish | Physics platformer. |
+| Gratuitous Space Battles | Strategy. |
+| Greed Corp | Turn-based strategy. |
+| Hack, Slash, Loot | Roguelike. |
+| Hacker Evolution / Untold / Duality | Hacking sim. |
+| Hammerfight | Physics combat. |
+| Inside a Star-filled Sky | Recursive shooter. |
+| ISLANDERS | Minimalist city builder. |
+| Jamestown | Shoot-em-up. |
+| Jolly Rover | Point-and-click. |
+| LIMBO | Atmospheric platformer. |
+| Lugaru HD | 3D combat. |
+| Lume | Puzzle adventure. |
+| Machinarium | Amanita Design, point-and-click. |
+| Making History: The Calm & The Storm | Grand strategy. |
+| Marathon | Bungie (upcoming reboot). |
+| NightSky | Physics platformer. |
+| Nimbus | Flying puzzle. |
+| Numen: Contest of Heroes | ARPG. |
+| Oddworld: Abe's Oddysee / Abe's Exoddus | Classic platformers. |
+| Oddworld: Munch's Oddysee / Stranger's Wrath HD | 3D Oddworld. |
+| On the Rain-Slick Precipice of Darkness Ep1/Ep2 | Penny Arcade RPG. |
+| PixelJunk Eden | Platformer. |
+| Plants vs. Zombies: GOTY | PopCap classic. |
+| Poker Night at the Inventory | Telltale card game. |
+| The Polynomial | Fractal music game. |
+| QuantZ | Puzzle. |
+| Raycatcher | Puzzle. |
+| Return to Dark Castle | Platformer. |
+| RTX Sweeper | RTX demo. |
+| Saira | Platformer. |
+| Samorost 2 | Amanita Design. |
+| Shadowgrounds / Shadowgrounds: Survivor | Top-down shooters (Frozenbyte). |
+| Shank | Side-scrolling brawler. |
+| SpaceChem | Puzzle. |
+| Star Raiders | Atari classic remake. |
+| Super Meat Boy | Hardcore platformer. |
+| Terraria | 2D sandbox. Very popular. |
+| The Alien Way | Indie. |
+| The Dream Machine | Clay-animated adventure. |
+| The Suicide of Rachel Foster | UE4. |
+| Toki Tori | Puzzle platformer. |
+| VVVVVV | Platformer. |
+| Windosill | Art toy. |
+| Worms Armageddon | 2D classic. |
+| World of Goo | Physics puzzle. |
+| Zen Bound 2 | 3D puzzle. |
 
 **Classic Doom — TODO: Iterate launch options:**
 
@@ -354,6 +639,11 @@ Games installed on this system but not yet launched/tested. Grouped by expected 
 |------|-------|
 | DOOM + DOOM II / DOOM II / Final Doom | Multiple launch options (DOS, non-DOS, remastered) with varying results. Need to test each configuration. |
 
+### Downloading / Not Yet Installed
+
+| Game | State | Notes |
+|------|-------|-------|
+| Dota 2 | Needs download | Source 2 engine. Native Linux build may have same issues as CS2 (requires Proton). |
 
 ### Known Not to Launch
 
