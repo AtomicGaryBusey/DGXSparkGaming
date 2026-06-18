@@ -92,14 +92,14 @@ Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet in
 | 1 · NVIDIA driver | ✅ 580.159.03 | 7 · FEX-Emu | ✅ 2605~n (+wine) |
 | 2 · CUDA | ✅ 13.0 | 8 · FEX RootFS/Config | ✅ Ubuntu 24.04 + thunks |
 | 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ✅ 1.0.0.81 (ARM64-patched) |
-| 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ❌ not installed |
-| 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ❌ pending Box64 (Step 3) |
+| 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ✅ v0.4.3 (Dynarec) |
+| 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ✅ box64+box32 enabled |
 | 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ❌ pending Steam first-run |
 
-**Steps 1–2 complete.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10); FEX + RootFS + NGX
-libs + ARM64-patched Steam installed. FEX runs x86 via explicit `FEXBash` (the Steam launcher is
-patched to self-relaunch under it), so no binfmt handler is needed yet — those come with Box64.
-**Next action:** Step 3 (Box64), then launch `FEXBash steam` and select Proton 10.0 (Step 4).
+**Steps 1–3 complete.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10); FEX + RootFS + NGX
+libs + ARM64-patched Steam installed; Box64 v0.4.3 built (armv9.2-a) with x86_64/i386 binfmt
+handlers live. **Only Step 4 remains:** launch `FEXBash steam`, sign in, let it bootstrap, and
+select Proton 10.0 stable — then start testing games.
 
 ## Setup Steps
 
