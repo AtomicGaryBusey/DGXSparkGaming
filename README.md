@@ -11,15 +11,39 @@
 | Proton | Pending | Configure Proton 10.0-2 beta |
 
 ## System Info
-- **Hardware:** NVIDIA DGX Spark (GB10 Grace Blackwell Superchip)
-- **CPU:** 10x Cortex-X925 + 10x Cortex-A725 (20 cores, aarch64)
-- **GPU:** NVIDIA GB10 — 6,144 CUDA cores, 48 RT Cores, Vulkan 1.4, Blackwell arch
-- **Memory:** 128 GB unified LPDDR5x (273 GB/s)
-- **Storage:** Samsung 3.7 TB NVMe
-- **Display:** Samsung Odyssey G9 OLED (5120x1440) via HDMI 2.1a
-- **OS:** Ubuntu 24.04.4 LTS (Noble Numbat)
-- **Driver:** NVIDIA 580.126.09 (open kernel), CUDA 13.0
-- **Kernel:** 6.17.0-1008-nvidia
+
+This testing spans two **GB10 Grace Blackwell** machines. The HP ZGX Nano G1n is a variant of
+the NVIDIA DGX Spark — both are built on the *same* GB10 superchip and ship NVIDIA DGX OS, so
+they are spec-identical at the SoC level (CPU, GPU, memory, AI compute). The differences are in
+storage, networking, display outputs, and chassis. **Every compatibility finding in this
+document transfers between the two**, since the translation stack runs on the identical SoC.
+
+| Spec | NVIDIA DGX Spark (Founders Edition) | HP ZGX Nano G1n AI Station |
+|------|-------------------------------------|---------------------------|
+| **SoC** | NVIDIA GB10 Grace Blackwell Superchip | NVIDIA GB10 Grace Blackwell Superchip |
+| **CPU** | 20-core Arm: 10× Cortex-X925 + 10× Cortex-A725 (aarch64) | 20-core Arm: 10× Cortex-X925 + 10× Cortex-A725 (aarch64) |
+| **GPU** | NVIDIA GB10 Blackwell — 6,144 CUDA cores, 48 RT cores, Vulkan 1.4 | NVIDIA GB10 Blackwell — 6,144 CUDA cores, 48 RT cores, Vulkan 1.4 |
+| **AI compute** | 1,000 TOPS FP4 (≈1 petaFLOP) | 1,000 TOPS FP4 (≈1 petaFLOP) |
+| **Memory** | 128 GB unified LPDDR5x, 273 GB/s | 128 GB unified LPDDR5x, 273 GB/s |
+| **Storage** | 4 TB NVMe M.2 | **1 TB** NVMe M.2 SSD (this unit; HP also offers 2 TB / 4 TB) |
+| **Wired net** | 10 GbE RJ-45 + ConnectX-7 dual QSFP (200 Gbps) | Realtek RTL8127-CG 10 GbE + ConnectX-7 dual 200GbE QSFP112 |
+| **Wireless** | Wi-Fi 7, Bluetooth 5.3 | Wi-Fi 7 (2×2), Bluetooth 5.4 |
+| **Display / USB-C** | HDMI 2.1 + 4× USB-C (1× 240 W PD, DP alt mode) | HDMI 2.1a (8K@30) + 3× USB-C 3.2 @ 20 Gbps with **DisplayPort 1.4a** alt mode (8K@60) |
+| **OS** | NVIDIA DGX OS (Ubuntu-based) | NVIDIA DGX OS (Ubuntu-based) |
+| **Dimensions** | 150 × 150 × 50.5 mm, 1.2 kg | 150 × 150 × 51 mm |
+| **Peak power** | 240 W (GB10 SoC TDP 140 W) | ~228 W |
+
+> **Gaming-relevant difference:** the ZGX Nano exposes **DisplayPort 1.4a** over USB-C alt
+> mode, whereas the DGX Spark's only video-out used here was HDMI 2.1a. DP 1.4a supports DSC,
+> which may lift the 5120×1440 @ 120 Hz HDMI ceiling noted in [Display Notes](#display-notes) —
+> untested, worth trying.
+
+**This test rig (HP ZGX Nano G1n, 1 TB):**
+- **Display:** Samsung Odyssey G9 OLED (5120×1440) via HDMI 2.1a
+- **OS:** Ubuntu 24.04.4 LTS (Noble Numbat) / DGX OS
+- **Driver:** NVIDIA 580.159.03 (open kernel), CUDA 13.0
+- **Kernel:** 6.17.0-1021-nvidia
+- **Storage:** 1 TB NVMe (~931 GiB usable) — notably smaller than the 4 TB DGX Sparks; game library size is the main practical constraint here
 
 ## Architecture
 
