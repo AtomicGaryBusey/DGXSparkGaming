@@ -155,19 +155,25 @@ This script handles:
 - x86_64 NVIDIA driver libs + DLSS DLLs copied into RootFS
 - ARM64 patch applied to `/usr/lib/steam/bin_steam.sh`
 
-> **⚠️ Known autoinstaller bug (RootFS `2025-12-27`+, hit on ZGX Nano 2026-06-18):** the current
-> FEX RootFS squashfs is `/usr`-only — it has **no top-level `lib` symlink**. The script copies
-> the NVIDIA `.so` libs to `$rootfs/lib/x86_64-linux-gnu/`, which doesn't exist, so `cp` fails.
-> Because the script runs under `set -e`, it aborts there — and the **Steam ARM64 patch (the very
-> next step) is silently skipped**, and the `trap cleanup EXIT` deletes the extracted driver. The
-> earlier steps (FEX, RootFS, Config.json, AppArmor, NGX wine DLLs, Steam `.deb`) do complete.
+> **⚠️ Autoinstaller is unreliable (hit on ZGX Nano, 2026-06-18) — root cause + reliable fix.**
+> The script runs `FEXRootFSFetcher` from inside a `mktemp -d` working dir and has a
+> `trap cleanup EXIT` that does `rm -rf "$TEMP_DIR"`. The RootFS download/extract does not persist
+> to `~/.fex-emu/RootFS/`, so when the script exits the **extracted userland is deleted** — you're
+> left with a RootFS dir that has the skeleton but **no `bash`, no `libc`, no `ld-linux`**. Then,
+> because the dir is empty, the NVIDIA `.so` copy to `$rootfs/lib/x86_64-linux-gnu/` fails (no
+> top-level `lib` symlink either), and `set -e` aborts — which also **silently skips the Steam
+> ARM64 patch**. Net result: FEX, the fex/Steam `.deb`s, AppArmor, and the NGX wine DLLs install,
+> but Steam won't launch — `FEXBash` reports *"Invalid or Unsupported elf file ... misconfigured
+> x86-64 RootFS"* because the guest loader/bash are missing.
 >
-> **Fix — after the script aborts, finish the two skipped steps manually (no sudo for the libs):**
+> **Reliable completion — run these manually after the script (no sudo except the Steam patch):**
 > ```bash
 > RF=~/.fex-emu/RootFS/Ubuntu_24_04
 > ver=$(cat /sys/module/nvidia/version)
-> ln -sfn usr/lib "$RF/lib"                       # add the missing usrmerge symlink
-> mkdir -p "$RF/usr/lib/x86_64-linux-gnu" "$RF/usr/lib/i386-linux-gnu"
+> # 1. Fetch a RootFS that actually persists (run from $HOME, NOT a temp dir):
+> rm -rf "$RF"; cd ~ && FEXRootFSFetcher -y -x          # ~500 MB sqsh -> ~1.2 GB extracted
+> #    Verify it took:  test -x "$RF/usr/bin/bash" && find "$RF" -name ld-linux-x86-64.so.2
+> # 2. Copy the x86_64 + i386 NVIDIA driver libs into the RootFS (for DLSS/NGX):
 > cd ~ && wget "https://download.nvidia.com/XFree86/Linux-x86_64/$ver/NVIDIA-Linux-x86_64-$ver.run"
 > sh NVIDIA-Linux-x86_64-$ver.run -x && cd NVIDIA-Linux-x86_64-$ver
 > mkdir -p "$RF/usr/lib/x86_64-linux-gnu/nvidia/wine" && cp -f ./*.dll "$_"
@@ -175,12 +181,15 @@ This script handles:
 >   (cd "$RF/lib/x86_64-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
 > cd 32; for d in *.so.$ver; do cp -f "$d" "$RF/lib/i386-linux-gnu/$d"; b=$(echo "$d"|cut -d. -f1-2); \
 >   (cd "$RF/lib/i386-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
-> # then the Steam ARM64 patch the script never reached:
+> # 3. Apply the Steam ARM64 patch the script never reached:
 > cd ~/fex_autoinstall && sudo patch -p1 /usr/lib/steam/bin_steam.sh < patch_steam_for_arm64.patch
 > ```
-> Verify: `grep -c FEXBash /usr/lib/steam/bin_steam.sh` (→ ≥1) and
-> `ls $RF/lib/x86_64-linux-gnu/libGLX_nvidia.so.0` (must exist — Proton `dlopen`s it to find the
-> NGX/DLSS DLLs).
+> Verify the whole stack: `FEXBash -c 'uname -m'` → `x86_64` (proves the RootFS loads);
+> `ls $RF/lib/x86_64-linux-gnu/libGLX_nvidia.so.0` (Proton `dlopen`s it to find the NGX/DLSS DLLs);
+> `grep -c FEXBash /usr/lib/steam/bin_steam.sh` → ≥1.
+>
+> Harmless: `FEXBash` prints `Unknown configuration option 'X87StrictReducedPrecision' / 'ABILocalFlags'
+> / 'ParanoidTSO'` — the shipped `Config.json` carries keys this FEX build (2605) doesn't know; they're ignored.
 
 **Launch Steam:**
 ```bash
