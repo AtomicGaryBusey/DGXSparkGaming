@@ -10,6 +10,9 @@
 | Box64 | Installed | v0.4.1 (Dynarec, armv9.2-a) |
 | Proton | Pending | Configure Proton 10.0-2 beta |
 
+> This table is the **reference configuration** proven on the DGX Sparks (target versions). For
+> the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
+
 ## System Info
 
 This testing spans two **GB10 Grace Blackwell** machines. The HP ZGX Nano G1n is a variant of
@@ -57,6 +60,44 @@ Windows Game (x86_64 .exe)
 ```
 
 GPU shaders run natively — only CPU-side code is translated.
+
+## Prerequisites Checklist
+
+Run these checks to see what a machine still needs before it can run games. Each row links to
+the detailed install/fix in **Setup Steps** below. A factory DGX OS box ships with the NVIDIA
+driver, CUDA, and the NVIDIA Vulkan ICD already present — but the entire x86 translation stack
+(modeset, FEX-Emu, Box64, Steam, Proton) must be installed by hand.
+
+| # | Prerequisite | Verify command | Pass condition | Fix |
+|---|--------------|----------------|----------------|-----|
+| 1 | NVIDIA driver (open kernel) | `cat /proc/driver/nvidia/version` | shows `580.x` (or newer) | pre-installed on DGX OS |
+| 2 | CUDA toolkit | `nvcc --version` | `release 13.0` (or newer) | pre-installed on DGX OS |
+| 3 | NVIDIA Vulkan ICD | `ls /usr/share/vulkan/icd.d/nvidia_icd.json` | file exists | ships with driver |
+| 4 | `nvidia-drm modeset=1` | `cat /sys/module/nvidia_drm/parameters/modeset` | prints `Y` | Step 1 (reboot) |
+| 5 | vulkan-tools | `vulkaninfo --summary \| grep deviceName` | shows `NVIDIA GB10` (not just llvmpipe) | Step 1 — `sudo apt install vulkan-tools` |
+| 6 | user in `video`+`render` | `id -nG \| grep -ow 'video\|render'` | both printed | Step 1 — `sudo usermod -aG video,render $USER` |
+| 7 | FEX-Emu | `FEXInterpreter --version` | prints a version | Step 2 (autoinstaller) |
+| 8 | FEX RootFS + GPU thunk config | `ls ~/.fex-emu/Config.json` | file exists | Step 2 |
+| 9 | Steam (under FEX) | `command -v steam` | path printed | Step 2 |
+| 10 | Box64 | `box64 --version` | prints `Box64 ... with Dynarec` | Step 3 |
+| 11 | x86 binfmt handlers | `ls /proc/sys/fs/binfmt_misc/ \| grep -iE 'box64\|FEX'` | at least one handler | registered by Steps 2–3 |
+| 12 | Proton 10.0 (stable) | Steam → Settings → Compatibility | 10.0 selectable | Step 4 |
+
+### Status on the test rig (HP ZGX Nano G1n — 2026-06-18)
+
+Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet installed.**
+
+| Prereq | State | Prereq | State |
+|--------|-------|--------|-------|
+| 1 · NVIDIA driver | ✅ 580.159.03 | 7 · FEX-Emu | ❌ not installed |
+| 2 · CUDA | ✅ 13.0 | 8 · FEX RootFS/Config | ❌ missing |
+| 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ❌ not installed |
+| 4 · modeset=1 | ❌ currently `0` | 10 · Box64 | ❌ not installed |
+| 5 · vulkan-tools | ❌ not installed | 11 · x86 binfmt | ❌ none registered |
+| 6 · video/render groups | ❌ not a member | 12 · Proton 10.0 | ❌ pending Steam |
+
+**Next action:** work through Steps 1 → 4 below. Step 1 (modeset + groups) requires a reboot
+and a re-login before Vulkan and GPU group access take effect.
 
 ## Setup Steps
 
