@@ -89,15 +89,17 @@ Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet in
 
 | Prereq | State | Prereq | State |
 |--------|-------|--------|-------|
-| 1 · NVIDIA driver | ✅ 580.159.03 | 7 · FEX-Emu | ❌ not installed |
-| 2 · CUDA | ✅ 13.0 | 8 · FEX RootFS/Config | ❌ missing |
-| 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ❌ not installed |
+| 1 · NVIDIA driver | ✅ 580.159.03 | 7 · FEX-Emu | ✅ 2605~n (+wine) |
+| 2 · CUDA | ✅ 13.0 | 8 · FEX RootFS/Config | ✅ Ubuntu 24.04 + thunks |
+| 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ✅ 1.0.0.81 (ARM64-patched) |
 | 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ❌ not installed |
-| 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ❌ none registered |
-| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ❌ pending Steam |
+| 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ❌ pending Box64 (Step 3) |
+| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ❌ pending Steam first-run |
 
-**Step 1 complete** (modeset + groups live after reboot; `vulkaninfo` reports NVIDIA GB10).
-**Next action:** Step 2 (FEX-Emu + Steam), then Step 3 (Box64), Step 4 (Proton 10.0).
+**Steps 1–2 complete.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10); FEX + RootFS + NGX
+libs + ARM64-patched Steam installed. FEX runs x86 via explicit `FEXBash` (the Steam launcher is
+patched to self-relaunch under it), so no binfmt handler is needed yet — those come with Box64.
+**Next action:** Step 3 (Box64), then launch `FEXBash steam` and select Proton 10.0 (Step 4).
 
 ## Setup Steps
 
@@ -152,6 +154,33 @@ This script handles:
 - AppArmor profiles for FEXBash and Steam
 - x86_64 NVIDIA driver libs + DLSS DLLs copied into RootFS
 - ARM64 patch applied to `/usr/lib/steam/bin_steam.sh`
+
+> **⚠️ Known autoinstaller bug (RootFS `2025-12-27`+, hit on ZGX Nano 2026-06-18):** the current
+> FEX RootFS squashfs is `/usr`-only — it has **no top-level `lib` symlink**. The script copies
+> the NVIDIA `.so` libs to `$rootfs/lib/x86_64-linux-gnu/`, which doesn't exist, so `cp` fails.
+> Because the script runs under `set -e`, it aborts there — and the **Steam ARM64 patch (the very
+> next step) is silently skipped**, and the `trap cleanup EXIT` deletes the extracted driver. The
+> earlier steps (FEX, RootFS, Config.json, AppArmor, NGX wine DLLs, Steam `.deb`) do complete.
+>
+> **Fix — after the script aborts, finish the two skipped steps manually (no sudo for the libs):**
+> ```bash
+> RF=~/.fex-emu/RootFS/Ubuntu_24_04
+> ver=$(cat /sys/module/nvidia/version)
+> ln -sfn usr/lib "$RF/lib"                       # add the missing usrmerge symlink
+> mkdir -p "$RF/usr/lib/x86_64-linux-gnu" "$RF/usr/lib/i386-linux-gnu"
+> cd ~ && wget "https://download.nvidia.com/XFree86/Linux-x86_64/$ver/NVIDIA-Linux-x86_64-$ver.run"
+> sh NVIDIA-Linux-x86_64-$ver.run -x && cd NVIDIA-Linux-x86_64-$ver
+> mkdir -p "$RF/usr/lib/x86_64-linux-gnu/nvidia/wine" && cp -f ./*.dll "$_"
+> for d in *.so.$ver; do cp -f "$d" "$RF/lib/x86_64-linux-gnu/$d"; b=$(echo "$d"|cut -d. -f1-2); \
+>   (cd "$RF/lib/x86_64-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
+> cd 32; for d in *.so.$ver; do cp -f "$d" "$RF/lib/i386-linux-gnu/$d"; b=$(echo "$d"|cut -d. -f1-2); \
+>   (cd "$RF/lib/i386-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
+> # then the Steam ARM64 patch the script never reached:
+> cd ~/fex_autoinstall && sudo patch -p1 /usr/lib/steam/bin_steam.sh < patch_steam_for_arm64.patch
+> ```
+> Verify: `grep -c FEXBash /usr/lib/steam/bin_steam.sh` (→ ≥1) and
+> `ls $RF/lib/x86_64-linux-gnu/libGLX_nvidia.so.0` (must exist — Proton `dlopen`s it to find the
+> NGX/DLSS DLLs).
 
 **Launch Steam:**
 ```bash
