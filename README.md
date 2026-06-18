@@ -92,12 +92,12 @@ Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet in
 | 1 · NVIDIA driver | ✅ 580.159.03 | 7 · FEX-Emu | ❌ not installed |
 | 2 · CUDA | ✅ 13.0 | 8 · FEX RootFS/Config | ❌ missing |
 | 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ❌ not installed |
-| 4 · modeset=1 | ❌ currently `0` | 10 · Box64 | ❌ not installed |
-| 5 · vulkan-tools | ❌ not installed | 11 · x86 binfmt | ❌ none registered |
-| 6 · video/render groups | ❌ not a member | 12 · Proton 10.0 | ❌ pending Steam |
+| 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ❌ not installed |
+| 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ❌ none registered |
+| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ❌ pending Steam |
 
-**Next action:** work through Steps 1 → 4 below. Step 1 (modeset + groups) requires a reboot
-and a re-login before Vulkan and GPU group access take effect.
+**Step 1 complete** (modeset + groups live after reboot; `vulkaninfo` reports NVIDIA GB10).
+**Next action:** Step 2 (FEX-Emu + Steam), then Step 3 (Box64), Step 4 (Proton 10.0).
 
 ## Setup Steps
 
