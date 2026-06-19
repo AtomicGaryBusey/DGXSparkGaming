@@ -94,13 +94,19 @@ Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet in
 | 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ✅ 1.0.0.81 (ARM64-patched) |
 | 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ✅ v0.4.3 (Dynarec) |
 | 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ✅ box64+box32 enabled |
-| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ⏳ selecting in Steam |
+| 6 · video/render groups | ✅ both active | 12 · Proton | ⚠️ Experimental active — switch to **10.0** |
 
-**Steps 1–3 complete; Step 4 nearly done.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10);
-FEX + RootFS + NGX libs + ARM64-patched Steam installed; Box64 v0.4.3 (armv9.2-a) with binfmt
-handlers live. Steam UI signed in and **stable after the `steamwebhelper` crash-loop fix** (see
-the Step 2 launch note — disable Chromium hardware accel in `Local State`). Enabling Proton 10.0
-and smoke-testing the first game (Half-Life 2).
+**Bring-up functionally COMPLETE (2026-06-18).** All layers verified end-to-end: **Half-Life 2
+ran great at full ultrawide on the GB10** (DX9 → DXVK via Proton). Vulkan graphics live; FEX +
+RootFS + NGX libs + ARM64-patched Steam; Box64 v0.4.3 + binfmt; Steam UI signed in and **stable
+after the `steamwebhelper` crash-loop fix** (Step 2 launch note — disable Chromium hardware accel
+in `Local State`).
+
+Two residual notes: (1) only **Proton Experimental** auto-installed — switch to **Proton 10.0**
+(Settings → Compatibility) for consistency with this log's validated baseline. (2) The Steam **UI**
+still crashes occasionally (a known, not-yet-fully-fixed FEX/CEF interaction) — it recovers and
+**does not affect running games** (HL2 kept running through a UI crash). Launch a game and a UI
+hiccup won't interrupt it.
 
 ## Setup Steps
 
