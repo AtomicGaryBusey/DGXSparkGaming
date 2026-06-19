@@ -94,12 +94,13 @@ Freshly provisioned. Base NVIDIA stack present; **the gaming stack is not yet in
 | 3 · NVIDIA Vulkan ICD | ✅ present | 9 · Steam | ✅ 1.0.0.81 (ARM64-patched) |
 | 4 · modeset=1 | ✅ live (DRM card1) | 10 · Box64 | ✅ v0.4.3 (Dynarec) |
 | 5 · vulkan-tools | ✅ GB10 via Vulkan 1.4 | 11 · x86 binfmt | ✅ box64+box32 enabled |
-| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ❌ pending Steam first-run |
+| 6 · video/render groups | ✅ both active | 12 · Proton 10.0 | ⏳ selecting in Steam |
 
-**Steps 1–3 complete.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10); FEX + RootFS + NGX
-libs + ARM64-patched Steam installed; Box64 v0.4.3 built (armv9.2-a) with x86_64/i386 binfmt
-handlers live. **Only Step 4 remains:** launch `FEXBash steam`, sign in, let it bootstrap, and
-select Proton 10.0 stable — then start testing games.
+**Steps 1–3 complete; Step 4 nearly done.** Vulkan graphics live (`vulkaninfo` → NVIDIA GB10);
+FEX + RootFS + NGX libs + ARM64-patched Steam installed; Box64 v0.4.3 (armv9.2-a) with binfmt
+handlers live. Steam UI signed in and **stable after the `steamwebhelper` crash-loop fix** (see
+the Step 2 launch note — disable Chromium hardware accel in `Local State`). Enabling Proton 10.0
+and smoke-testing the first game (Half-Life 2).
 
 ## Setup Steps
 
@@ -197,6 +198,38 @@ FEXBash steam
 ```
 
 Note: The desktop shortcut does not work — always launch from terminal via `FEXBash steam`.
+
+> **⚠️ Steam `steamwebhelper` crash-loop on first launch (hit on ZGX Nano, 2026-06-18).** Steam
+> may open, then the window closes/reopens endlessly (and the desktop work-area/your terminal may
+> shrink each cycle). Root cause: Steam's CEF UI spawns a **GPU process that crashes under FEX**
+> (`cef_log.txt`: `GPU process exited unexpectedly: exit_code=8704`), taking the UI down → Steam
+> relaunches it forever. Steam's `-cef-disable-gpu` launch flag does **not** propagate to the
+> helper, and the in-app setting is unreachable because the UI won't stay open. This is a known
+> FEX/Steam-CEF interaction (see [FEX #3900](https://github.com/FEX-Emu/FEX/issues/3900),
+> [Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780)).
+>
+> **The fix that worked — disable GPU acceleration at the Chromium level** (kill Steam first):
+> ```bash
+> pkill -9 -f ubuntu12; pkill -9 -f steamwebhelper        # stop the loop
+> python3 - <<'PY'
+> import json, os, shutil
+> p = os.path.expanduser("~/.local/share/Steam/config/htmlcache/Local State")
+> shutil.copy(p, p + ".bak")
+> d = json.load(open(p))
+> d.setdefault("hardware_acceleration_mode", {})["enabled"] = False
+> d["hardware_acceleration_mode_previous"] = False
+> json.dump(d, open(p, "w"), separators=(",", ":"))
+> PY
+> ```
+> Then relaunch `FEXBash steam` — the UI loads and stays up. The Steam storefront/library then
+> renders in software (fine; it's just the UI). **Games are unaffected** — they render through
+> Proton/DXVK/VKD3D on the real GPU regardless of this setting.
+>
+> Contributing mitigations applied first (recommended, but the Local State change is the decisive
+> one): disable FEX logging (`~/.fex-emu/Config.json` → `"OutputLog":""`, the FEX-dev mitigation
+> for a separate CEF FD-handling crash); remove conflicting `libz/libfreetype/libfontconfig/libdbus-1`
+> from `~/.local/share/Steam/ubuntu12_32/steam-runtime` so the helper uses RootFS libs (FEX wiki);
+> and wipe `~/.cache/nvidia/GLCache`. Opting into Steam Client Beta did **not** help.
 
 ### Step 3: Build Box64 from Source (Cortex-X925 optimized)
 
