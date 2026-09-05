@@ -484,6 +484,31 @@ involved, and it is not the crashy widget. Confirm with
 `ls ~/.local/share/Steam/steamapps/appmanifest_*.acf` and watch
 `~/.steam/steam/logs/content_log.txt` for `update finished`.
 
+> **⚠️ Installing a Proton does *not* pull its runtime.** Every Proton declares a
+> `require_tool_appid` in its `toolmanifest.vdf`, and a `steam://install` of the Proton alone leaves
+> that dependency missing — the game then fails with no useful message. Check and install it too:
+> ```bash
+> grep require_tool_appid ~/.local/share/Steam/steamapps/common/"Proton 11.0"/toolmanifest.vdf
+> ```
+>
+> | Proton | Requires runtime | AppID | Installed as |
+> |--------|------------------|-------|--------------|
+> | Proton 10.0-4b | Steam Linux Runtime **3.0 (sniper)** | `1628350` | `SteamLinuxRuntime_sniper` |
+> | Proton 11.0 x86-64 | Steam Linux Runtime **4.0** | `4183110` | `SteamLinuxRuntime_4` |
+> | Proton Experimental | Steam Linux Runtime **4.0** | `4183110` | `SteamLinuxRuntime_4` |
+> | **Proton 11.0 (ARM64)** | Steam Linux Runtime **4.0 - Arm64** | `4185400` | `SteamLinuxRuntime_4-arm64` |
+>
+> The ARM64 Proton wants a **different, ARM64-specific runtime** — easy to miss, and nothing in the
+> Steam UI says so.
+>
+> **Don't try to run `proton run <game>.exe` directly from a shell** to skip Steam. Proton expects to
+> be inside its pressure-vessel runtime container; run bare it prints
+> `fsync: up and running` and exits 1 with no log, even with `PROTON_LOG=1`. Launch through Steam.
+>
+> Harmless noise on first prefix creation:
+> `Error while copying to ".../system32/amdxcffx64.dll": No such file or directory` — that copy is
+> `optional=True` in the `proton` script and the file is absent from every non-Experimental build.
+
 To set the global default without any GUI at all, close Steam and edit
 `~/.local/share/Steam/config/config.vdf` → `CompatToolMapping "0" → "name"`.
 
