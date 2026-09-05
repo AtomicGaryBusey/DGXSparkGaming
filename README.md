@@ -2,16 +2,179 @@
 
 ## Status
 
-| Component | Status | Version |
+| Component | Status | Version (as of 2026-09-05) |
 |-----------|--------|---------|
-| Vulkan (modeset=1) | Verified | Vulkan 1.4.328 / NVIDIA GB10 |
-| FEX-Emu | Installed | fex-emu-armv8.4 (PPA) |
-| Steam | Installed + Launched | 1.0.0.81 |
-| Box64 | Installed | v0.4.1 (Dynarec, armv9.2-a) |
-| Proton | Pending | Configure Proton 10.0-2 beta |
+| NVIDIA driver | Verified | 580.173.02 open kernel — **stay on the 580 branch**, see [Driver Branch Policy](#driver-branch-policy) |
+| Vulkan (modeset=1) | Verified | Vulkan 1.4.312 / NVIDIA GB10 |
+| FEX-Emu | Installed | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 (PPA) |
+| Steam | Installed + Launched | client auto-updated 2026-09-05 |
+| Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
+| Proton | Configured | **11.0-2c** x86-64 (keeps DLSS); 11.0-2c ARM64 + 10.0-4b also installed — see [Which Proton](#which-proton-on-arm64) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5 is **not reachable** — see [DLSS 5 Status](#dlss-5-status-2026-09-05) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
+
+## Stack Currency (2026-09-05)
+
+Every layer re-checked against upstream on **5 Sep 2026**. "Latest" is not automatically "take it" —
+the driver row is a deliberate hold.
+
+| Layer | Running here | Latest upstream | Action |
+|-------|--------------|-----------------|--------|
+| NVIDIA driver | 580.173.02 (open kernel) | 610.57.04 (new-feature) / 595.99.02 (production) | **Hold at 580** — see [Driver Branch Policy](#driver-branch-policy) |
+| NVIDIA HWE kernel | 6.17.0-1032-nvidia | same | Updated 2026-09-05 (reboot pending); `linux-modules-nvidia-580-open` bumped in lockstep |
+| FEX-Emu | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 | FEX-2608 | PPA candidate = installed. `armv8.4` is the highest PPA variant and is the right one for ARMv9.2 Cortex-X925 |
+| Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
+| Proton | **11.0-2c x86-64** (+ 11.0-2c ARM64, 10.0-4b) | 11.0-2 (2026-08-21) | Bundles FEX-2607, DXVK 2.7.1, VKD3D-Proton 3.0a, dxvk-nvapi 0.9.2. Installed 2026-09-05; Experimental retained |
+| Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
+| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **DLSS 5 unreachable** — see below |
+
+### DLSS 5 Status (2026-09-05)
+
+**Verdict: DLSS 5 cannot be enabled on a GB10 today.** It launched 3 Sep 2026 (NBA 2K27 first).
+Four independent blockers, any one of which is on its own sufficient:
+
+1. **No Linux driver exists.** DLSS 5 requires **Game Ready 616.64** (Windows R616). NVIDIA's Linux
+   and Windows branches ship in near-lockstep (e.g. `610.57.04 Linux / 610.88 Windows`), and the
+   newest Unix driver — x86_64 *and* aarch64 alike — is **610.57.04** (Ubuntu noble packages
+   610.43.02). There is no R615/R616 Unix driver at all. This blocks DLSS 5 on *every* Linux box,
+   not just ARM ones.
+2. **GB10 is pinned to the 580 branch.** NVIDIA's own `sbsa` CUDA repo tops out at 580.178.04 for
+   GB10, DGX OS pins the 580 metapackage, and owners who forced 590+ have bricked Sparks. Even if a
+   616 Linux driver existed, GB10 could not take it for a long while.
+3. **GB10 is not on the support list.** DLSS 5 is scoped to **GeForce RTX 50 desktop/laptop**. RTX 40
+   is excluded "due to hardware constraints", and RTX PRO Blackwell *workstation* parts are still
+   documented at the DLSS 4 MFG tier — which is exactly the tier GB10 sits in. GB10 is
+   architecturally plausible (5th-gen Tensor Cores, FP4; modders have already back-ported DLSS 5 to
+   RTX 40 by patching incompatible CUDA instructions), but plausible is not supported.
+4. **Nothing in the Proton stack implements it.** DLSS 5 needs **Streamline 2.14+**. Proton 11.0-2
+   bundles dxvk-nvapi 0.9.2, whose newest DLSS driver settings only reach the R595-era NVAPI builds.
+   Streamline 2.14 entry points are not there to call.
+
+**What to watch, in dependency order:** an R615/R616 **Linux** driver appears → GB10 lands on a
+post-580 branch in NVIDIA's `sbsa` repo → dxvk-nvapi picks up Streamline 2.14. Until the first of
+those happens there is literally nothing to test. **TODO:** re-check
+[NVIDIA's Unix driver page](https://www.nvidia.com/en-us/drivers/unix/) each quarter.
+
+**Meanwhile DLSS 4 + MFG works, and on this part it is the thing that matters** — see
+[Why DLSS 4 Matters](#why-dlss-4-matters). Do not trade it away for a newer Proton.
+
+### Which Proton on ARM64
+
+Valve now ships **two** Proton 11 builds, and on GB10 the choice is a genuine trade-off:
+
+| Build | Steam AppID | Installed as | What it is | DLSS |
+|-------|-------------|--------------|------------|------|
+| **Proton 11.0** | `4628710` | `proton-11.0-2c-x86_64` | Ordinary x86-64 Proton — the whole stack runs under FEX, exactly as Proton 10 did | ✅ **Yes** |
+| **Proton 11.0 (ARM64)** | `4628740` | `proton-11.0-2c-arm64` | Valve's native-ARM64 Wine PE stack with bundled FEX in an **ARM64EC** configuration; only the game's own x86-64 code is translated | ❌ **No** — see below |
+| Proton 10.0-4 | `3658110` | `proton-10.0-4b` | What NVIDIA's Cyberpunk-on-Spark guide specifies, and what most results in this log were recorded on | ✅ Yes |
+
+The ARM64 build is the architecturally exciting one — dramatically less CPU translation overhead.
+But it loses DLSS, and **not for the reason usually cited.**
+
+#### Why the ARM64 build loses DLSS (diagnosed on this rig, 2026-09-05)
+
+*This is a code-plus-filesystem diagnosis — Proton's own resolution logic read against what is
+actually on disk — not yet an in-game observation. The final confirmation is still a **TODO**: launch
+a DLSS title under the ARM64 build and check whether the DLSS toggle is greyed out.*
+
+[Proton #9439](https://github.com/ValveSoftware/Proton/issues/9439) (filed Feb 2026, still open)
+reports that commit `2ee837e` disabled dxvk-nvapi on aarch64 builds. **That is no longer what ships.**
+`proton-11.0-2c-arm64` contains real DXVK-NVAPI binaries and the `proton` script's `use_nvapi` path
+is fully intact:
+
+```
+files/lib/wine/nvapi/x86_64-windows/nvapi64.dll     # 1.4 MB, PE machine 0x8664, "DXVK-NVAPI"
+files/lib/wine/nvapi/x86_64-windows/nvofapi64.dll
+files/lib/wine/nvapi/i386-windows/nvapi.dll
+```
+
+The break is one layer down, in **NGX resolution**. Proton finds the DLSS DLLs by locating whichever
+`libGLX_nvidia.so` it has loaded and looking for a `nvidia/wine/nvngx.dll` *sibling* of it
+(`get_nvidia_wine_dir()`, ~line 440 of `proton`); if that file is absent the function returns `None`
+and every NGX feature silently disables. The two builds resolve to different drivers:
+
+| | x86-64 Proton | ARM64 Proton |
+|---|---|---|
+| `libGLX_nvidia.so` it loads | RootFS `…/x86_64-linux-gnu/` | **host** `/usr/lib/aarch64-linux-gnu/` |
+| looks for | `…/x86_64-linux-gnu/nvidia/wine/nvngx.dll` | `/usr/lib/aarch64-linux-gnu/nvidia/wine/nvngx.dll` |
+| present? | ✅ yes — Step 2 puts it there | ❌ **no such directory** |
+
+NVIDIA ships the `nvidia/wine/` NGX bridge DLLs (`nvngx.dll`, `_nvngx.dll`, `nvngx_dlssg.dll`) **only
+in the x86_64 driver package**. The aarch64 driver has no equivalent, so on the native-ARM64 path
+there is simply nothing for Proton to find. NVAPI is present; the NGX bridge behind it is not.
+
+**TODO — cheap experiment worth running:** create `/usr/lib/aarch64-linux-gnu/nvidia/wine/` and drop
+the x86-64 `nvngx.dll` / `_nvngx.dll` / `nvngx_dlssg.dll` into it, and see whether `get_nvidia_wine_dir()`
+is satisfied and DLSS initialises. Expect it to fail — `nvngx.dll` is the Wine-side shim that
+`dlopen`s the *Linux* `libnvidia-ngx.so`, so an ARM64 unix side really wants an **ARM64 PE**
+`nvngx.dll` that NVIDIA does not ship — but the test costs one directory and confirms whether this is
+a packaging gap NVIDIA could close or a genuine architectural wall.
+
+**Default to Proton 11.0 x86-64 (`4628710`) for anything demanding.** On a part whose defining
+bottleneck is 273 GB/s of memory bandwidth, losing MFG costs far more than the CPU translation the
+ARM64 build saves. Reach for the ARM64 build on CPU-bound titles that never wanted DLSS anyway —
+simulation, strategy, older engines — where it should be a clear win. All three are installed here;
+pick per-game in Properties → Compatibility.
+
+**TODO:** head-to-head the two Proton 11 builds on one CPU-bound title (Stellaris/Factorio-shaped)
+and one GPU-bound DLSS title, and record the split.
+
+### Driver Branch Policy
+
+**Stay on 580.** Not conservatism for its own sake — that is where GB10 support lives:
+
+- NVIDIA's `sbsa` CUDA repo (`developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa`)
+  offers **580.65.06 → 580.178.04** and nothing newer. That repo is GB10's actual support channel.
+- `ports.ubuntu.com` will happily offer `nvidia-driver-595-open` and `nvidia-driver-610-open` for
+  arm64. Those are generic Ubuntu arm64 builds, **not** GB10-validated. DGX Spark owners who took
+  them report `nvidia-smi: No devices found` / `NVIDIA-GB10 not supported`.
+- `apt upgrade` is safe *as long as it only moves within 580*. Check before confirming:
+  ```bash
+  apt list --upgradable 2>/dev/null | grep -iE 'nvidia|linux-'
+  ```
+  Kernel bumps are fine when `linux-image-nvidia-hwe-24.04` and
+  `linux-modules-nvidia-580-open-nvidia-hwe-24.04` move **together** — that is what keeps the module
+  matched to the kernel. If only one of the two shows up, hold both until the other lands.
+
+### RootFS driver drift (re-sync after every host driver bump)
+
+**This one is silent and easy to miss.** The FEX RootFS carries its own copy of the *x86_64 and
+i386* NVIDIA userspace libs — that is how Proton finds `libGLX_nvidia.so.0` and the NGX/DLSS DLLs.
+Those copies are made once, by hand, in Step 2. When `apt` later bumps the **host aarch64** driver,
+nothing updates the RootFS copies, so the x86 GL/NGX libs Proton loads drift out of sync with the
+running kernel driver.
+
+Found on this rig 2026-09-05: host at **580.173.02**, RootFS still at **580.159.03** — a drift
+introduced by a routine `apt upgrade` some time after the June bring-up.
+
+Check:
+```bash
+RF=~/.fex-emu/RootFS/Ubuntu_24_04
+cat /sys/module/nvidia/version                                        # host
+ls $RF/lib/x86_64-linux-gnu/ | grep -E 'libnvidia-glcore\.so\.[0-9]'  # RootFS — must match
+```
+
+Re-sync (same commands as Step 2's manual fix; no sudo needed):
+```bash
+RF=~/.fex-emu/RootFS/Ubuntu_24_04; ver=$(cat /sys/module/nvidia/version)
+cd ~ && wget "https://download.nvidia.com/XFree86/Linux-x86_64/$ver/NVIDIA-Linux-x86_64-$ver.run"
+sh NVIDIA-Linux-x86_64-$ver.run -x && cd NVIDIA-Linux-x86_64-$ver
+mkdir -p "$RF/usr/lib/x86_64-linux-gnu/nvidia/wine" && cp -f ./*.dll "$_"
+for d in *.so.$ver; do cp -f "$d" "$RF/lib/x86_64-linux-gnu/$d"; b=$(echo "$d"|cut -d. -f1-2); \
+  (cd "$RF/lib/x86_64-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
+cd 32; for d in *.so.$ver; do cp -f "$d" "$RF/lib/i386-linux-gnu/$d"; b=$(echo "$d"|cut -d. -f1-2); \
+  (cd "$RF/lib/i386-linux-gnu"; ln -sf "$d" "$b.0"; ln -sf "$d" "$b.1"; ln -sf "$d" "$b.2"); done
+```
+
+Then delete the superseded version's blobs. Repointing the `.0/.1/.2` symlinks orphans the old
+`.so.<oldver>` files, and they are **~1.2 GB per stale version** — which matters on the ZGX Nano's
+1 TB drive:
+```bash
+find $RF/lib/x86_64-linux-gnu $RF/lib/i386-linux-gnu -maxdepth 1 -name "*.so.<oldver>" -delete
+find $RF/lib/x86_64-linux-gnu $RF/lib/i386-linux-gnu -maxdepth 1 -xtype l   # must print nothing
+```
 
 ## System Info
 
@@ -44,8 +207,8 @@ document transfers between the two**, since the translation stack runs on the id
 **This test rig (HP ZGX Nano G1n, 1 TB):**
 - **Display:** Samsung Odyssey G9 OLED (5120×1440) via HDMI 2.1a
 - **OS:** Ubuntu 24.04.4 LTS (Noble Numbat) / DGX OS
-- **Driver:** NVIDIA 580.159.03 (open kernel), CUDA 13.0
-- **Kernel:** 6.17.0-1021-nvidia
+- **Driver:** NVIDIA 580.173.02 (open kernel), CUDA 13.0 — *was 580.159.03 at bring-up; see [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump)*
+- **Kernel:** 6.17.0-1032-nvidia (installed 2026-09-05; 1031 until reboot)
 - **Storage:** 1 TB NVMe (~931 GiB usable) — notably smaller than the 4 TB DGX Sparks; game library size is the main practical constraint here
 
 ## Architecture
@@ -113,6 +276,28 @@ Two known caveats on this unit:
 2. **Steam UI** still crashes occasionally (known, not-yet-fully-fixed FEX/CEF interaction) — it
    recovers and **does not affect running games** (HL2 kept running through a UI crash). Launch a
    game and a UI hiccup won't interrupt it; minimize store/library browsing to reduce crashes.
+
+### Update — 2026-09-05 (stack refresh)
+
+| Prereq | Was (2026-06-18) | Now |
+|--------|------------------|-----|
+| 1 · NVIDIA driver | 580.159.03 | **580.173.02** (apt, still 580 branch) |
+| — · NVIDIA HWE kernel | 6.17.0-1021 | **6.17.0-1032** — *installed, reboot pending* |
+| 7 · FEX-Emu | 2605~n | **2607** (`armv8.4`) + **2608** (`wine`) |
+| 8 · FEX RootFS | NVIDIA libs @ 580.159.03 | **re-synced to 580.173.02**; 1.2 GB of orphaned 580.159.03 blobs removed |
+| 9 · Steam | 1.0.0.81 | client auto-updated (~460 MB) |
+| 10 · Box64 | v0.4.3 | **v0.4.4** (rebuilt from source) |
+| 12 · Proton | Experimental only | **11.0 (x86-64), 11.0 (ARM64), 10.0-4** all installed |
+
+Caveat 1 above is **resolved** — the Protons were installed via `steam://install/<appid>`, which
+sidesteps the CEF Compatibility dropdown entirely (one Install confirmation click each; AppIDs in
+[Which Proton on ARM64](#which-proton-on-arm64)). Caveat 2 (occasional Steam UI crashes) still
+stands, and a related trap surfaced: **Steam silently swallows `steam://` URLs while its UI is still
+on "Loading user data…"** — under FEX that can take several minutes after launch. Wait for the
+library to render before firing them.
+
+Full upstream-vs-installed comparison, and why the driver is deliberately held at 580, are in
+[Stack Currency](#stack-currency-2026-09-05).
 
 ## Setup Steps
 
@@ -264,17 +449,43 @@ sudo systemctl restart systemd-binfmt
 
 Installs to `/usr/local/bin/box64` with binfmt handlers for x86_64 and i386 ELFs.
 
+> **New in v0.4.4:** `make install` also drops a `box64-configurator` GUI (plus a `.desktop` entry)
+> for managing per-application `RCFILE` profiles, and v0.4.4 enables **DynaCache** by default —
+> Box64 now caches translated blocks across runs, so second launches start faster. Upgrading in
+> place is just `git pull && cd build && cmake .. -DARM_DYNAREC=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+> && make -j$(nproc) && sudo make install && sudo systemctl restart systemd-binfmt`.
+
 **Verify:**
 ```bash
 box64 --version
-# Box64 arm64 v0.4.1 ... with Dynarec
+# Box64 arm64 v0.4.4 ... with Dynarec
 ```
 
 ### Step 4: Configure Steam for Gaming
 
-1. Use **Proton 10.0** (stable, not Experimental) as the compatibility layer
-2. Enable **DLSS 4 + Multi-Frame Generation** in supported games
+1. Use **Proton 11.0 x86-64** (AppID `4628710`) as the default compatibility layer — *not* the
+   ARM64 build, which has no NVAPI and therefore no DLSS. See
+   [Which Proton on ARM64](#which-proton-on-arm64). Proton 10.0-4 (`3658110`) remains a valid
+   known-good fallback and is what NVIDIA's own Spark guide specifies.
+2. Enable **DLSS 4 + Multi-Frame Generation** in supported games. DLSS 5 is not reachable on GB10 —
+   see [DLSS 5 Status](#dlss-5-status-2026-09-05).
 3. Target **5120x1440 @ 120Hz** (HDMI 2.1a limit without DSC on Linux)
+
+**Installing a Proton build without touching the Compatibility dropdown** (that dropdown is the CEF
+widget that trips the `steamwebhelper` crash). With Steam *running and fully loaded* — the URL is
+silently dropped if the UI is still on "Loading user data…", which costs several confusing retries:
+```bash
+steam steam://install/4628710   # Proton 11.0  (x86-64 — keeps DLSS)
+steam steam://install/4628740   # Proton 11.0 (ARM64) — native, no DLSS
+steam steam://install/3658110   # Proton 10.0-4 — known-good baseline
+```
+Each one raises a single **Install** confirmation dialog you click through — that is all the GUI
+involved, and it is not the crashy widget. Confirm with
+`ls ~/.local/share/Steam/steamapps/appmanifest_*.acf` and watch
+`~/.steam/steam/logs/content_log.txt` for `update finished`.
+
+To set the global default without any GUI at all, close Steam and edit
+`~/.local/share/Steam/config/config.vdf` → `CompatToolMapping "0" → "name"`.
 
 ## ARM64 Compatibility Guidelines
 
@@ -284,7 +495,8 @@ Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK
 
 - **DX11 games** — Translated by DXVK to Vulkan. DXVK uses a mature, well-tested subset of Vulkan that FEX's thunks fully support. This is the sweet spot.
 - **Older DX9/DX10 games** — Also go through DXVK, same well-tested path.
-- **Proton 10.0 stable** — Use this, not Proton Experimental. All confirmed working games use 10.0.
+- **Proton 11.0 x86-64** — the current default. Supersedes Proton 10.0, which is what the results
+  below were recorded on. Keep it x86-64: the ARM64 build drops NVAPI and with it DLSS.
 
 ### What Breaks
 
@@ -292,6 +504,11 @@ Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK
 - **DX12 games** — Translated by VKD3D-Proton, which may use newer Vulkan extensions (descriptor buffers, etc.) that hit thunk gaps. However, not all DX12 games crash — Witcher 3 Next-Gen DX12 works with full RT and DLSS Frame Gen. The outcome depends on which Vulkan extensions the specific VKD3D-Proton code path uses. Worth testing on a per-game basis.
 - **RTX Remix titles** — Dual-process bridge architecture (32-bit client ↔ 64-bit server via shared memory IPC) breaks under x86→ARM64 translation.
 - **Proton Experimental** — More aggressive feature usage, less tested on ARM64.
+- **Proton 11.0 (ARM64)** for anything GPU-bound — it is fast on the CPU side, and it *does* ship
+  dxvk-nvapi, but NGX resolution fails because the aarch64 driver has no `nvidia/wine/nvngx.dll`, so
+  DLSS and Frame Generation silently disable
+  ([why](#why-the-arm64-build-loses-dlss-verified-on-this-rig-2026-09-05)). On a 273 GB/s part that
+  is usually a net loss.
 
 ### Key Environment Variables (auto-set by Proton)
 
@@ -302,7 +519,7 @@ Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK
 ### Troubleshooting Tips
 
 - If a game crashes at startup, try adding `-force d3d11` or `-dx11` to launch options (game-specific flag) to avoid DX12/Vulkan native paths.
-- Use **Proton 10.0**, not Experimental.
+- Use **Proton 11.0 x86-64**, not Experimental and not the ARM64 build.
 - The `vkGetPhysicalDeviceDescriptorSizeEXT` error in Steam logs is the telltale sign of a FEX thunk gap — the game requires unthunked Vulkan extensions.
 - Pressure-vessel Vulkan layer warnings (`nvidia_layers.json not in overrides`) are harmless — they fire on both working and broken games.
 - Steam's own GPU topology shows `llvmpipe` — this is normal on ARM64 (the Steam UI runs under FEX). Games inside Proton see the real GPU via DXVK+NVAPI.
@@ -316,6 +533,10 @@ The GB10's main bottleneck is memory bandwidth (273 GB/s vs ~900+ GB/s on a disc
 ### Tested by AGB
 
 Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 580.126.09).
+
+> These results were recorded on **Proton 10.0 / driver 580.126.09**. The stack has since moved to
+> **Proton 11.0-2 / driver 580.173.02** ([Stack Currency](#stack-currency-2026-09-05)); expect minor
+> per-title variance and re-verify before treating an old row as gospel.
 
 | Game | API | Performance | Notes |
 |------|-----|------------|-------|
@@ -853,8 +1074,13 @@ These games run natively on ARM64 — no FEX-Emu, Box64, Proton, or DXVK in the 
 
 - [FEX Autoinstaller (NVIDIA)](https://github.com/esullivan-nvidia/fex_autoinstall)
 - [Vulkan Fix Gist](https://gist.github.com/solatticus/14313d9629c4896abfdf57aaf421a07a)
-- [Box64 v0.4.1](https://github.com/ptitSeb/box64)
+- [Box64](https://github.com/ptitSeb/box64) — currently v0.4.4
 - [Canonical ARM64 Steam Snap](https://discourse.ubuntu.com/t/call-for-testing-steam-snap-for-arm64/74719)
 - [Level1Techs GB10 Gaming How-To](https://forum.level1techs.com/t/nvidia-spark-gb10-msi-edgexpert-running-steam-games-cyberpunk-2077-doom-eternal-and-more-quickie-how-to/240557)
 - [NVIDIA Developer Forum: Vulkan on GB10](https://forums.developer.nvidia.com/t/vulkan-on-nvidia-dgx-spark-gb10-working-repeatable/356570)
 - [DGX Spark Software Updates 02/2026](https://forums.developer.nvidia.com/t/dgx-spark-software-updates-02-2026/360362)
+- [NVIDIA Unix driver versions](https://www.nvidia.com/en-us/drivers/unix/) — the page to watch for a DLSS 5-capable Linux driver
+- [Proton #9439 — re-enable dxvk-nvapi on aarch64](https://github.com/ValveSoftware/Proton/issues/9439) — why Proton 11.0 (ARM64) has no DLSS
+- [NVIDIA Developer Forum: DLSS support for GB10/Spark?](https://forums.developer.nvidia.com/t/dlss-support-for-gb10-spark/364161)
+- [GeForce driver 616.64 — DLSS 5 launch notes](https://www.nvidia.com/en-us/geforce/news/nba-2k27-dlss-5-3d-guided-neural-rendering-geforce-game-ready-driver/) — the 616.64 / Streamline 2.14 requirement
+- [Valve Proton releases](https://github.com/ValveSoftware/Proton/releases)
