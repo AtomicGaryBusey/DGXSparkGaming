@@ -5,9 +5,20 @@ Guidance for working on this repo. Read this first when continuing DGX Spark gam
 ## What this project is
 
 A **living compatibility log** for running Steam / x86-64 PC games on an **NVIDIA DGX Spark
-(GB10 Grace-Blackwell, ARM64)**. The entire deliverable is a single file: **`README.md`**.
-There is no code — every commit is a documentation edit recording a new test result, a
-diagnosis, or a system change. Author/tester identity is **AGB** (AtomicGaryBusey).
+(GB10 Grace-Blackwell, ARM64)**. The primary deliverable is **`README.md`** — most commits are
+documentation edits recording a new test result, a diagnosis, or a system change.
+Author/tester identity is **AGB** (AtomicGaryBusey).
+
+**`tools/` holds supporting scripts, and writing new ones is in scope** (confirmed by the user
+2026-09-05; this repo is no longer docs-only). Keep them POSIX-ish bash, no-sudo where possible,
+idempotent, and safe to re-run. Every tool needs a header comment saying *why it exists* — the
+failure it prevents — because that rationale is the point of this repo. Current tools:
+
+- **`tools/check-stack.sh`** — runs the whole Prerequisites Checklist plus the traps that have
+  actually bitten (RootFS driver drift, missing Proton runtimes). Read-only; exit 0 = all pass.
+  Run this first when diagnosing anything, and after any system change.
+- **`tools/sync-rootfs-nvidia.sh`** — re-syncs the FEX RootFS's x86 NVIDIA libs to the host driver
+  after an apt bump, and prunes the superseded blobs. Idempotent, no sudo, `DRY_RUN=1` supported.
 
 Public repo: `https://github.com/AtomicGaryBusey/DGXSparkGaming` (remote `origin`, branch `main`).
 
@@ -15,7 +26,7 @@ Public repo: `https://github.com/AtomicGaryBusey/DGXSparkGaming` (remote `origin
 
 ```
 Windows game (x86-64 .exe)
-  → Proton 10.0 / Wine            (Win32 + DirectX → Linux + Vulkan)
+  → Proton 11.0 / Wine            (Win32 + DirectX → Linux + Vulkan)
     → DXVK (DX9/10/11) or VKD3D-Proton (DX12)
       → FEX-Emu (or Box64) Vulkan thunk   (x86-64 → ARM64 JIT; GPU calls thunked, not emulated)
         → native ARM64 NVIDIA Vulkan driver → GB10 GPU
@@ -26,7 +37,13 @@ from the CPU-translation layer or from Vulkan extensions FEX doesn't thunk — n
 
 **The single most useful predictor:** DX9/10/11 games (via DXVK) are the reliable sweet
 spot. Native-Vulkan and DX12 (via VKD3D) are hit-or-miss depending on which Vulkan
-extensions they touch. Use **Proton 10.0 stable**, not Experimental.
+extensions they touch.
+
+**Proton choice (updated 2026-09-05):** default to **Proton 11.0 x86-64** (`proton_11`, AppID
+4628710) — not Experimental, and *not* the ARM64 build. Older results in the log were recorded on
+Proton 10.0; Proton 10.0-4b (`proton_10`) stays a valid known-good fallback. **Proton 11.0 (ARM64)**
+runs Wine natively via ARM64EC and is far cheaper on the CPU, but loses DLSS/Frame Gen, so it only
+makes sense for CPU-bound titles. See the README's *Which Proton on ARM64* section.
 
 ## Recurring failure signatures (cite these when diagnosing)
 
@@ -78,10 +95,17 @@ the diagnostic narrative (which Vulkan call, which engine subsystem) is the poin
 - **"What should I test next?"** — the `:star:` entries in Installed-Not-Yet-Tested are
   high-priority (they probe a specific engine/API hypothesis). The id Tech family and
   Rockstar-FPU questions are the most scientifically interesting open threads.
-- **System changed** — keep the **Status** table and **System Info** block current. Kernel
-  (`uname -r`) and driver (`/proc/driver/nvidia/version`) are host-accurate even from a
-  sandboxed shell; Steam-library/box64/FEX paths may not be visible from the agent sandbox —
-  ask the user to run probes with the `! <command>` prefix if you need live host state.
+- **System changed** — run **`tools/check-stack.sh`** first, then keep the **Status**, **Stack
+  Currency** and **System Info** sections current. Kernel, driver, Steam library, box64, FEX and the
+  RootFS are all readable from the agent shell; **`sudo` is not** (it needs a password) — hand the
+  user `! sudo ...` commands to run in-session. Note Claude Code runs *on* the test machine, so
+  `sudo reboot` ends the session.
+- **After any host driver bump** — run `tools/sync-rootfs-nvidia.sh`. An apt driver update silently
+  desyncs the FEX RootFS's x86 NVIDIA libs from the host, which breaks DLSS/NGX in non-obvious ways.
+- **Installing a Proton** — also install the runtime named in its `toolmanifest.vdf`
+  `require_tool_appid`; Steam does not pull it automatically and the game just fails.
+  `steam://install/<appid>` needs Steam **fully loaded** — URLs sent while the UI still says
+  "Loading user data…" are silently dropped.
 
 ## Git / committing
 

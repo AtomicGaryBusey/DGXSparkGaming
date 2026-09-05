@@ -112,6 +112,53 @@ is satisfied and DLSS initialises. Expect it to fail — `nvngx.dll` is the Wine
 `nvngx.dll` that NVIDIA does not ship — but the test costs one directory and confirms whether this is
 a packaging gap NVIDIA could close or a genuine architectural wall.
 
+#### Making Proton 11.0 (ARM64) selectable at all
+
+`Proton 11.0 (ARM64)` is **not in Steam's compat-tool registry**. Steam's Steam Play tool list lives
+in appinfo for app `891390` → `extended/compat_tools`, and on this client it contains only:
+
+| internal name | AppID | display name |
+|---|---|---|
+| `proton_experimental` | 1493710 | Proton Experimental |
+| `proton_11` | 4628710 | Proton 11.0-2 |
+| `proton_10` | 3658110 | Proton 10.0-4 |
+| `proton_9` … `proton_37`, `proton_hotfix` | … | older branches |
+
+`4628740` appears nowhere in it — so the Compatibility dropdown will not offer the ARM64 build on a
+normal desktop client (presumably it is surfaced only on ARM64 Steam devices like the Steam Frame).
+Installing it is not enough; register it yourself as a custom tool:
+
+```bash
+mkdir -p ~/.steam/root/compatibilitytools.d/proton_11_arm64
+cat > ~/.steam/root/compatibilitytools.d/proton_11_arm64/compatibilitytool.vdf <<'EOF'
+"compatibilitytools"
+{
+  "compat_tools"
+  {
+    "proton_11_arm64"
+    {
+      "install_path" "/home/<user>/.local/share/Steam/steamapps/common/Proton 11.0 (ARM64)"
+      "display_name" "Proton 11.0 (ARM64)"
+      "from_oslist" "windows"
+      "to_oslist"   "linux"
+    }
+  }
+}
+EOF
+```
+
+Restart Steam to pick it up. Those registry names are also what `CompatToolMapping` in
+`config.vdf` expects — `proton_11`, `proton_10`, `proton_experimental`, `proton_11_arm64` — so with
+Steam **closed** you can set a per-game tool without going near the dropdown:
+
+```
+"CompatToolMapping"
+{
+    "2057760" { "name" "proton_11"  "config" ""  "priority" "250" }
+}
+```
+(key `"0"` sets the global default.)
+
 **Default to Proton 11.0 x86-64 (`4628710`) for anything demanding.** On a part whose defining
 bottleneck is 273 GB/s of memory bandwidth, losing MFG costs far more than the CPU translation the
 ARM64 build saves. Reach for the ARM64 build on CPU-bound titles that never wanted DLSS anyway —
