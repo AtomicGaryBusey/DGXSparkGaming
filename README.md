@@ -285,13 +285,16 @@ document transfers between the two**, since the translation stack runs on the id
 | **Dimensions** | 150 × 150 × 50.5 mm, 1.2 kg | 150 × 150 × 51 mm |
 | **Peak power** | 240 W (GB10 SoC TDP 140 W) | ~228 W |
 
-> **Gaming-relevant difference:** the ZGX Nano exposes **DisplayPort 1.4a** over USB-C alt
-> mode, whereas the DGX Spark's only video-out used here was HDMI 2.1a. DP 1.4a supports DSC,
-> which may lift the 5120×1440 @ 120 Hz HDMI ceiling noted in [Display Notes](#display-notes) —
-> untested, worth trying.
+> **Gaming-relevant difference — now tested (2026-09-05):** the ZGX Nano exposes **DisplayPort
+> 1.4a** over USB-C alt mode, whereas the DGX Spark's only video-out used here was HDMI 2.1a. This
+> rig turns out to be running on the **USB-C DP path already** (`xrandr` reports the sole connected
+> output as `USB-C-2`). **It did not lift the ceiling: 5120×1440 still tops out at 120 Hz.** DP 1.4a
+> lacks the bandwidth for 5120×1440 @ 240 Hz without **DSC**, and NVIDIA's Linux driver does not
+> implement DSC — so the limit is the same on both video-outs, for the same reason. See
+> [Display Notes](#display-notes).
 
 **This test rig (HP ZGX Nano G1n, 1 TB):**
-- **Display:** Samsung Odyssey G9 OLED (5120×1440) via HDMI 2.1a
+- **Display:** Samsung Odyssey G9 OLED (5120×1440 @ 120 Hz) via **USB-C DisplayPort alt mode** (X11 output `USB-C-2`) — *not* HDMI, contrary to earlier revisions of this doc
 - **OS:** Ubuntu 24.04.4 LTS (Noble Numbat) / DGX OS
 - **Driver:** NVIDIA 580.173.02 (open kernel), CUDA 13.0 — *was 580.159.03 at bring-up; see [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump)*
 - **Kernel:** 6.17.0-1032-nvidia (installed 2026-09-05; 1031 until reboot)
@@ -303,12 +306,15 @@ Steam and x86 games run through translation layers on ARM64:
 
 ```
 Windows Game (x86_64 .exe)
-  → Proton/Wine (Win32/DX → Linux/Vulkan)
-    → FEX-Emu or Box64 (x86_64 → ARM64 JIT translation)
-      → Native ARM64 NVIDIA Vulkan driver (GPU runs natively)
+  → Proton 11.0 / Wine  (Win32/DX → Linux/Vulkan)
+    → DXVK 2.7.1 (DX9/10/11)  or  VKD3D-Proton 3.0a (DX12)
+      → FEX-Emu 2607 or Box64 v0.4.4  (x86_64 → ARM64 JIT translation)
+        → Native ARM64 NVIDIA Vulkan driver 580.173.02 (GPU runs natively)
 ```
 
-GPU shaders run natively — only CPU-side code is translated.
+GPU shaders run natively — only CPU-side code is translated. Component versions above are the
+current ones on this rig; see [Stack Currency](#stack-currency-2026-09-05) for what is latest
+upstream and why the driver is deliberately held back.
 
 ## Prerequisites Checklist
 
@@ -317,20 +323,42 @@ the detailed install/fix in **Setup Steps** below. A factory DGX OS box ships wi
 driver, CUDA, and the NVIDIA Vulkan ICD already present — but the entire x86 translation stack
 (modeset, FEX-Emu, Box64, Steam, Proton) must be installed by hand.
 
+> **Run `tools/check-stack.sh` instead of doing this by hand** — it performs every row below plus
+> the two traps that are invisible to the naive checks (RootFS driver drift, missing Proton
+> runtimes), and exits 0 only when everything passes. The table is kept for reference and for
+> understanding *what* is being asserted.
+>
+> ```bash
+> ./tools/check-stack.sh
+> ```
+
 | # | Prerequisite | Verify command | Pass condition | Fix |
 |---|--------------|----------------|----------------|-----|
-| 1 | NVIDIA driver (open kernel) | `cat /proc/driver/nvidia/version` | shows `580.x` (or newer) | pre-installed on DGX OS |
+| 1 | NVIDIA driver (open kernel) | `cat /sys/module/nvidia/version` | prints `580.x` — **stay on 580**, see [Driver Branch Policy](#driver-branch-policy) | pre-installed on DGX OS |
 | 2 | CUDA toolkit | `nvcc --version` | `release 13.0` (or newer) | pre-installed on DGX OS |
 | 3 | NVIDIA Vulkan ICD | `ls /usr/share/vulkan/icd.d/nvidia_icd.json` | file exists | ships with driver |
-| 4 | `nvidia-drm modeset=1` | `cat /sys/module/nvidia_drm/parameters/modeset` | prints `Y` | Step 1 (reboot) |
+| 4 | `nvidia-drm modeset=1` | `ls -d /sys/class/drm/card*-*` | at least one **connector** listed | Step 1 (reboot) |
 | 5 | vulkan-tools | `vulkaninfo --summary \| grep deviceName` | shows `NVIDIA GB10` (not just llvmpipe) | Step 1 — `sudo apt install vulkan-tools` |
 | 6 | user in `video`+`render` | `id -nG \| grep -ow 'video\|render'` | both printed | Step 1 — `sudo usermod -aG video,render $USER` |
-| 7 | FEX-Emu | `FEXInterpreter --version` | prints a version | Step 2 (autoinstaller) |
-| 8 | FEX RootFS + GPU thunk config | `ls ~/.fex-emu/Config.json` | file exists | Step 2 |
+| 7 | FEX-Emu | `command -v FEXBash && dpkg-query -W -f='${Version}\n' fex-emu-armv8.4` | path + version (e.g. `2607-1~n`) | Step 2 (autoinstaller) |
+| 8 | FEX RootFS + GPU thunk config | `ls ~/.fex-emu/Config.json && test -x ~/.fex-emu/RootFS/Ubuntu_24_04/usr/bin/bash` | both succeed | Step 2 |
 | 9 | Steam (under FEX) | `command -v steam` | path printed | Step 2 |
 | 10 | Box64 | `box64 --version` | prints `Box64 ... with Dynarec` | Step 3 |
 | 11 | x86 binfmt handlers | `ls /proc/sys/fs/binfmt_misc/ \| grep -iE 'box64\|FEX'` | at least one handler | registered by Steps 2–3 |
-| 12 | Proton 10.0 (stable) | Steam → Settings → Compatibility | 10.0 selectable | Step 4 |
+| 12 | Proton 11.0 x86-64 | `ls ~/.local/share/Steam/steamapps/common/"Proton 11.0"/proton` | file exists | [Step 4](#step-4-configure-steam-for-gaming) |
+| 13 | Each Proton's **runtime** | `grep require_tool_appid <proton>/toolmanifest.vdf` → that appid installed | `StateFlags "4"` in its appmanifest | Step 4 — Steam does *not* auto-install it |
+| 14 | RootFS ↔ host driver in sync | `cat /sys/module/nvidia/version` vs `ls ~/.fex-emu/RootFS/Ubuntu_24_04/lib/x86_64-linux-gnu/ \| grep libnvidia-glcore` | **versions match** | `tools/sync-rootfs-nvidia.sh` |
+
+> **Three of these commands were wrong until 2026-09-05** — worth knowing if you copied them earlier:
+> - **#4** used `cat /sys/module/nvidia_drm/parameters/modeset`. That file is mode `0400` (root-only),
+>   so a normal user gets *Permission denied*, not `Y`. DRM connectors only exist when modeset took
+>   effect, so listing them is an equivalent check that works unprivileged.
+> - **#7** used `FEXInterpreter --version`. FEX has **no `--version` flag** — it treats the argument
+>   as a program to execute and prints `--version: command not found`, **exiting 0**, so the
+>   documented "prints a version" pass condition silently passed on a broken check. (FEX-2608 also
+>   deprecated the `FEXInterpreter` binary in favour of `FEX`.) Ask dpkg instead.
+> - **#12** asserted "Proton 10.0 selectable" via the Settings → Compatibility dropdown — the exact
+>   CEF widget that trips the `steamwebhelper` crash. Check the filesystem instead.
 
 ### Status on the test rig (HP ZGX Nano G1n — 2026-06-18)
 
@@ -384,6 +412,24 @@ library to render before firing them.
 
 Full upstream-vs-installed comparison, and why the driver is deliberately held at 580, are in
 [Stack Currency](#stack-currency-2026-09-05).
+
+## Tools
+
+The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe to re-run.
+
+| Script | What it does | When to run it |
+|--------|--------------|----------------|
+| **`tools/check-stack.sh`** | Runs the whole [Prerequisites Checklist](#prerequisites-checklist) plus the traps the naive checks miss — RootFS↔host driver drift, and whether each installed Proton's required runtime is actually present. Read-only. Exits 0 only if everything passes. | First thing when diagnosing anything, and after **any** system change |
+| **`tools/sync-rootfs-nvidia.sh`** | Detects a RootFS↔host NVIDIA driver mismatch, fetches the matching x86_64 `.run`, re-copies the 64/32-bit libs and NGX wine DLLs, repoints the `.0/.1/.2` symlinks, and prunes superseded blobs (~1.2 GB per stale version) — only when nothing still references them. Idempotent; no-ops when already in sync. | After **every** host driver bump. See [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump) |
+
+```bash
+./tools/check-stack.sh                    # full health check
+DRY_RUN=1 ./tools/sync-rootfs-nvidia.sh   # show what a sync would do
+./tools/sync-rootfs-nvidia.sh             # actually sync
+```
+
+`sync-rootfs-nvidia.sh` honours `FEX_ROOTFS`, `WORKDIR`, `DRY_RUN`, `PRUNE` and `KEEP_DOWNLOAD`;
+`check-stack.sh` honours `STEAM_ROOT` and `FEX_ROOTFS`.
 
 ## Setup Steps
 
@@ -473,7 +519,7 @@ This script handles:
 > `grep -c FEXBash /usr/lib/steam/bin_steam.sh` → ≥1.
 >
 > Harmless: `FEXBash` prints `Unknown configuration option 'X87StrictReducedPrecision' / 'ABILocalFlags'
-> / 'ParanoidTSO'` — the shipped `Config.json` carries keys this FEX build (2605) doesn't know; they're ignored.
+> / 'ParanoidTSO'` — the shipped `Config.json` carries keys the current FEX build (2607) doesn't know; they're ignored.
 
 **Launch Steam:**
 ```bash
@@ -620,7 +666,7 @@ box64 --version
    known-good fallback and is what NVIDIA's own Spark guide specifies.
 2. Enable **DLSS 4 + Multi-Frame Generation** in supported games. DLSS 5 is not reachable on GB10 —
    see [DLSS 5 Status](#dlss-5-status-2026-09-05).
-3. Target **5120x1440 @ 120Hz** (HDMI 2.1a limit without DSC on Linux)
+3. Target **5120x1440 @ 120 Hz** — the ceiling is NVIDIA Linux's lack of **DSC**, not the connector, so it applies on both HDMI 2.1a and DP 1.4a. Drop to 3840×1080 if you want 240 Hz. See [Display Notes](#display-notes).
 
 **Installing a Proton build without touching the Compatibility dropdown** (that dropdown is the CEF
 widget that trips the `steamwebhelper` crash). With Steam *running and fully loaded* — the URL is
@@ -873,7 +919,12 @@ These games are selected to validate the hypothesis that DX11 games (via DXVK) w
 
 ### Installed — Not Yet Tested
 
-Games installed on this system but not yet launched/tested. Grouped by expected compatibility based on graphics API. Sorted alphabetically within each group.
+> **Which machine:** this is the **DGX Spark (4 TB)** library. The ZGX Nano test rig has a 1 TB disk
+> and as of 2026-09-05 holds only Half-Life 2 (+ Lost Coast, Episode One, Episode Two) and
+> Esoteric Ebb — so anything below has to be downloaded there first. Findings transfer between the
+> two machines (identical GB10 SoC); *installed state does not*.
+
+Games installed but not yet launched/tested. Grouped by expected compatibility based on graphics API. Sorted alphabetically within each group.
 
 **Priority flags:** Games marked with :star: are high-priority — they test specific engine/API hypotheses or are particularly interesting showcase titles.
 
@@ -1246,9 +1297,29 @@ These games run natively on ARM64 — no FEX-Emu, Box64, Proton, or DXVK in the 
 
 ## Display Notes
 
-- HDMI 2.1a only (no DisplayPort) — limits ultrawide refresh rate
-- NVIDIA on Linux does not yet support DSC — expect 5120x1440 @ 120Hz max
-- DLSS upscaling helps: render at lower internal resolution, output at native
+Measured on the ZGX Nano + Samsung Odyssey G9 OLED, 2026-09-05 (`xrandr`, X11 `:1`):
+
+- **The active output is `USB-C-2` — DisplayPort 1.4a over USB-C alt mode, not HDMI.** Earlier
+  revisions of this document said HDMI 2.1a; that was wrong for this rig. The DGX Spark testing was
+  on HDMI.
+- **5120×1440 offers only 120.00 Hz and 60.00 Hz.** Currently running `5120x1440 @ 120.00*`.
+- **The 120 Hz ceiling is a DSC limitation, not a connector one.** 5120×1440 @ 240 Hz needs Display
+  Stream Compression; NVIDIA's Linux driver does not implement it. Switching HDMI 2.1a → DP 1.4a
+  therefore changes nothing at full resolution — a useful negative result, since the obvious guess is
+  that DP would help.
+- **240 Hz *is* available below full resolution**, if you would rather have refresh than pixels:
+
+  | Mode | Max rate |
+  |------|----------|
+  | 5120×1440 (native) | **120.00 Hz** |
+  | 3840×1080 (ultrawide, reduced) | **239.96 Hz** |
+  | 2560×1440 | 239.98 Hz |
+  | 1920×1080 | 239.99 Hz |
+
+  Note `3840x1080` is the mode NVIDIA's own Cyberpunk-on-Spark guide targets, and the
+  [Cyberpunk row](#tested-by-agb) in this log was recorded at that resolution.
+- **DLSS upscaling helps**: render at a lower internal resolution, output at native — the right lever
+  on a 273 GB/s part. See [Why DLSS 4 Matters](#why-dlss-4-matters).
 
 ## Key Resources
 
