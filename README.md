@@ -9,7 +9,7 @@
 | FEX-Emu | Installed | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 (PPA) |
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
-| Proton | Configured | **11.0-2c** x86-64 (keeps DLSS); 11.0-2c ARM64 + 10.0-4b also installed — see [Which Proton](#which-proton-on-arm64) |
+| Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
 | DLSS | Working | **DLSS 4 + MFG**. DLSS 5 is **not reachable** — see [DLSS 5 Status](#dlss-5-status-2026-09-05) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
@@ -67,7 +67,7 @@ Valve now ships **two** Proton 11 builds, and on GB10 the choice is a genuine tr
 | Build | Steam AppID | Installed as | What it is | DLSS |
 |-------|-------------|--------------|------------|------|
 | **Proton 11.0** | `4628710` | `proton-11.0-2c-x86_64` | Ordinary x86-64 Proton — the whole stack runs under FEX, exactly as Proton 10 did | ✅ **Yes** |
-| **Proton 11.0 (ARM64)** | `4628740` | `proton-11.0-2c-arm64` | Valve's native-ARM64 Wine PE stack with bundled FEX in an **ARM64EC** configuration; only the game's own x86-64 code is translated | ❌ **No** — see below |
+| **Proton 11.0 (ARM64)** | `4628740` | `proton-11.0-2c-arm64` | Valve's native-ARM64 Wine PE stack with bundled FEX in an **ARM64EC** configuration | ❌ **Unusable on this rig** — needs a native ARM64 Steam client, [see below](#ab-result-proton-110-arm64-does-not-run-on-this-rig-tested-2026-09-05) |
 | Proton 10.0-4 | `3658110` | `proton-10.0-4b` | What NVIDIA's Cyberpunk-on-Spark guide specifies, and what most results in this log were recorded on | ✅ Yes |
 
 The ARM64 build is the architecturally exciting one — dramatically less CPU translation overhead.
@@ -226,8 +226,73 @@ ARM64 build saves. Reach for the ARM64 build on CPU-bound titles that never want
 simulation, strategy, older engines — where it should be a clear win. All three are installed here;
 pick per-game in Properties → Compatibility.
 
-**TODO:** head-to-head the two Proton 11 builds on one CPU-bound title (Stellaris/Factorio-shaped)
-and one GPU-bound DLSS title, and record the split.
+#### A/B result: Proton 11.0 (ARM64) does not run on this rig (tested 2026-09-05)
+
+Attempted head-to-head with **Esoteric Ebb** (the x86-64 control launched fine — see above). The
+ARM64 build **cannot be used on a GB10 running the x86-64 Steam client**, and the reason is
+structural, not configuration. Three distinct blockers, in the order they appear:
+
+**1 · Steam refuses to register it.** With the `compatibilitytools.d` shim in place, `compat_log.txt`
+says:
+
+```
+Registering tool proton_11_arm64, AppID 0
+Ignoring tool proton_11_arm64 as it's for a different target platform linux arm64.
+```
+
+This is deliberate: `ubuntu12_32/steamclient.so` carries two separate format strings — a generic
+*"different target platform %s."* and a dedicated *"...%s arm64."*. Steam-under-FEX identifies as
+x86-64, so arm64-targeted tools are filtered out by design. **A compatibilitytools.d shim does not
+work around this.**
+
+**2 · Launching it outside Steam hits the user-namespace restriction.** pressure-vessel fails with
+`bwrap: setting up uid map: Permission denied`, because Ubuntu 24.04 ships
+`kernel/apparmor_restrict_unprivileged_userns = 1`.
+
+> **Workaround, no sudo needed:** the `steam` AppArmor profile grants `userns,`, and you can enter it
+> unprivileged:
+> ```bash
+> aa-exec -p steam -- <the _v2-entry-point command>
+> ```
+> Worth knowing generally. Note the *x86-64* runtime appeared to work without this only because Steam
+> had already built a container under `SteamLinuxRuntime_4/var/tmp-*`; the arm64 runtime had no
+> `var/` at all and had to create a fresh namespace.
+
+**3 · With the container solved, ARM64EC + FEX genuinely initialises — then dies at Steamworks.**
+This is the encouraging part. The stack really does come up natively:
+
+```
+Proton: 1788505046 proton-11.0-2c-arm64
+PATH:   .../Proton 11.0 (ARM64)/files/bin-arm64/      ← native ARM64 Wine
+Loaded  L"C:\windows\system32\libarm64ecfex.dll": builtin
+I 24 FEX: Loaded FEXUnixLib
+```
+
+The prefix built completely (823 files in `system32`). Then:
+
+```
+err:steamclient:steamclient_init unable to load native steamclient library
+err:msvcrt:_wassert (L"!status", "..\src-lsteamclient\steamclient_main.c", 375)
+```
+
+**Every `steamclient.so` in the Steam installation is x86-64 or i386 — there is no aarch64 build**
+(`ubuntu12_32`, `steamrt32`, `linux32` are i386; `steamrt64`, `linux64` are x86-64). The game aborts
+on the assert. It never reached DXVK, so no device enumeration and nothing to say about DLSS.
+
+**Conclusion: Proton 11.0 (ARM64) needs a native ARM64 Steam client.** It is built for ARM64 Steam
+hardware (Steam Frame), and both halves it depends on — compat-tool registration and the Steamworks
+API — are architecturally absent from an x86-64 client under FEX. This is not something to configure
+around; it needs Valve to ship an aarch64 Steam client for desktop Linux.
+
+That also makes the [NGX gap](#why-the-arm64-build-loses-dlss-diagnosed-on-this-rig-2026-09-05)
+moot in practice for now — you cannot get far enough for DLSS to matter. It stays documented because
+it becomes live again the moment a native ARM64 client exists.
+
+**Practical upshot: use Proton 11.0 x86-64 (`4628710`). The ARM64 build is currently unusable here**,
+CPU-bound titles included. Keep it installed as a canary — retest when Valve ships an aarch64 client.
+
+**TODO:** once a native ARM64 Steam client exists, redo this head-to-head on one CPU-bound title
+(Stellaris/Factorio-shaped) and one GPU-bound DLSS title, and record the split.
 
 ### Driver Branch Policy
 
