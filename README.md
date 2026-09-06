@@ -57,7 +57,7 @@ probes on this machine. Three-part answer:
 
 | | P |
 |---|---|
-| Feature 18 returns `Success` + correct frame on GB10 | **~20-30%** |
+| Feature 18 returns `Success` + correct frame on GB10 | **~35-45%** — revised up 2026-09-06: all three FEX-specific risks tested and **passed** ([C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), [D](#d-ngx-forwarder-under-fex-run-2026-09-05-it-loads-and-executes), [E](#e-reshade-under-fex-run-2026-09-06-full-injection-chain-works)). Remaining risk is concentrated in one untested step: a 165 MB CUDA-bearing PE driving `nvcuda.dll` through FEX → vkd3d-proton → NVX |
 | Playable frame rate | **~0%** — the effect costs 39% frame time on a 4090; GB10 has 273 GB/s against a 5090's ~1.8 TB/s, plus FEX overhead, and no MFG to spend the headroom on |
 
 #### B1 — No R615/R616 Linux driver exists → **STANDS**
@@ -402,7 +402,45 @@ Combined with [test C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), **b
 risks in Path A are now retired.** What remains untested is the part needing the proprietary model:
 whether a 165 MB CUDA-bearing PE drives `nvcuda.dll` through FEX → vkd3d-proton → NVX.
 
-#### E · ReShade under FEX — **INCONCLUSIVE, method-limited**
+#### E · ReShade under FEX — **RUN 2026-09-06. FULL INJECTION CHAIN WORKS.**
+
+Re-run properly, as ReShade 6.8.0.2155 dropped in as `dxgi.dll` in **PEAK** (AppID 3527290 —
+Windows-only depot, 1.45 GiB, explicit `PEAK using DX12` launch option), launched via
+`steam -applaunch 3527290 -force-d3d12` under Proton on GB10. From `ReShade.log`:
+
+```
+Initializing crosire's ReShade version '6.8.0.2155' (64-bit)
+  loaded from 'S:\...\PEAK\dxgi.dll' into 'S:\...\PEAK\PEAK.exe'
+Registering hooks for 'user32.dll' ...        > Found 21 match(es). Installing ...
+Registering hooks for 'd3d12.dll' / 'dxgi.dll' ...
+Redirecting CreateDXGIFactory2(...)
+Installing export hooks for 'dxgi.dll' ...    > Found 5 match(es). Installing ...
+Installing delayed hooks for 'd3d12.dll' (Just loaded via LoadLibrary('d3d12.dll')) ...
+Redirecting D3D12CreateDevice(...)
+Searching for add-ons (*.addon, *.addon64) in 'S:\...\PEAK' ...      ← the addon API
+Redirecting ID3D12Device::CreateCommandQueue(...)   x5                ← COM vtable hooks
+Redirecting IDXGIFactory2::CreateSwapChainForHwnd(...)
+Recreated runtime environment on runtime ... ('ReShade.ini').
+```
+
+**Every layer of the injection chain functions under FEX**: DLL proxying, IAT/export hooking,
+delayed hooking of a `LoadLibrary`-loaded module, D3D12 device-creation interception, **COM vtable
+hooking on a live `ID3D12Device`**, swapchain interception, and full effect-runtime init. One
+harmless warning (`IDirectInput8W::CreateDevice ... 0x80040154`, a controller class registration,
+unrelated).
+
+Critically, `Searching for add-ons (*.addon, *.addon64)` is **the exact load path
+`dlssnr-linux.addon64` uses**. The addon API is live under FEX.
+
+> This supersedes an earlier **inconclusive** result where a standalone `LoadLibraryW` of
+> `ReShade64.dll` returned `ERROR_DLL_INIT_FAILED` under both FEX *and* Box64. That was the method,
+> exactly as suspected — ReShade refuses a bare load outside a Direct3D host and is fine when
+> proxied into a real renderer. Recording it as a FEX failure would have been wrong.
+
+**Bonus:** this also closes the standing PEAK **TODO** — it had only ever been tested on native
+Vulkan (crashy). It runs under **DX12/VKD3D**.
+
+#### E-old · ReShade standalone — superseded, see above
 
 ReShade 6.8.0.2155 (verified genuine: `crosire's ReShade post-processing injector`, extracted intact
 from the official reshade.me installer — PE byte-complete, all imports satisfiable in-prefix) fails a
