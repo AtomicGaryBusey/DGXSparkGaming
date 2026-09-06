@@ -105,12 +105,34 @@ NVIDIA ships the `nvidia/wine/` NGX bridge DLLs (`nvngx.dll`, `_nvngx.dll`, `nvn
 in the x86_64 driver package**. The aarch64 driver has no equivalent, so on the native-ARM64 path
 there is simply nothing for Proton to find. NVAPI is present; the NGX bridge behind it is not.
 
-**TODO — cheap experiment worth running:** create `/usr/lib/aarch64-linux-gnu/nvidia/wine/` and drop
-the x86-64 `nvngx.dll` / `_nvngx.dll` / `nvngx_dlssg.dll` into it, and see whether `get_nvidia_wine_dir()`
-is satisfied and DLSS initialises. Expect it to fail — `nvngx.dll` is the Wine-side shim that
-`dlopen`s the *Linux* `libnvidia-ngx.so`, so an ARM64 unix side really wants an **ARM64 PE**
-`nvngx.dll` that NVIDIA does not ship — but the test costs one directory and confirms whether this is
-a packaging gap NVIDIA could close or a genuine architectural wall.
+**Experiment — started 2026-09-05, half-answered.** The obvious thing to try is populating the
+missing directory by hand:
+
+```bash
+sudo mkdir -p /usr/lib/aarch64-linux-gnu/nvidia/wine
+sudo cp ~/.fex-emu/RootFS/Ubuntu_24_04/usr/lib/x86_64-linux-gnu/nvidia/wine/*.dll \
+        /usr/lib/aarch64-linux-gnu/nvidia/wine/
+sudo chmod 0644 /usr/lib/aarch64-linux-gnu/nvidia/wine/*.dll   # ← don't skip this
+```
+
+**Result so far: the path check passes.** With the directory populated, Proton's
+`get_nvidia_wine_dir()` is satisfied and it copies `nvngx.dll` + `_nvngx.dll` into the prefix
+alongside `nvapi64.dll`. So this half is a genuine **packaging gap**, not a wall.
+
+The `chmod` matters: the RootFS copies are mode `0700`, and `cp` preserves that, so a root-owned
+`0700` file makes Proton die with
+`PermissionError: [Errno 13] ... '/usr/lib/aarch64-linux-gnu/nvidia/wine/_nvngx.dll'`.
+
+**Still unanswered:** whether DLSS actually *initialises* through it. Expect not — `nvngx.dll` is the
+Wine-side shim that `dlopen`s the *Linux* `libnvidia-ngx.so`, so an ARM64 unix side wants an
+**ARM64 PE** `nvngx.dll` that NVIDIA does not ship. Confirming needs a DLSS-capable title launched
+under the ARM64 build **through Steam** (a hand-driven `_v2-entry-point` run resolves the NVIDIA
+libraries differently and cannot answer this).
+
+> ⚠️ **This directory is currently present on the ZGX Nano.** It is a hand-made, non-packaged
+> addition that no NVIDIA update will manage. It also changes what the *x86-64* Proton resolves in
+> some invocations, so it can silently skew unrelated tests. Remove it if the experiment concludes
+> negative: `sudo rm -rf /usr/lib/aarch64-linux-gnu/nvidia/wine`.
 
 #### Proton 11.0 x86-64 — confirmed running on GB10 (2026-09-05)
 
