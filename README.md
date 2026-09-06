@@ -96,8 +96,12 @@ $ apt-cache policy linux-modules-nvidia-610-open-nvidia-hwe-24.04
 $ sudo apt install nvidia-driver-610-open linux-modules-nvidia-610-open-nvidia-hwe-24.04
 ```
 
-**This does not deliver DLSS 5** (610 < 616). It is worth doing, if at all, for
-[Vulkan/gaming performance](#experiments-worth-running), not for DLSS.
+**This does not deliver DLSS 5** (610 < 616), and it brings **no new NGX capability at all**.
+Diffing the two drivers' *Listing of Installed Components* chapters, 610.57.04 ships an
+NGX component set identical to 580.173.02 — same `_nvngx.dll`, `nvngx.dll`, `nvidia-ngx-updater`,
+only the `libnvidia-ngx.so.<ver>` number differs. **No neural-rendering component appears in
+either.** Upgrade for [Vulkan/gaming performance](#experiments-worth-running)
+if at all — never expecting it to move DLSS.
 
 #### B3 — "DLSS 5 is scoped to GeForce RTX 50" → **STANDS, but the reasoning was wrong**
 
