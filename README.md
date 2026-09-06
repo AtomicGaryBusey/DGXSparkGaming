@@ -38,8 +38,27 @@ the driver row is a deliberate hold.
 > different reasons than first given. The wrong version is kept visible below because the *reason*
 > it was wrong is the most useful thing here.
 
-**Verdict: DLSS 5 (3D-Guided Neural Rendering) cannot run on a GB10 today.** Not impossible in
-principle — the silicon is not the obstacle — but every practical route is blocked.
+**Verdict: no supported path, and nobody has run DLSS 5 on ARM64. But "impossible" is wrong.**
+Refined 2026-09-05 after a 102-agent adversarial research run ([notes/](notes/)) plus first-hand
+probes on this machine. Three-part answer:
+
+- **Officially: no.** NVIDIA scopes DLSS 5 to GeForce RTX 50. Not just marketing —
+  [NVIDIA Research's own DLSS 5 page](https://research.nvidia.com/labs/adlr/DLSS5/) (2026-09-01)
+  says it *"runs locally as a rendering stage within existing game pipelines on **GeForce RTX 50
+  Series GPUs**."* No Linux driver on any architecture ships the NR feature module.
+- **Unofficially: a working Linux path now exists — untested on ARM64.** DLSS 5 NR was made to run
+  under Linux/Proton for the first time on **2026-09-04**, on driver **610.57.04** — a branch this
+  machine can install today. It bypasses the driver's NGX dispatch entirely.
+  **GB10 clears every hardware gate that was measured.** See
+  [the surviving path](#the-one-surviving-path-and-why-it-is-still-a-long-shot).
+- **Practically: don't expect to play anything.** Realistic best case is *"feature 18 returns
+  Success and composites a correct frame on a GB10"* — a genuine first worth logging, not a
+  playable setting.
+
+| | P |
+|---|---|
+| Feature 18 returns `Success` + correct frame on GB10 | **~20-30%** |
+| Playable frame rate | **~0%** — the effect costs 39% frame time on a 4090; GB10 has 273 GB/s against a 5090's ~1.8 TB/s, plus FEX overhead, and no MFG to spend the headroom on |
 
 #### B1 — No R615/R616 Linux driver exists → **STANDS**
 
@@ -161,6 +180,94 @@ nothing that would run on it.
 | 3 months | **~2%** |
 | 12 months | **~15%** |
 | Ever | **~35%** |
+
+#### The one surviving path — and why it is still a long shot
+
+Of **24 candidate routes put through a 3-lens adversarial refutation, exactly one survived.**
+
+**Community NGX feature-18 forwarder under Proton x86-64 + FEX.** DLSS 5's NR model ships as a
+game-side snippet (`nvngx_dlssnr.dll`, build 310.8.x, ~165 MB). The working implementations call
+**the snippet's own exports directly**, bypassing the driver's NGX dispatch — which is why the
+"580 core has no NR feature" wall does not apply. From
+[NapXDD/addon-dlssnr-linux](https://github.com/NapXDD/addon-dlssnr-linux), the snippet checks that
+its caller's module path contains `nvngx.dll`, so the shim is *named* `nvngx.dll_nrfwd.dll` and does
+nothing but forward Init/Create/Evaluate/Release.
+
+**Evidence it works on Linux at all — one solid report, not two:**
+
+- **RTX 5070, driver 610.57.04, Arch, Proton 10.0** — `CreateFeature(18) => 0x1 (Success)`, ~21,600
+  consecutive evaluates over eight minutes.
+- ⚠️ A second "RTX 4080 success" was **misreported in our own research notes**.
+  [Issue #3](https://github.com/NapXDD/addon-dlssnr-linux/issues/3) is a **failure** report against
+  that forwarder (process dies in the trampoline, feature 18 never created); the success on that
+  machine came from a *different* implementation. Corrected here — see
+  [notes/](notes/2026-09-05-dlss5-research-critique.md).
+
+**What GB10 already satisfies — all measured first-hand on this machine:**
+
+| Gate | Result |
+|---|---|
+| NGX architecture | 610 core: `Blackwell detected, chip is 5b` → `GPU architecture : 0x1B0` = exactly the `Blackwell2` value the snippet demands. (580 core reports the even-more-permissive `0x7FFFFFF`.) |
+| FP8 tensor path | `QMMA.16832.F32.E4M3.E4M3` sm_120 executes correctly |
+| Vulkan interop | `VK_NVX_binary_import` rev 2 + `VK_NVX_image_view_handle` rev 3 — satisfies vkd3d-proton's `supports_cubin_64bit` |
+| FEX thunking | FEX-2607 thunks `vkCreateCuModuleNVX`, `vkCreateCuFunctionNVX`, `vkCmdCuLaunchKernelNVX`, `vkGetImageViewHandle64NVX`, with `VkCuLaunchInfoNVX` repacking. **Not another `VK_EXT_descriptor_buffer` gap.** |
+| NVAPI | Proton 11's `nvapi64.dll` exports all 12 D3D12 CUDA-interop entry points |
+| Device identity | GB10 reports as `GB200`/`GB202` to NVAPI with **no spoofing needed** |
+
+**Why it is still ~20-30%, not a plan:** Detours-style prologue hooking under FEX's JIT is untested;
+so is ReShade's `dxgi` hook under FEX, and driving a 165 MB CUDA-bearing PE through
+FEX → vkd3d-proton → NVX. There is also a **known instability on x86-64**:
+[dxvk-nvapi #393](https://github.com/jp7677/dxvk-nvapi/issues/393) — `NvAPI_D3D12_GetCudaSurfaceObject`
+never returns on 610.57.04 + vkd3d-proton 3.0.1; disabling it avoids the crash but yields a constant
+black frame, proving that path is load-bearing.
+
+> **Legal and safety line this repo will not cross.** `nvngx_dlssnr.dll` is NVIDIA proprietary,
+> ships inside retail games, and is **not redistributable** — it must never become a committed
+> artefact here. The only legitimate acquisition is owning a DLSS 5 title. **Do not use one-click
+> installers** (`DLSS5oneclick`, `1-Click-DLSS5`, `DLSS-5-Feeder-RenoDX`): they redistribute a
+> leaked unsigned DLL, there is a confirmed harm case (hash-mismatched DLL → permanent
+> `0xBAD00002`), and a mismatched model *reports `Success` on every evaluate and then crashes the
+> game minutes in*.
+
+#### Definitive dead ends — do not re-tread
+
+- **Waiting for an R615/R616 Linux driver.** An R615 Linux **aarch64** NGX core *already exists*
+  (615.41, shipped as the WSL payload inside NVIDIA's Windows-on-Arm package). Its exports are
+  byte-identical to 610.57.04's and `grep -ci dlssnr` = **0**. NVIDIA ships the NR model **in games,
+  not drivers** — so the version everyone is waiting for would not contain it.
+- **Windows 11 on Arm on this hardware.** `nv_surface_woa.inf` binds only `2E03`/`2E06`/`2E13`, all
+  SUBSYS-locked to Microsoft `0x1414`; GB10's `2E12` is absent. Secure Boot is enabled here and
+  Windows refuses `bcdedit testsigning` under it. *Trap:* that package's `_nvngx.dll` reports as
+  x86-64 but its `.hexpthk`/`.a64xrm` sections prove it is **ARM64EC** — FEX cannot execute it.
+- **Windows VM with GPU passthrough.** Platform firmware mandates a 1:1 IOMMU identity mapping.
+  Verified here: GPU alone in IOMMU group 20, `type = DMA`, two `direct` reserved regions;
+  `echo identity > /sys/kernel/iommu_groups/20/type` → `Operation not permitted`. No hypervisor
+  changes this.
+- **The NGX OTA updater as a model source.** Its Streamline package list has no NR entry, and the
+  Linux NGX core says so outright: *"unable to launch NGX Updater… Can only use files that have
+  already been downloaded to the cache."*
+- **Spoofing arch or driver version** (`DXVK_NVAPI_GPU_ARCH`, `DXVK_NVAPI_DRIVER_VERSION`). GB10
+  already reports as `GB200`/`GB202`, and `NGXValidateSnippetMetaData` is unreachable from NVAPI.
+  Nothing to gain.
+- **Harvesting `_arm64_nvngx.dll` for Proton 11 ARM64.** Windows-bound (talks to `nvlddmkm.sys` via
+  NVAPI, no Unix transport). And the diagnosis was wrong anyway: the bridge DLLs are already present
+  in ARM64 prefixes — the actual gap is `nvapi64.dll`, blocked upstream in dxvk-nvapi's
+  `meson.build`, which has **no aarch64 case at all**.
+- **Streamline 2.14 / any public DLSS 5 SDK.** Streamline tops out at v2.12.0 and the DLSS SDK at
+  v310.7.0, both 2026-06-23 — ten weeks before DLSS 5 shipped. The NR runtime is 310.8.x. No public
+  header, feature enum, or struct layout exists.
+
+#### The 580 pin is real — as *policy*
+
+Correcting our own correction: the [DGX OS 7 User Guide](https://docs.nvidia.com/dgx/dgx-os-7-user-guide/additional_software.html),
+**page updated 2026-09-05**, states verbatim that *"The DGX B300, DGX Spark, and DGX GB300 require
+the Release 580 family of the NVIDIA open GPU kernel modules"* — and, same page, *"For driver
+release 595 and later, upgrading to DGX OS 8 is recommended."* (DGX OS 8 has no public docs; the URL
+404s.) So: the **repo** carries 590/595/610 for arm64 and **GB10 is listed in every
+`supportedchips.html` from 580.173.02 through 610.57.04** (`NVIDIA GB10  2E12 10DE 21EC`), but
+running one is **off NVIDIA's validation path for this product**. Hold an SSH session open from
+another machine if you try it — the one documented 590 failure was recovered by `apt` downgrade over
+SSH.
 
 #### RTX Spark — what it actually is
 
