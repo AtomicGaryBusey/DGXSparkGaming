@@ -352,6 +352,37 @@ validation), with `__NGX_LOG_LEVEL=2`. No game and no leaked binary required. Th
 > NGX snippet should be checked with `file` and `strings` for a `/dvs/p4/build/...` provenance path
 > before being treated as evidence.
 
+#### C · Inline hooking under FEX — **RUN 2026-09-05. IT WORKS.**
+
+The biggest untested risk in [Path A](#the-one-surviving-path-and-why-it-is-still-a-long-shot) was
+whether runtime code patching survives FEX's JIT — the mechanism ReShade, Detours and MinHook all
+rely on. If FEX kept executing stale translated code after a hook was installed, the whole route
+would be dead before the model even mattered.
+
+Tested with a **self-contained 30-line Windows PE** (no third-party code), built with mingw-w64
+unpacked locally from Ubuntu's archive, run under Proton 11's Wine via `FEXBash`:
+
+```
+target=0000000140001534 replacement=00000001400014d4 rel32=-101
+pre-hook  target()=0xAAAA   first bytes: 55 48 89
+patched (5-byte E9 rel32); first bytes now: E9 9B FF
+post-hook target()=0xBBBB
+RESULT: HOOK WORKS - runtime code patching takes effect under this translator
+```
+
+**FEX correctly invalidates its translation cache on self-modifying code.** Reproducible across
+runs; Box64 behaves identically. **This risk is retired** — hook-based injection is not the thing
+that will stop Path A.
+
+> **Two false negatives this test produced first — both mine, both instructive.** The initial
+> version patched a 12-byte `mov rax,imm64; jmp rax` over an 11-byte `target()` whose neighbour
+> `replacement()` sat 11 bytes away at `-O0`, so the patch **clobbered its own jump destination**
+> and the program looped. It failed *identically under FEX and Box64* — which is what exposed it: a
+> genuine translator bug would not reproduce byte-for-byte across two unrelated JITs. **When two
+> independent implementations fail the same way, suspect the test.** The fix was a 5-byte
+> `E9 rel32` (what real hook libraries use) plus an explicit in-test padding assertion that aborts
+> with `TEST INVALID` rather than reporting a bogus result.
+
 #### B · Public DLSS SDK ARM64 artifacts — **RUN 2026-09-05. There are none.**
 
 [NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) latest release **v310.7.0** (2026-06-23), 97 files:
