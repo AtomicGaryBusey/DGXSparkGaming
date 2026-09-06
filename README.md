@@ -4,13 +4,13 @@
 
 | Component | Status | Version (as of 2026-09-05) |
 |-----------|--------|---------|
-| NVIDIA driver | Verified | 580.173.02 open kernel — **stay on the 580 branch**, see [Driver Branch Policy](#driver-branch-policy) |
+| NVIDIA driver | Verified | 580.173.02 open kernel — a *chosen* baseline, not a ceiling; 610.57.04 is available for GB10, see [Driver Branch Policy](#driver-branch-policy) |
 | Vulkan (modeset=1) | Verified | Vulkan 1.4.312 / NVIDIA GB10 |
 | FEX-Emu | Installed | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 (PPA) |
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. DLSS 5 is **not reachable** — see [DLSS 5 Status](#dlss-5-status-2026-09-05) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5 **not reachable** — the Linux driver ships no NR snippet at any version. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -22,7 +22,7 @@ the driver row is a deliberate hold.
 
 | Layer | Running here | Latest upstream | Action |
 |-------|--------------|-----------------|--------|
-| NVIDIA driver | 580.173.02 (open kernel) | 610.57.04 (new-feature) / 595.99.02 (production) | **Hold at 580** — see [Driver Branch Policy](#driver-branch-policy) |
+| NVIDIA driver | 580.173.02 (open kernel) | 610.57.04 (new-feature) / 595.99.02 (production) | **610.57.04 IS available for GB10** in NVIDIA's sbsa repo as `nvidia-open`. Staying on 580 deliberately (known-good baseline); nothing newer buys DLSS 5. See [Driver Branch Policy](#driver-branch-policy) |
 | NVIDIA HWE kernel | 6.17.0-1032-nvidia | same | Updated 2026-09-05 (reboot pending); `linux-modules-nvidia-580-open` bumped in lockstep |
 | FEX-Emu | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 | FEX-2608 | PPA candidate = installed. `armv8.4` is the highest PPA variant and is the right one for ARMv9.2 Cortex-X925 |
 | Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
@@ -30,35 +30,184 @@ the driver row is a deliberate hold.
 | Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
 | DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **DLSS 5 unreachable** — see below |
 
-### DLSS 5 Status (2026-09-05)
+### DLSS 5 Status (2026-09-05, corrected same day)
 
-**Verdict: DLSS 5 cannot be enabled on a GB10 today.** It launched 3 Sep 2026 (NBA 2K27 first).
-Four independent blockers, any one of which is on its own sufficient:
+> **⚠️ CORRECTION.** An earlier revision of this section listed four blockers. **One (B2) was
+> factually wrong** — a mistake in how this log queried NVIDIA's own package repo — one was aimed at
+> the wrong software layer, and one needed rewording. The overall verdict survives, but for
+> different reasons than first given. The wrong version is kept visible below because the *reason*
+> it was wrong is the most useful thing here.
 
-1. **No Linux driver exists.** DLSS 5 requires **Game Ready 616.64** (Windows R616). NVIDIA's Linux
-   and Windows branches ship in near-lockstep (e.g. `610.57.04 Linux / 610.88 Windows`), and the
-   newest Unix driver — x86_64 *and* aarch64 alike — is **610.57.04** (Ubuntu noble packages
-   610.43.02). There is no R615/R616 Unix driver at all. This blocks DLSS 5 on *every* Linux box,
-   not just ARM ones.
-2. **GB10 is pinned to the 580 branch.** NVIDIA's own `sbsa` CUDA repo tops out at 580.178.04 for
-   GB10, DGX OS pins the 580 metapackage, and owners who forced 590+ have bricked Sparks. Even if a
-   616 Linux driver existed, GB10 could not take it for a long while.
-3. **GB10 is not on the support list.** DLSS 5 is scoped to **GeForce RTX 50 desktop/laptop**. RTX 40
-   is excluded "due to hardware constraints", and RTX PRO Blackwell *workstation* parts are still
-   documented at the DLSS 4 MFG tier — which is exactly the tier GB10 sits in. GB10 is
-   architecturally plausible (5th-gen Tensor Cores, FP4; modders have already back-ported DLSS 5 to
-   RTX 40 by patching incompatible CUDA instructions), but plausible is not supported.
-4. **Nothing in the Proton stack implements it.** DLSS 5 needs **Streamline 2.14+**. Proton 11.0-2
-   bundles dxvk-nvapi 0.9.2, whose newest DLSS driver settings only reach the R595-era NVAPI builds.
-   Streamline 2.14 entry points are not there to call.
+**Verdict: DLSS 5 (3D-Guided Neural Rendering) cannot run on a GB10 today.** Not impossible in
+principle — the silicon is not the obstacle — but every practical route is blocked.
 
-**What to watch, in dependency order:** an R615/R616 **Linux** driver appears → GB10 lands on a
-post-580 branch in NVIDIA's `sbsa` repo → dxvk-nvapi picks up Streamline 2.14. Until the first of
-those happens there is literally nothing to test. **TODO:** re-check
-[NVIDIA's Unix driver page](https://www.nvidia.com/en-us/drivers/unix/) each quarter.
+#### B1 — No R615/R616 Linux driver exists → **STANDS**
 
-**Meanwhile DLSS 4 + MFG works, and on this part it is the thing that matters** — see
-[Why DLSS 4 Matters](#why-dlss-4-matters). Do not trade it away for a newer Proton.
+```
+GET .../Linux-aarch64/610.57.04/NVIDIA-Linux-aarch64-610.57.04.run  → 200
+GET .../Linux-x86_64/616.64/NVIDIA-Linux-x86_64-616.64.run          → 404
+GET .../Linux-aarch64/616.64/NVIDIA-Linux-aarch64-616.64.run        → 404
+```
+
+[NVIDIA's Unix driver page](https://www.nvidia.com/en-us/drivers/unix/) lists **byte-identical**
+version sets for x86_64 and aarch64: Production 595.99.02, New Feature 610.57.04, Beta 595.45.04.
+DLSS 5 shipped on Windows Game Ready **616.64**. There is no R615/R616 Unix driver on *any*
+architecture.
+
+> **Framing correction:** the earlier text implied aarch64 lags x86_64. **It does not — parity is
+> exact.** Linux as a whole is two branches behind Windows. This is not an ARM problem.
+
+#### B2 — "GB10 is pinned to the 580 branch" → **DEAD. This was our error.**
+
+NVIDIA's `sbsa` repo — GB10's own channel — carries **590, 595 and 610 up to 610.57.04**, the newest
+Unix driver in existence:
+
+```bash
+$ apt-cache madison nvidia-open | grep sbsa
+nvidia-open | 610.57.04-1ubuntu1 | .../compute/cuda/repos/ubuntu2404/sbsa
+nvidia-open | 595.91.07-1ubuntu1 | .../compute/cuda/repos/ubuntu2404/sbsa
+nvidia-open | 590.48.01-0ubuntu1 | .../compute/cuda/repos/ubuntu2404/sbsa
+```
+
+**Why we got it wrong — worth internalising.** From **R590 onward NVIDIA dropped the
+branch-suffixed `nvidia-driver-<N>-open` metapackage** in that repo in favour of an unsuffixed
+**`nvidia-open`** carrying the full version. Querying `apt-cache madison nvidia-driver-610-open`
+returns nothing from sbsa, which reads exactly like "sbsa tops out at 580." It doesn't. **A negative
+result from a package query is only as good as the package name you guessed.** Always cross-check
+with `apt-cache search`, or list the repo.
+
+The "pin" is also a local artifact: `/etc/apt/preferences.d/` de-prioritises only `*580*` packages
+from the CUDA repo (steering those to Canonical's packaging). **Nothing pins 590/595/610.** NVIDIA's
+[DGX Spark release notes](https://docs.nvidia.com/dgx/dgx-spark/release-notes.html) contain no pin,
+hold, or do-not-upgrade language — they document 580.159.03 as a shipped baseline, and this rig
+already runs *newer* (580.173.02).
+
+*One sub-claim survives:* an NVIDIA staff post (2026-03-12) warned *"driver 590 and hwe kernels are
+not yet supported on the Spark"*, and one user hit a frozen desktop on 590 — recovered by `apt`
+downgrade over SSH, **not a reflash**. So "bricked" overstated it. That was a March caveat about
+R590; it is not evidence about 610 in September.
+
+**A clean 610 upgrade path exists on this rig right now** (verified by simulation, no DKMS,
+Secure Boot stays on) — prebuilt open modules match the running kernel exactly:
+
+```bash
+$ apt-cache policy linux-modules-nvidia-610-open-nvidia-hwe-24.04
+  Candidate: 6.17.0-1032.32        # == the running kernel
+$ sudo apt install nvidia-driver-610-open linux-modules-nvidia-610-open-nvidia-hwe-24.04
+```
+
+**This does not deliver DLSS 5** (610 < 616). It is worth doing, if at all, for
+[Vulkan/gaming performance](#experiments-worth-running), not for DLSS.
+
+#### B3 — "DLSS 5 is scoped to GeForce RTX 50" → **STANDS, but the reasoning was wrong**
+
+The earlier text argued from *silicon capability* — that GB10 is the wrong hardware tier. **That is
+not defensible.** NVIDIA's own [RTX Spark page](https://www.nvidia.com/en-us/products/rtx-spark/)
+lists **`NVIDIA DLSS: DLSS 5`** for a 20-core Grace + 6144-core Blackwell superchip — GB10's
+configuration. Grace-Blackwell silicon is *not* architecturally excluded.
+
+What actually holds: NVIDIA's [DLSS technology page](https://www.nvidia.com/en-us/geforce/technologies/dlss/)
+publishes an RTX 50/40/30/20 matrix in which *3D-Guided Neural Rendering* is checked for **RTX 50
+only**. Correct wording:
+
+> DLSS 5 is enabled by NVIDIA only on GeForce RTX 50 Series and on the Windows-only RTX Spark
+> platform. **GB10 on Linux is excluded by driver branch and product segmentation — not by silicon.**
+
+#### B4 — "dxvk-nvapi lacks Streamline 2.14" → **WRONG LAYER. Replaced by B4′.**
+
+Three corrections: Streamline's newest public release is **v2.12.0** (2026-06-23) — **there is no
+public 2.13 or 2.14**, and this log repeated the "2.14" requirement without a primary source, which
+was sloppy. Streamline is also Windows-x86_64-only *by construction*. And dxvk-nvapi never
+implements DLSS anyway — its own README: *"DXVK-NVAPI does not implement DLSS, Reflex or PhysX. It
+mostly forwards the relevant calls."* No project in the DLSS 5 ecosystem uses Streamline or NVAPI;
+they call raw NGX `NVSDK_NGX_Feature_Reserved18`. **B4 was never load-bearing.**
+
+> **B4′ — No Linux driver at any version ships the neural-rendering snippet, and NGX version-gates
+> snippets.** Verified on this rig:
+> ```bash
+> $ strings /usr/lib/aarch64-linux-gnu/libnvidia-ngx.so.580.173.02 | grep -ci dlssnr
+> 0                                    # no NR snippet; dlssg (frame gen) IS present
+> $ strings … | grep -iE 'requires newer|Snippet Validation'
+> NGX Core|Validation|Error: Snippet requires newer driver %s > %s|
+> NGX Core|Validation|Error: Snippet requires newer GPU %X > %X|
+> NGX Core|Snippet Validation|API %d.%d|GPU %s|Min Driver %s|Version %d.%d.%d|
+> ```
+> The driver ships exactly three Windows-PE bridges — `_nvngx.dll`, `nvngx.dll`, `nvngx_dlssg.dll`
+> — and **no `nvngx_dlssnr.dll`**. NGX Core is built from `r580/r582_69` and gates snippets on
+> *both* minimum driver version *and* GPU architecture. **That is the real wall.**
+
+#### The four gates that actually matter
+
+| # | Gate | State |
+|---|------|-------|
+| 1 | An R615/616+ Linux/aarch64 driver must exist | ❌ does not exist, any arch |
+| 2 | That driver must ship `nvngx_dlssnr` for Linux | ❌ no Linux driver at any version does |
+| 3 | NVIDIA must not SKU-gate GB10 out of NR | ❌ currently gated per NVIDIA's own matrix |
+| 4 | A Vulkan NR path must survive DXVK → FEX | ❌ the NR ecosystem is **D3D12-only**, and winevulkan cannot host PE Vulkan layers |
+
+**Only B2 fell — and B2 was never one of these gates.** It was a factual error about a package repo.
+
+| Horizon | P(DLSS 5 running in a game on this GB10) |
+|---------|------------------------------------------|
+| 3 months | **~2%** |
+| 12 months | **~15%** |
+| Ever | **~35%** |
+
+#### RTX Spark — what it actually is
+
+**A separate consumer product, not an update for anything you own.**
+
+| | DGX Spark (this rig) | RTX Spark |
+|---|---|---|
+| Silicon | GB10 Grace-Blackwell | **"RTX Spark N1X"** (NVIDIA + MediaTek) |
+| Config | 20-core Grace, 6144 Blackwell, 128 GB | Laptop: same figures. Desktop: 18-core / 5120 / 64 GB |
+| OS | DGX OS (Ubuntu 24.04) | **Windows 11, only** |
+| DLSS | 4 + MFG (works today) | Spec table says **DLSS 5** |
+| Ships | 2025 | **October 2026** |
+
+**Same silicon?** *Probably a sibling die — but NVIDIA has never said so.* Ars Technica hedges:
+*"appears to be a consumer rebrand for the silicon Nvidia launched… as the DGX Spark"* — the
+reporter's words, not NVIDIA's. Memory speeds already differ (DGX ~273 GB/s vs RTX Spark ~300 GB/s),
+so they are at minimum not identical parts. Treat as strong inference, not fact.
+
+**What it implies for us:** it kills "the hardware can't do it", and proves NVIDIA maintains a
+modern DLSS-capable **Windows-on-Arm WDDM** driver for Grace-Blackwell-class silicon. It implies
+nothing else — different SKU, different OS, different driver stack, no upgrade path, and not one
+word about existing DGX Spark owners. **If anything it makes the Linux outlook worse:** NVIDIA's
+DLSS-5-era Arm investment is visibly landing on Windows first.
+
+#### DLSS 5 tooling — real or slop?
+
+~150 "DLSS 5" repos appeared 2026-08-28 → 09-04. **Every one depends on a leaked,
+Discord-distributed `nvngx_dlssnr.dll`** (build 310.8.x). That is a legal and supply-chain hazard,
+not a dependency — **do not download one.**
+
+- **`jlrouzies-fr/DLSS5-Feeder`** — real, active, well-run (767★), and useless here. Windows PE
+  throughout. Its own Linux user documents why it can't reach Proton: *"winevulkan does not
+  implement PE Vulkan layers… Verified on Proton 11.0, Experimental and proton-ge-custom."*
+- **`Zonnery/dlss5-nr-player`** — real expert C++, and it makes our case *worse*: it hardcodes
+  `kVerifiedOn = 61656u; // 616.56`, i.e. first-hand evidence that NR is an **R616-era** capability.
+  Supports B1.
+- **`ccoredesenvolvimento/dlss5-linux-bridge`** — real reverse-engineering, dead project (one
+  commit, no releases), D3D12-only and x86-64-only. ARM64 mentioned nowhere.
+
+#### Experiments worth running
+
+- **A · NGX snippet-gate probe (read-only, decisive).** Drop a *legitimately obtained* newer DLSS SR
+  snippet ([NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) v310.7.0 — public SDK, no leak) into a
+  working DLSS title and see which NGX string fires: `requires newer driver` → **soft gate**, a 610
+  upgrade might clear it; `requires newer GPU` → **hard architecture gate**, no driver ever helps.
+  One data point settles whether gates 2–3 are version or silicon. **TODO.**
+- **B · Confirm the public DLSS SDK has no ARM64 artifact.** NVIDIA
+  [announced ARM DLSS support in 2021](https://developer.nvidia.com/blog/nvidia-dlss-sdk-adds-linux-and-arm-support/);
+  no such artifact ever shipped. Worth recording as a documented dead lead. **TODO.**
+- **C · A/B driver 610.43.02 for Vulkan/gaming performance.** Orthogonal to DLSS, and the lead with
+  actual payoff for this log. Clean path, prebuilt modules, Secure Boot intact, `apt` downgrade is
+  the escape hatch. **TODO.**
+
+**Watch list, in dependency order:** an R615/R616 **Unix** driver appears →
+it ships `nvngx_dlssnr` for Linux → GB10 is not SKU-gated out → a Vulkan NR path exists.
+Until step one, there is nothing to test.
 
 ### Which Proton on ARM64
 
@@ -321,14 +470,34 @@ is the obvious control — already known-good on both 10 and Experimental) befor
 
 ### Driver Branch Policy
 
-**Stay on 580.** Not conservatism for its own sake — that is where GB10 support lives:
+> **⚠️ CORRECTED 2026-09-05.** This section previously said *"NVIDIA's sbsa repo offers 580.65.06 →
+> 580.178.04 and nothing newer"* and told you to stay on 580. **That was wrong** — see
+> [B2](#b2-gb10-is-pinned-to-the-580-branch-dead-this-was-our-error). The sbsa repo carries
+> **590, 595 and 610 up to 610.57.04**. The error came from querying the *old* metapackage name;
+> NVIDIA renamed `nvidia-driver-<N>-open` → **`nvidia-open`** from R590 on, so the old query returns
+> nothing and reads like a ceiling.
 
-- NVIDIA's `sbsa` CUDA repo (`developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/sbsa`)
-  offers **580.65.06 → 580.178.04** and nothing newer. That repo is GB10's actual support channel.
-- `ports.ubuntu.com` will happily offer `nvidia-driver-595-open` and `nvidia-driver-610-open` for
-  arm64. Those are generic Ubuntu arm64 builds, **not** GB10-validated. DGX Spark owners who took
-  them report `nvidia-smi: No devices found` / `NVIDIA-GB10 not supported`.
-- `apt upgrade` is safe *as long as it only moves within 580*. Check before confirming:
+**Current position: 580 is a defensible default, not a hard limit.**
+
+- **What NVIDIA's own channel actually offers** — list it properly, and by the unsuffixed name:
+  ```bash
+  apt-cache madison nvidia-open | grep sbsa     # 610.57.04, 595.x, 590.x, 580.x
+  ```
+- **A 610 upgrade is mechanically clean on this rig** — prebuilt open modules exist for the running
+  kernel, no DKMS, Secure Boot stays enabled:
+  ```bash
+  apt-cache policy linux-modules-nvidia-610-open-nvidia-hwe-24.04    # Candidate: 6.17.0-1032.32
+  ```
+  The messy route in the widely-linked forum thread (purge the 580 stack, disable Secure Boot) is
+  **not** necessary — that was one user's NVIDIA-repo path, trust level 1, no staff endorsement.
+- **The remaining risk is validation, not packaging.** An NVIDIA staff post (2026-03-12) warned
+  *"driver 590 and hwe kernels are not yet supported on the Spark"*, and one user hit a frozen
+  desktop on 590 — recovered by `apt` downgrade **over SSH, not a reflash**. Earlier revisions here
+  said "bricked"; that overstated it. Keep SSH access open and you have an escape hatch.
+- **Why stay on 580 anyway?** Because nothing in a newer branch buys DLSS 5 (that needs 616+, which
+  does not exist for Linux) and this rig's whole value is a *known-good* baseline. Upgrade
+  deliberately, to test Vulkan/gaming performance — not by accident.
+- `apt upgrade` moving *within* 580 is routine. Check before confirming:
   ```bash
   apt list --upgradable 2>/dev/null | grep -iE 'nvidia|linux-'
   ```
@@ -849,7 +1018,7 @@ box64 --version
    [Half-Life 2](#proton-11-regression-on-half-life-2-2026-09-05). **Always record which you used.**
    See [Which Proton on ARM64](#which-proton-on-arm64).
 2. Enable **DLSS 4 + Multi-Frame Generation** in supported games. DLSS 5 is not reachable on GB10 —
-   see [DLSS 5 Status](#dlss-5-status-2026-09-05).
+   see [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day).
 3. Target **5120x1440 @ 120 Hz** — the ceiling is NVIDIA Linux's lack of **DSC**, not the connector, so it applies on both HDMI 2.1a and DP 1.4a. Drop to 3840×1080 if you want 240 Hz. See [Display Notes](#display-notes).
 
 **Installing a Proton build without touching the Compatibility dropdown** (that dropdown is the CEF
