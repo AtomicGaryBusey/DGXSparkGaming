@@ -138,12 +138,17 @@ they call raw NGX `NVSDK_NGX_Feature_Reserved18`. **B4 was never load-bearing.**
 
 #### The four gates that actually matter
 
-| # | Gate | State |
-|---|------|-------|
-| 1 | An R615/616+ Linux/aarch64 driver must exist | ❌ does not exist, any arch |
-| 2 | That driver must ship `nvngx_dlssnr` for Linux | ❌ no Linux driver at any version does |
-| 3 | NVIDIA must not SKU-gate GB10 out of NR | ❌ currently gated per NVIDIA's own matrix |
-| 4 | A Vulkan NR path must survive DXVK → FEX | ❌ the NR ecosystem is **D3D12-only**, and winevulkan cannot host PE Vulkan layers |
+| # | Gate | State | Evidence |
+|---|------|-------|----------|
+| 1 | An R615/616+ Linux/aarch64 driver must exist | ❌ | 616.64 URLs 404 on both arches |
+| 2 | That driver must ship an NR snippet for Linux | ❌ | `grep -c dlssnr` → 0 in driver *and* public SDK |
+| 2b | …and in **aarch64**, for native ARM apps | ❌ | SDK ships only `Linux_x86_64` / `Windows_x86_64` |
+| 3 | NVIDIA must not SKU-gate GB10 out | ⚠️ **not an arch gate** | probe: `GPU architecture : 0x7FFFFFF` (wildcard) — no arch check can fire. Segmentation is in NVIDIA's product matrix, not the NGX arch check. A deny list exists but is absent here |
+| 4 | A Vulkan NR path must survive DXVK → FEX | ❌ | NR ecosystem is **D3D12-only**; winevulkan cannot host PE Vulkan layers |
+
+**The probe moved gate 3 from "hard silicon wall" to "policy + packaging".** That is a meaningfully
+better position than the first analysis claimed — the hardware is willing; NVIDIA simply ships
+nothing that would run on it.
 
 **Only B2 fell — and B2 was never one of these gates.** It was a factual error about a package repo.
 
@@ -193,14 +198,65 @@ not a dependency — **do not download one.**
 
 #### Experiments worth running
 
-- **A · NGX snippet-gate probe (read-only, decisive).** Drop a *legitimately obtained* newer DLSS SR
-  snippet ([NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) v310.7.0 — public SDK, no leak) into a
-  working DLSS title and see which NGX string fires: `requires newer driver` → **soft gate**, a 610
-  upgrade might clear it; `requires newer GPU` → **hard architecture gate**, no driver ever helps.
-  One data point settles whether gates 2–3 are version or silicon. **TODO.**
-- **B · Confirm the public DLSS SDK has no ARM64 artifact.** NVIDIA
-  [announced ARM DLSS support in 2021](https://developer.nvidia.com/blog/nvidia-dlss-sdk-adds-linux-and-arm-support/);
-  no such artifact ever shipped. Worth recording as a documented dead lead. **TODO.**
+#### A · NGX gate probe — **RUN 2026-09-05. The gate is NOT GPU architecture.**
+
+Probed the ARM64 NGX core directly on GB10 (CUDA init → `NVSDK_NGX_CUDA_Init` → metadata
+validation), with `__NGX_LOG_LEVEL=2`. No game and no leaked binary required. The core's own log:
+
+```
+[NGXValidateSnippetMetaData:1509] NGX CORE API version : 0x15, Snippet requires at least : 0x0
+[NGXValidateSnippetMetaData:1513] GPU architecture : 0x7FFFFFF, Snippet expects at least : 0x0
+[NGXValidateSnippetMetaData:1528] Driver support flags : 0xF(SEAMLESS_OTA|LINUX_EXTENDED_DRIVER_
+                                  VERSIONS|API_SPECIFIC_POPULATE_PARAMS|REQUIRE_CMSID)
+[NGXValidateSnippetMetaData:1556] Driver version : 580.173.2, Snippet expects at least : 0.0
+[NGXSecureLoadFeature:1142]       unable to read the deny list. Assuming that the feature is allowed.
+```
+
+**Findings, in order of importance:**
+
+1. **GB10 reports `GPU architecture : 0x7FFFFFF`** — 2²⁷−1, a max/wildcard value — stable across
+   runs and independent of which snippet is present. **No snippet could ever trip the
+   `Snippet requires newer GPU %X > %X` check on this hardware.** The hard-architecture-gate theory
+   is dead. Whether this is GB10's true arch ID or a permissive "unknown" default, the effect is the
+   same: arch does not gate here.
+2. **`NGX CORE API version : 0x15`**, driver 580.173.2, and `SEAMLESS_OTA` +
+   `LINUX_EXTENDED_DRIVER_VERSIONS` support flags — the Linux NGX does support OTA snippet updates.
+3. **The real blocker is snippet architecture.** The aarch64 NGX core `dlopen`s snippets; handed the
+   genuine NVIDIA-signed **x86-64** `libnvidia-ngx-dlss.so.310.7.0`, it fails with
+   `failed to load signed snippet - Unable to find correct signature ELF section` — because an
+   aarch64 loader cannot load an x86-64 ELF at all. It needs **aarch64 snippets, which NVIDIA does
+   not ship** (see B).
+4. **This explains the long-standing "DLSS silently does nothing for native ARM64 binaries" report**
+   that started this project. Native aarch64 apps ask the aarch64 NGX core for a snippet that does
+   not exist in that architecture. x86-64-under-FEX works because Proton uses the *Windows PE*
+   snippets inside the prefix, which the driver does ship.
+5. **There is a deny list** at `/usr/share/nvidia/ngx` (absent here; the core logs
+   *"unable to read the deny list. Assuming that the feature is allowed."*). **TODO:** check whether
+   a populated deny list exists on a stock DGX OS image — that is the one remaining place an
+   explicit GB10 feature block could hide.
+
+> ⚠️ **Don't be fooled by stub snippets.** Building a fake `libnvidia-ngx-dlss.so` that exports the
+> metadata getters makes the validator run and print the driver's values — useful, and how the arch
+> number above was obtained — but such a file is **not** an NVIDIA artifact. Anything named like an
+> NGX snippet should be checked with `file` and `strings` for a `/dvs/p4/build/...` provenance path
+> before being treated as evidence.
+
+#### B · Public DLSS SDK ARM64 artifacts — **RUN 2026-09-05. There are none.**
+
+[NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) latest release **v310.7.0** (2026-06-23), 97 files:
+
+```
+lib/ platform dirs : lib/Linux_x86_64, lib/Windows_x86_64     ← no aarch64, no arm64
+snippets shipped   : nvngx_dlss.dll, nvngx_dlssd.dll, nvngx_dlssg.dll
+nvngx_dlssnr       : 0 occurrences                            ← no neural-rendering snippet at all
+```
+
+NVIDIA [announced ARM DLSS support in 2021](https://developer.nvidia.com/blog/nvidia-dlss-sdk-adds-linux-and-arm-support/).
+**No ARM artifact has ever shipped in the public SDK.** Recorded as a documented dead lead.
+
+Also confirms NR is **leak-only** today: it is absent from the public SDK *and* from the driver
+(`strings libnvidia-ngx.so.580.173.02 | grep -c dlssnr` → `0`), while the 580 Linux NGX feature
+table contains only `SuperSampling` and `SuperSamplingDenoising`.
 - **C · A/B driver 610.43.02 for Vulkan/gaming performance.** Orthogonal to DLSS, and the lead with
   actual payoff for this log. Clean path, prebuilt modules, Secure Boot intact, `apt` downgrade is
   the escape hatch. **TODO.**
