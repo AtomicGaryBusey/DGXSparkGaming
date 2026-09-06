@@ -981,6 +981,16 @@ The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe 
 | **`tools/game-run.sh`** | Launches a game **inside a systemd cgroup scope** (Wine cannot reparent out of it — teardown is atomic), turns on `DXVK_HUD` + MangoHud CSV logging, records GPU telemetry alongside, and runs pre-flight checks: compat tool actually in use, shader-cache warmth, machine load. `DRY_RUN=1` for checks only. | **Every** test launch. Never launch by hand |
 | **`tools/bench-ab.sh`** | A/B two Proton versions on one title and emit frametime statistics (avg, 1% low, median, p99). Discards the first run of each version automatically. | Any "version X feels faster" claim, before it goes in the table |
 
+> **MangoHud under FEX — present, wiring verified, loading UNTESTED.** The FEX RootFS already ships
+> both `MangoHud.x86_64.json` and `/usr/lib/x86_64-linux-gnu/mangohud/libMangoHud.so`, and the
+> manifest points at it correctly — so the layer *should* be visible to an x86-64 game. It could not
+> be confirmed by probing: `vulkaninfo` inside the guest emits no stdout under FEX (only the thunk's
+> `Linking address …` chatter on stderr), so that check is **inconclusive, not negative**. The host
+> aarch64 layer does enumerate (`VK_LAYER_MANGOHUD_overlay_aarch64`). `game-run.sh` therefore
+> self-verifies: it reports the CSV sample count after each run, and warns explicitly if MangoHud
+> produced nothing. **The first real game run is the test.** Fall back to `DXVK_HUD` on-screen
+> numbers if it turns out the layer does not load.
+
 > **Why `game-run.sh` exists.** Two of this project's worst self-inflicted failures came from
 > hand-launching: a `timeout`-wrapped launch that killed the launcher but not the game (Wine
 > reparented; the orphaned tree burned ~55% CPU and made the desktop crawl), and results recorded as

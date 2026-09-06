@@ -113,6 +113,20 @@ cleanup() {
   local left
   left=$(ps -eo args | grep -c "[c]ompatdata/$APPID")
   [ "$left" -eq 0 ] && note "no orphaned processes" || warn "$left processes still alive — inspect manually"
+  # did instrumentation actually produce data? (MangoHud's x86-64 layer lives in the FEX
+  # RootFS; whether it loads for an x86-64 game under FEX was never confirmed by probing —
+  # vulkaninfo yields no stdout in the guest — so the first real run is the test.)
+  local csv
+  csv=$(ls "$RUNDIR"/*.csv 2>/dev/null | head -1)
+  if [ -n "$csv" ] && [ "$(wc -l < "$csv")" -gt 3 ]; then
+    note "mangohud CSV: $(wc -l < "$csv") samples -> $csv"
+  elif command -v mangohud >/dev/null 2>&1; then
+    warn "mangohud produced no CSV — the x86-64 layer likely did not load under FEX."
+    warn "  check: MANGOHUD_CONFIG had output_folder set, and the RootFS carries"
+    warn "  /usr/lib/x86_64-linux-gnu/mangohud/libMangoHud.so (it does). If this persists,"
+    warn "  fall back to DXVK_HUD on-screen numbers and record them manually."
+  fi
+  [ -s "$RUNDIR/gpu.csv" ] && note "gpu telemetry: $(wc -l < "$RUNDIR/gpu.csv") samples"
   note "run dir: $RUNDIR"
 }
 trap cleanup EXIT INT TERM
