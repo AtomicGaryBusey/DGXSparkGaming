@@ -491,27 +491,55 @@ Note: The desktop shortcut does not work — always launch from terminal via `FE
 > FEX/Steam-CEF interaction (see [FEX #3900](https://github.com/FEX-Emu/FEX/issues/3900),
 > [Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780)).
 >
-> ### ⚠️ This workaround is probably obsolete as of 2026-09-05 — re-test before applying
+> ### ⚠️ Still required on GB10 — upstream fixes do NOT cover this rig (re-tested 2026-09-05)
 >
-> Valve fixed the underlying bug. The **Steam Client Update of 21 July 2026** explicitly
-> *"fixes a steamwebhelper crash that occurred when hardware acceleration is enabled on NVIDIA
-> GPUs"* — precisely the crash this section works around
-> ([Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780) was the tracking
-> issue; the root cause was a CEF/NVIDIA interaction). Separately, the FEX-side contributor — a CEF
-> file-descriptor-handling change FEX mishandled — was fixed in **FEX-2603** (March 2026).
+> **Correction.** An earlier revision of this section claimed the workaround was probably obsolete,
+> on the strength of upstream changelogs. **That was wrong, and testing disproved it the same day.**
+> Recorded here rather than deleted, because the *shape* of the failure changed and that is the
+> useful part.
 >
-> This rig ran client build `1781041600` (~6 Jun 2026, *pre*-fix) until 2026-09-05, when it updated
-> to `1788400362` (*post*-fix), and it runs FEX 2607. **Both halves of the original cause are now
-> fixed upstream**, so the hardware-accel workaround — and its
-> [standing performance cost](#the-fix-has-a-standing-performance-cost) — may no longer be needed.
+> What upstream genuinely fixed: the **Steam Client Update of 21 July 2026** states it *"fixes a
+> steamwebhelper crash that occurred when hardware acceleration is enabled on NVIDIA GPUs"*
+> ([Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780)), and the FEX-side
+> contributor — a CEF file-descriptor change FEX mishandled — was fixed in **FEX-2603** (Mar 2026).
+> This rig now runs the post-fix client (`1788400362`) and FEX 2607, so both are in place.
 >
-> It has **not yet been re-tested on GB10** (Valve's fix targeted native x86-64 NVIDIA Linux; the FEX
-> layer is an extra variable). **TODO:** flip acceleration back on, relaunch, and watch
-> `logs/cef_log.txt` for `exit_code=8704`. Reverting is a one-line JSON edit and the procedure below
-> re-applies it if the crash returns. Keep the `Local State.bak` backup.
+> **The re-test, and what it showed.** With `hardware_acceleration_mode.enabled = true`, Steam
+> relaunched and ran clean for ~4½ minutes. Pages that had already been rendered were *noticeably
+> faster*. Then clicking a **library title that had never been painted before** hung on a spinner
+> that never cleared, and the UI died:
 >
-> **The fix (only if the crash actually reproduces) — disable GPU acceleration at the Chromium
-> level** (kill Steam first):
+> ```
+> 17:15:00  CONSOLE(2) "Uncaught TypeError: Cannot read properties of
+>           undefined (reading 'length')"   source: libraries~00299a408.js
+> 17:15:32  Failed writing minidump, nothing to upload.
+> ```
+>
+> `libraries~*.js` is the Library page code. The renderer died on **first paint of uncached
+> content**; breakpad could not write the dump (the same 0-byte-dump symptom seen in June).
+>
+> **This is a different crash from the June one, and that distinction matters:**
+>
+> | | June 2026 (original) | September 2026 (post-fix) |
+> |---|---|---|
+> | Signature | `GPU process exited unexpectedly: exit_code=8704` | renderer death, JS TypeError, failed minidump |
+> | Fires | continuously → crash-loop | only on first paint of **uncached** content |
+> | Count on this rig | 5 (all 18 Jun) | 1 (5 Sep) — `8704` count **stayed at 5** |
+>
+> So Valve's July fix probably *did* fix the GPU-process crash it targeted. What remains is a
+> **second, distinct failure that only appears under FEX** — and Valve's fix was validated on native
+> x86-64 NVIDIA Linux, not on an x86-64 CEF translated onto ARM64.
+>
+> **Practical guidance: leave hardware acceleration OFF.** The speed-up on cached pages is real but
+> costs you a UI that dies the first time you open anything new. If you want to re-test after a
+> future Steam or FEX update, the tell is **not** `exit_code=8704` — grep for
+> `Failed writing minidump` in `logs/console-linux.txt` and watch for a hang on a never-before-opened
+> library page. Do it on an idle box, and keep a `Local State` backup.
+>
+> One trap when reverting: if you `kill -9` Steam, `~/.steam/steam.pid` is left pointing at a dead
+> process and the **next launch silently does nothing**. `rm ~/.steam/steam.pid` first.
+>
+> **The fix — disable GPU acceleration at the Chromium level** (kill Steam first):
 > ```bash
 > pkill -9 -f ubuntu12; pkill -9 -f steamwebhelper        # stop the loop
 > python3 - <<'PY'
