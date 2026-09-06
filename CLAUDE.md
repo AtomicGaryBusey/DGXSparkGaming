@@ -48,11 +48,12 @@ these caused a real, visible problem in one session. Obey them.
    "$STEAM/steamapps/common/<Proton>/files/bin/wineserver" -k
    kill -9 $(ps -eo pid,args | grep -E '<Proton>/files|<Game>.exe' | grep -v grep | awk '{print $1}')
    ```
-2. **Never `pgrep -f <pattern>` for a pattern that appears in your own command line.** The watcher
-   matches *itself*, so `until ! pgrep -f 'foo'; do sleep …; done` never exits. Two watchers spun for
-   ~80 minutes each this way before anyone noticed. Use a bracket trick (`pgrep -f '[f]oo'`),
-   `ps -eo args | grep -q '[f]oo'`, or check real state (an appmanifest `StateFlags`, a file, a PID)
-   instead of a process name.
+2. **Never `pgrep -f` / `pkill -f` a pattern that appears in your own command line — use
+   `tools/safe-proc.sh`.** The watcher or killer matches *itself*. Three occurrences here: two
+   watchers that spun ~80 minutes each; a `pkill` that killed the replacement monitor it had just
+   started; and a `pkill` that killed a shell mid-heredoc, destroying the script being written. The
+   last two happened *after* this rule existed — which is why there is now a tool that makes it
+   structurally impossible rather than a rule asking for discipline.
 3. **Poll for a condition you have actually seen occur.** One watcher waited forever for
    `update finished` lines Steam never writes for compat tools. If you cannot point at a real
    example of the string, poll something else.
@@ -181,6 +182,7 @@ run the tool, then act.**
 | test whether something works under FEX | **`tools/fex-inject-tests.sh`** | Run it under **Box64 too** — identical failure across two JITs means the *test* is wrong |
 | build anything Windows-side | **`tools/setup-mingw.sh`** | Ubuntu's own mingw into a local prefix. Never `sudo`-install a third party's toolchain script |
 | ask "what does Steam think about X" | **`tools/appinfo.py`** | Names, depots, real download sizes, launch options — from Steam's own metadata, not guesswork |
+| **kill or wait on processes by name** | **`tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
 
 ## Common requests & how to handle them
 
