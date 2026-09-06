@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+# built test binaries — build them, don't trust committed ones
+tools/fex-tests/*.exe
+tools/fex-tests/*.dll
