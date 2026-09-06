@@ -383,6 +383,37 @@ that will stop Path A.
 > `E9 rel32` (what real hook libraries use) plus an explicit in-test padding assertion that aborts
 > with `TEST INVALID` rather than reporting a bogus result.
 
+#### D · NGX forwarder under FEX — **RUN 2026-09-05. IT LOADS AND EXECUTES.**
+
+The second FEX-specific risk: does the DLSS-NR forwarder shim work under translation? Built
+**from reviewed source** (93 lines, audited — no network, no file writes, no process spawn, no
+registry access; it is `LoadLibraryEx` + `GetProcAddress` + four forwarded calls) with mingw-w64
+unpacked locally from Ubuntu's archive. **Their prebuilt binary was never executed**; our build came
+out at 92,000 bytes against their released 91,648, which corroborates the binary matches the source.
+
+```
+step2 loaded at 00006fffff250000
+step3 nrfwd_init/create/evaluate/release   all resolved
+step4 nrfwd_evaluate(NULL,NULL,NULL) -> 0 (guarded path executed correctly)
+RESULT: FORWARDER LOADS AND EXECUTES UNDER THIS TRANSLATOR (4/4 exports)
+```
+
+Combined with [test C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), **both FEX-specific
+risks in Path A are now retired.** What remains untested is the part needing the proprietary model:
+whether a 165 MB CUDA-bearing PE drives `nvcuda.dll` through FEX → vkd3d-proton → NVX.
+
+#### E · ReShade under FEX — **INCONCLUSIVE, method-limited**
+
+ReShade 6.8.0.2155 (verified genuine: `crosire's ReShade post-processing injector`, extracted intact
+from the official reshade.me installer — PE byte-complete, all imports satisfiable in-prefix) fails a
+standalone `LoadLibraryW` with `ERROR_DLL_INIT_FAILED` (1114) — **identically under FEX and Box64.**
+
+Per the [lesson from test C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), identical
+failure across two unrelated JITs points at the method, not the translator. ReShade is designed to be
+loaded *as* `dxgi.dll` by a Direct3D application; refusing a bare standalone load is normal injector
+behaviour. **This is not evidence that ReShade fails under FEX**, and must not be recorded as such.
+**TODO:** re-test properly with ReShade as `dxgi.dll` in a real DX12 title.
+
 #### B · Public DLSS SDK ARM64 artifacts — **RUN 2026-09-05. There are none.**
 
 [NVIDIA/DLSS](https://github.com/NVIDIA/DLSS) latest release **v310.7.0** (2026-06-23), 97 files:
