@@ -565,10 +565,13 @@ Wine-side shim that `dlopen`s the *Linux* `libnvidia-ngx.so`, so an ARM64 unix s
 under the ARM64 build **through Steam** (a hand-driven `_v2-entry-point` run resolves the NVIDIA
 libraries differently and cannot answer this).
 
-> ⚠️ **This directory is currently present on the ZGX Nano.** It is a hand-made, non-packaged
-> addition that no NVIDIA update will manage. It also changes what the *x86-64* Proton resolves in
-> some invocations, so it can silently skew unrelated tests. Remove it if the experiment concludes
-> negative: `sudo rm -rf /usr/lib/aarch64-linux-gnu/nvidia/wine`.
+> ✅ **Removed 2026-09-06.** The experiment concluded (Proton 11 ARM64 turned out unusable for
+> unrelated reasons — no aarch64 Steam client), so the directory was pure liability: hand-made,
+> unmanaged by any package, and able to change what the *x86-64* Proton resolves. Verified after
+> removal that the driver (580.173.02), `libnvidia-ngx.so`, `nvidia/xorg/` and — critically — the
+> **RootFS x86-64 bridge** (`_nvngx.dll`, `nvngx.dll`, `nvngx_dlssg.dll`, the one that actually makes
+> DLSS 4 work under Proton) were all untouched. Recreate it with the recipe above only if a native
+> ARM64 Steam client ever ships.
 
 #### Proton 11.0 x86-64 — confirmed running on GB10 (2026-09-05)
 
