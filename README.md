@@ -610,10 +610,50 @@ This script handles:
 
 **Launch Steam:**
 ```bash
-FEXBash steam
+DISPLAY=:1 setsid FEXBash -c steam &
 ```
 
-Note: The desktop shortcut does not work — always launch from terminal via `FEXBash steam`.
+> **Use `FEXBash -c steam`, not `FEXBash steam`.** Earlier revisions of this doc said the latter;
+> it does not work — `FEXBash` treats a bare argument as a *script file* to run, so you get
+> `/bin/sh: 0: cannot open steam: No such file`. The `-c` is required.
+
+**The desktop / start-menu shortcut does not work on this rig** — always launch from a terminal.
+
+> ### ⚠️ Closing the Steam window does not close Steam — and then it won't restart
+>
+> Hit on the ZGX Nano 2026-09-05. The UI stopped responding, the window was closed, and afterwards
+> **clicking the start-menu icon did nothing at all** — no window, no error.
+>
+> Cause: closing the window left the client **and 15 `steamwebhelper` processes** running headless
+> for 40 minutes. `~/.steam/steam.pid` still pointed at that live process, so every launch attempt
+> found an existing instance, handed off to it, and returned silently. The backend was alive; it
+> just had no UI.
+>
+> This is distinct from the **stale-pid trap** after a `kill -9` (noted in the hardware-accel section
+> below): there the pid file points at a *dead* process. Here it points at a *live* one that will
+> never show a window. Both look identical from the user's side — a launch that does nothing, so
+> check which case you are in before assuming.
+>
+> **Diagnose:**
+> ```bash
+> ps -eo pid,etime,args | grep -E '[u]buntu12_(32|64)|[s]teamwebhelper'   # anything alive?
+> p=$(cat ~/.steam/steam.pid); ps -p "$p" -o comm=                         # alive or stale?
+> ```
+>
+> **Reliable relaunch** (works from either state — kills any survivors, clears the pid file, starts
+> clean):
+> ```bash
+> pkill -f 'ubuntu12_32/steam'; pkill -f steamwebhelper; sleep 5
+> pkill -9 -f 'ubuntu12_32/steam' 2>/dev/null
+> rm -f ~/.steam/steam.pid ~/.local/share/Steam/.crash
+> DISPLAY=:1 setsid FEXBash -c steam &
+> ```
+> Expect ~15–20 s to the first `steamwebhelper`, and up to a few minutes before the library renders.
+> Never assume it failed until `ps -eo args | grep '[s]teamwebhelper -nocrashdialog'` stays empty.
+>
+> **Always verify Steam is really down before relaunching** — `pgrep -c -f steamwebhelper` is *not*
+> a reliable check on its own, because a shell whose own command line contains the pattern matches
+> itself (see [process hygiene](CLAUDE.md)). Use the bracketed `'[s]teamwebhelper'` form.
 
 > **⚠️ Steam `steamwebhelper` crash-loop on first launch (hit on ZGX Nano, 2026-06-18).** Steam
 > may open, then the window closes/reopens endlessly (and the desktop work-area/your terminal may
