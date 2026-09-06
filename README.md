@@ -23,12 +23,12 @@ the driver row is a deliberate hold.
 | Layer | Running here | Latest upstream | Action |
 |-------|--------------|-----------------|--------|
 | NVIDIA driver | 580.173.02 (open kernel) | 610.57.04 (new-feature) / 595.99.02 (production) | **610.57.04 IS available for GB10** in NVIDIA's sbsa repo as `nvidia-open`. Staying on 580 deliberately (known-good baseline); nothing newer buys DLSS 5. See [Driver Branch Policy](#driver-branch-policy) |
-| NVIDIA HWE kernel | 6.17.0-1032-nvidia | same | Updated 2026-09-05 (reboot pending); `linux-modules-nvidia-580-open` bumped in lockstep |
+| NVIDIA HWE kernel | 6.17.0-1032-nvidia | same | Updated 2026-09-05, **rebooted and verified live 2026-09-06**; `linux-modules-nvidia-580-open` bumped in lockstep and the GPU came up clean |
 | FEX-Emu | `fex-emu-armv8.4` 2607 + `fex-emu-wine` 2608 | FEX-2608 | PPA candidate = installed. `armv8.4` is the highest PPA variant and is the right one for ARMv9.2 Cortex-X925 |
 | Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
 | Proton | **11.0-2c x86-64** (+ 11.0-2c ARM64, 10.0-4b) | 11.0-2 (2026-08-21) | Bundles FEX-2607, DXVK 2.7.1, VKD3D-Proton 3.0a, dxvk-nvapi 0.9.2. Installed 2026-09-05; Experimental retained |
 | Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
-| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **DLSS 5 unreachable** — see below |
+| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path** — but not impossible. One unsanctioned route survived refutation and all three FEX risks tested clean. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
 
 ### DLSS 5 Status (2026-09-05, corrected same day)
 
@@ -882,7 +882,7 @@ driver, CUDA, and the NVIDIA Vulkan ICD already present — but the entire x86 t
 
 | # | Prerequisite | Verify command | Pass condition | Fix |
 |---|--------------|----------------|----------------|-----|
-| 1 | NVIDIA driver (open kernel) | `cat /sys/module/nvidia/version` | prints `580.x` — **stay on 580**, see [Driver Branch Policy](#driver-branch-policy) | pre-installed on DGX OS |
+| 1 | NVIDIA driver (open kernel) | `cat /sys/module/nvidia/version` | prints `580.x` — a *chosen* baseline (DGX OS requires R580), **not** a repo ceiling; see [Driver Branch Policy](#driver-branch-policy) | pre-installed on DGX OS |
 | 2 | CUDA toolkit | `nvcc --version` | `release 13.0` (or newer) | pre-installed on DGX OS |
 | 3 | NVIDIA Vulkan ICD | `ls /usr/share/vulkan/icd.d/nvidia_icd.json` | file exists | ships with driver |
 | 4 | `nvidia-drm modeset=1` | `ls -d /sys/class/drm/card*-*` | at least one **connector** listed | Step 1 (reboot) |
@@ -944,7 +944,7 @@ Two known caveats on this unit:
 | Prereq | Was (2026-06-18) | Now |
 |--------|------------------|-----|
 | 1 · NVIDIA driver | 580.159.03 | **580.173.02** (apt, still 580 branch) |
-| — · NVIDIA HWE kernel | 6.17.0-1021 | **6.17.0-1032** — *installed, reboot pending* |
+| — · NVIDIA HWE kernel | 6.17.0-1021 | **6.17.0-1032** — rebooted 2026-09-06, GPU healthy, `check-stack.sh` 19/19 |
 | 7 · FEX-Emu | 2605~n | **2607** (`armv8.4`) + **2608** (`wine`) |
 | 8 · FEX RootFS | NVIDIA libs @ 580.159.03 | **re-synced to 580.173.02**; 1.2 GB of orphaned 580.159.03 blobs removed |
 | 9 · Steam | 1.0.0.81 | client auto-updated (~460 MB) |
@@ -969,6 +969,15 @@ The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe 
 |--------|--------------|----------------|
 | **`tools/check-stack.sh`** | Runs the whole [Prerequisites Checklist](#prerequisites-checklist) plus the traps the naive checks miss — RootFS↔host driver drift, and whether each installed Proton's required runtime is actually present. Read-only. Exits 0 only if everything passes. | First thing when diagnosing anything, and after **any** system change |
 | **`tools/sync-rootfs-nvidia.sh`** | Detects a RootFS↔host NVIDIA driver mismatch, fetches the matching x86_64 `.run`, re-copies the 64/32-bit libs and NGX wine DLLs, repoints the `.0/.1/.2` symlinks, and prunes superseded blobs (~1.2 GB per stale version) — only when nothing still references them. Idempotent; no-ops when already in sync. | After **every** host driver bump. See [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump) |
+| **`tools/pick-test-game.sh`** | Finds the **smallest owned game** matching a render API, from Steam's own metadata — owned apps, real over-the-wire `download` sizes, and each title's declared launch options. Flags titles carrying a non-Windows depot. | Before installing anything to test a graphics hypothesis. It picked PEAK (1.45 GiB) over Shadow of the Tomb Raider (36 GB) — 25:1 |
+| **`tools/setup-mingw.sh`** | Fetches mingw-w64 from **Ubuntu's official archive** and unpacks it to a local prefix. **No sudo, nothing installed system-wide.** | When you need to build Windows PE binaries to test something under FEX |
+| **`tools/fex-inject-tests.sh`** | Builds and runs the Windows-side injection tests under **both FEX and Box64**. Running both is the point — see the note below. | Before betting time or money on any injection-based route |
+
+> **Why every FEX test runs under Box64 too.** An early inline-hook test failed identically under
+> both — which is what exposed it as *our* bug (a 12-byte patch clobbering its own jump target)
+> rather than a translator defect. **When two unrelated JITs fail the same way, suspect the test.**
+> That single discipline caught two false negatives in one night; the ReShade standalone result was
+> the second.
 
 ```bash
 ./tools/check-stack.sh                    # full health check
