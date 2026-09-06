@@ -307,6 +307,20 @@ not a dependency — **do not download one.**
 - **`ccoredesenvolvimento/dlss5-linux-bridge`** — real reverse-engineering, dead project (one
   commit, no releases), D3D12-only and x86-64-only. ARM64 mentioned nowhere.
 
+#### Clean up after every experiment
+
+Test rigs accumulate silent contaminants. Each of these was left behind in one session and only
+found by an explicit audit — **any of them would have corrupted a later result**:
+
+| Leftover | Why it matters | Remove with |
+|---|---|---|
+| `dxgi.dll` (ReShade) in a game dir | Silently injects into **every** future run of that title — a benchmark would measure ReShade too | delete it; keep a copy outside the game |
+| `/usr/lib/aarch64-linux-gnu/nvidia/wine/` | Hand-made, unmanaged by any package, and **changes what the x86-64 Proton resolves** | `sudo rm -rf` once the NGX experiment concludes |
+| `compatdata/test*` prefixes | ~300 MB each; three of them were sitting unnoticed | `rm -rf` |
+| Stub `.so` files named like NGX snippets | Can be mistaken for NVIDIA artifacts — this nearly happened | delete; verify provenance via `strings … /dvs/p4/build/` |
+
+**Audit before trusting any new measurement**, not after.
+
 #### Experiments worth running
 
 #### A · NGX gate probe — **RUN 2026-09-05. The gate is NOT GPU architecture.**
@@ -1574,8 +1588,9 @@ These games are selected to validate the hypothesis that DX11 games (via DXVK) w
 ### Installed — Not Yet Tested
 
 > **Which machine:** this is the **DGX Spark (4 TB)** library. The ZGX Nano test rig has a 1 TB disk
-> and as of 2026-09-05 holds only Half-Life 2 (+ Lost Coast, Episode One, Episode Two) and
-> Esoteric Ebb — so anything below has to be downloaded there first. Findings transfer between the
+> and as of 2026-09-06 holds Half-Life 2 (+ Lost Coast, Episode One, Episode Two), Esoteric Ebb,
+> **PEAK** (DX12 injection testbed) and **NBA 2K27** (the only legitimate source of
+> `nvngx_dlssnr.dll`) — so anything else below has to be downloaded there first. Findings transfer between the
 > two machines (identical GB10 SoC); *installed state does not*.
 
 Games installed but not yet launched/tested. Grouped by expected compatibility based on graphics API. Sorted alphabetically within each group.

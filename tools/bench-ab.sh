@@ -29,6 +29,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="$HOME/dgx-gaming-work/bench/$APPID-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$OUT"
 
 command -v mangohud >/dev/null || echo "!! mangohud not installed — no CSV, results will not be comparable"
+# asort() is a gawk extension; mawk (Ubuntu's other default) lacks it and would
+# silently produce no statistics. Fail loudly instead.
+AWK=$(command -v gawk || true)
+[ -n "$AWK" ] || { echo "!! gawk required for frametime statistics (asort). sudo apt install gawk"; exit 2; }
 
 cat <<EOF
 This will run $APPID twice per Proton version ($A, $B), ${SECS}s each,
@@ -43,7 +47,7 @@ EOF
 
 stats() { # $1 = mangohud csv
   [ -f "$1" ] || { echo "    (no csv)"; return; }
-  awk -F, 'NR>3 && $2+0>0 { ft[n++]=$2+0; s+=$2 }
+  "$AWK" -F, 'NR>3 && $2+0>0 { ft[n++]=$2+0; s+=$2 }
     END{ if(!n){print "    (no frames)";exit}
       asort(ft); printf "    frames=%d  avg=%.1f FPS  1%%low=%.1f FPS  median=%.2f ms  p99=%.2f ms\n",
         n, 1000/(s/n), 1000/ft[int(n*0.99)], ft[int(n*0.5)], ft[int(n*0.99)] }' "$1" 2>/dev/null \
