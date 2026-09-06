@@ -112,6 +112,45 @@ is satisfied and DLSS initialises. Expect it to fail — `nvngx.dll` is the Wine
 `nvngx.dll` that NVIDIA does not ship — but the test costs one directory and confirms whether this is
 a packaging gap NVIDIA could close or a genuine architectural wall.
 
+#### Proton 11.0 x86-64 — confirmed running on GB10 (2026-09-05)
+
+First Proton 11 result for this log. **Esoteric Ebb** (Unity 6 / IL2CPP, DX11 — already logged as
+known-good on Proton 10.0, so a clean A/B control) launched and ran under
+`proton-11.0-2c-x86_64`, with the GPU visible all the way down the stack:
+
+```
+Proton: 1788504981 proton-11.0-2c-x86_64
+depot: 4.0.20260805.254769          pressure-vessel: 0.20260805.0
+info:  DXVK: v2.7.1-498-ga6764047e587178
+info:  Found device: NVIDIA GB10 (NVIDIA 580.173.2)
+```
+
+**What this establishes:** Proton 11.0-2c x86-64 creates a prefix, initialises DXVK 2.7.1, enumerates
+the real GB10 through FEX + the Steam Linux Runtime 4.0 container, and launches an IL2CPP Unity
+title, which then kept running until deliberately killed.
+
+**What it does NOT establish — do not read this as a "Tested" row:** no framerate, settings or
+sustained-play observation was taken, and the run was driven from a shell rather than through the
+Steam library. Esoteric Ebb has no DLSS, so it says nothing about NGX either. **TODO:** re-run it as
+a normal Steam launch and record a real performance verdict before moving the table row off
+Proton 10.0.
+
+Two process-level lessons from that run, both worth obeying:
+
+- **Never launch a Proton game under `timeout`.** Killing the launcher does *not* kill the game —
+  Wine reparents the tree and `Esoteric Ebb.exe`, `xalia.exe` and `wineserver` kept burning ~55% CPU
+  after the "test ended", which (on a box whose Steam UI renders in software) made the whole desktop
+  crawl. Shut a test down properly:
+  ```bash
+  "$STEAM/steamapps/common/Proton 11.0/files/bin/wineserver" -k
+  # if anything survives, kill the tree by PID:
+  kill -9 $(ps -eo pid,args | grep -E 'Proton 11.0/files|<Game>.exe' | grep -v grep | awk '{print $1}')
+  ```
+- **`proton run` must go through its runtime container.** Bare, it prints `fsync: up and running` and
+  exits 1 with no log even under `PROTON_LOG=1`. Driving `_v2-entry-point` by hand works for a smoke
+  test but resolves the NVIDIA libraries differently from a real Steam launch, so it is **not** a
+  valid way to test NGX/DLSS behaviour — use Steam for that.
+
 #### Making Proton 11.0 (ARM64) selectable at all
 
 `Proton 11.0 (ARM64)` is **not in Steam's compat-tool registry**. Steam's Steam Play tool list lives
@@ -452,7 +491,27 @@ Note: The desktop shortcut does not work — always launch from terminal via `FE
 > FEX/Steam-CEF interaction (see [FEX #3900](https://github.com/FEX-Emu/FEX/issues/3900),
 > [Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780)).
 >
-> **The fix that worked — disable GPU acceleration at the Chromium level** (kill Steam first):
+> ### ⚠️ This workaround is probably obsolete as of 2026-09-05 — re-test before applying
+>
+> Valve fixed the underlying bug. The **Steam Client Update of 21 July 2026** explicitly
+> *"fixes a steamwebhelper crash that occurred when hardware acceleration is enabled on NVIDIA
+> GPUs"* — precisely the crash this section works around
+> ([Valve #9780](https://github.com/ValveSoftware/steam-for-linux/issues/9780) was the tracking
+> issue; the root cause was a CEF/NVIDIA interaction). Separately, the FEX-side contributor — a CEF
+> file-descriptor-handling change FEX mishandled — was fixed in **FEX-2603** (March 2026).
+>
+> This rig ran client build `1781041600` (~6 Jun 2026, *pre*-fix) until 2026-09-05, when it updated
+> to `1788400362` (*post*-fix), and it runs FEX 2607. **Both halves of the original cause are now
+> fixed upstream**, so the hardware-accel workaround — and its
+> [standing performance cost](#the-fix-has-a-standing-performance-cost) — may no longer be needed.
+>
+> It has **not yet been re-tested on GB10** (Valve's fix targeted native x86-64 NVIDIA Linux; the FEX
+> layer is an extra variable). **TODO:** flip acceleration back on, relaunch, and watch
+> `logs/cef_log.txt` for `exit_code=8704`. Reverting is a one-line JSON edit and the procedure below
+> re-applies it if the crash returns. Keep the `Local State.bak` backup.
+>
+> **The fix (only if the crash actually reproduces) — disable GPU acceleration at the Chromium
+> level** (kill Steam first):
 > ```bash
 > pkill -9 -f ubuntu12; pkill -9 -f steamwebhelper        # stop the loop
 > python3 - <<'PY'
@@ -468,6 +527,23 @@ Note: The desktop shortcut does not work — always launch from terminal via `FE
 > Then relaunch `FEXBash steam` — the UI loads and stays up. The Steam storefront/library then
 > renders in software (fine; it's just the UI). **Games are unaffected** — they render through
 > Proton/DXVK/VKD3D on the real GPU regardless of this setting.
+>
+> #### The fix has a standing performance cost
+>
+> Budget for it (measured 2026-09-05). With
+> hardware accel off, the whole Steam UI is composited on the **CPU**, *and* that CPU work is itself
+> running x86-64-under-FEX. Two consequences that look like "Steam is broken" but aren't:
+>
+> - **Page loads are CPU-bound**, so UI responsiveness is hostage to whatever else the box is doing.
+>   Observed here: store/library pages taking **~30 s to settle** while the machine was at load
+>   average ~5 (an unrelated `llama-server` at ~38% plus a stray Proton prefix at ~55%). The same
+>   pages settle quickly on an idle box. Before blaming Steam, check `uptime` and
+>   `ps -eo pcpu,comm --sort=-pcpu | head`.
+> - **After a Steam client update the CEF caches are wiped**, so the first load of each page rebuilds
+>   them and is much slower than steady state. This resolves itself.
+>
+> This is a genuine trade-off, not a bug: a slow-but-alive UI beats the crash-loop. Games are
+> unaffected either way — once a game is running, UI sluggishness doesn't touch it.
 >
 > Contributing mitigations applied first (recommended, but the Local State change is the decisive
 > one): disable FEX logging (`~/.fex-emu/Config.json` → `"OutputLog":""`, the FEX-dev mitigation
@@ -526,8 +602,12 @@ steam steam://install/4628710   # Proton 11.0  (x86-64 — keeps DLSS)
 steam steam://install/4628740   # Proton 11.0 (ARM64) — native, no DLSS
 steam steam://install/3658110   # Proton 10.0-4 — known-good baseline
 ```
-Each one raises a single **Install** confirmation dialog you click through — that is all the GUI
-involved, and it is not the crashy widget. Confirm with
+Each one raises a single **Install** confirmation dialog you click through — it is not the crashy
+widget. **But this is not a cheap call**: on this stack `steam <url>` re-runs the *entire*
+`steam.sh` bootstrap under FEX before forwarding the URL to the running client — ~60 s each, with
+zenity "Updating Steam runtime…" dialogs flashing over your session. Firing several in a row looks
+exactly like Steam repeatedly crashing and restarting when it is doing nothing of the sort. Send
+them one at a time and expect the noise. Confirm with
 `ls ~/.local/share/Steam/steamapps/appmanifest_*.acf` and watch
 `~/.steam/steam/logs/content_log.txt` for `update finished`.
 
@@ -579,7 +659,7 @@ Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK
 - **Proton 11.0 (ARM64)** for anything GPU-bound — it is fast on the CPU side, and it *does* ship
   dxvk-nvapi, but NGX resolution fails because the aarch64 driver has no `nvidia/wine/nvngx.dll`, so
   DLSS and Frame Generation silently disable
-  ([why](#why-the-arm64-build-loses-dlss-verified-on-this-rig-2026-09-05)). On a 273 GB/s part that
+  ([why](#why-the-arm64-build-loses-dlss-diagnosed-on-this-rig-2026-09-05)). On a 273 GB/s part that
   is usually a net loss.
 
 ### Key Environment Variables (auto-set by Proton)
