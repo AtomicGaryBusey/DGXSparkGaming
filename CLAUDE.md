@@ -165,6 +165,23 @@ list into the right destination:
 Keep the prose terse and factual, matching existing rows. Record *why*, not just *what* —
 the diagnostic narrative (which Vulkan call, which engine subsystem) is the point of this log.
 
+## Reach for a tool BEFORE acting — trigger table
+
+The failure mode here is not forgetting these exist; it is not thinking of them at the decision
+moment. Every row below is a mistake that was actually made in this project. **Match the trigger,
+run the tool, then act.**
+
+| When you are about to… | Run this FIRST | Because |
+|---|---|---|
+| launch a game, for any reason | **`tools/game-run.sh <appid>`** | A hand-launch orphaned a Wine tree that burned ~55% CPU and crawled the desktop. Also the only way a run produces numbers instead of adjectives |
+| install a game to test something | **`tools/pick-test-game.sh <api>`** | Guessing from memory cost 36 GB and 45 min, and pulled a *native Linux* depot that was useless for a Windows-side test |
+| say "version X feels faster/slower" | **`tools/bench-ab.sh`** | "Smooth"/"choppy" is unfalsifiable in a performance log. Take the **second** run of each version |
+| diagnose anything, or after any system change | **`tools/check-stack.sh`** | 19 checks incl. traps invisible to the naive ones (RootFS drift, missing Proton runtimes) |
+| finish an `apt` run that touched the driver | **`tools/sync-rootfs-nvidia.sh`** | A driver bump silently desyncs the RootFS's x86 NVIDIA libs; DLSS/NGX then breaks in non-obvious ways |
+| test whether something works under FEX | **`tools/fex-inject-tests.sh`** | Run it under **Box64 too** — identical failure across two JITs means the *test* is wrong |
+| build anything Windows-side | **`tools/setup-mingw.sh`** | Ubuntu's own mingw into a local prefix. Never `sudo`-install a third party's toolchain script |
+| ask "what does Steam think about X" | **`tools/appinfo.py`** | Names, depots, real download sizes, launch options — from Steam's own metadata, not guesswork |
+
 ## Common requests & how to handle them
 
 - **"Add a result for <game>"** — ask the user for the observed behavior (FPS, settings,
@@ -173,6 +190,9 @@ the diagnostic narrative (which Vulkan call, which engine subsystem) is the poin
 - **"What should I test next?"** — the `:star:` entries in Installed-Not-Yet-Tested are
   high-priority (they probe a specific engine/API hypothesis). The id Tech family and
   Rockstar-FPU questions are the most scientifically interesting open threads.
+- **"Add a result for <game>"** — if it is a *performance* claim, it needs numbers:
+  `tools/game-run.sh` at minimum, `tools/bench-ab.sh` for any version comparison. Record which
+  Proton was used — read it from the prefix's `config_info`, not from intent.
 - **System changed** — run **`tools/check-stack.sh`** first, then keep the **Status**, **Stack
   Currency** and **System Info** sections current. Kernel, driver, Steam library, box64, FEX and the
   RootFS are all readable from the agent shell; **`sudo` is not** (it needs a password) — hand the
