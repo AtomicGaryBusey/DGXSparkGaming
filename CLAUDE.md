@@ -28,6 +28,12 @@ failure it prevents — because that rationale is the point of this repo. Curren
   injection ✅.) Sources are deliberately **ours**, not a third party's prebuilt binaries.
 - **`tools/appinfo.py`** — binary VDF parser for Steam's `appinfo.vdf` (names, depots, real download
   sizes, launch options). Underpins `pick-test-game.sh`.
+- **`tools/game-run.sh`** — **use this for every test launch; never launch a game by hand.** Runs the
+  game in a systemd cgroup scope (atomic teardown — Wine cannot reparent out), enables `DXVK_HUD` +
+  MangoHud CSV, logs GPU telemetry, and pre-flights compat tool / shader-cache warmth / machine load.
+  `DRY_RUN=1` checks only. This replaces the hand-written hygiene rules with mechanism.
+- **`tools/bench-ab.sh`** — A/B two Protons on one title, second-run-only, frametime stats. Use
+  before any "X feels faster" claim reaches the results table.
 
 ### Process hygiene when testing (all four of these bit us on 2026-09-05)
 

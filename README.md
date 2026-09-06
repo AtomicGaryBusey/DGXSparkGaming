@@ -406,7 +406,13 @@ whether a 165 MB CUDA-bearing PE drives `nvcuda.dll` through FEX → vkd3d-proto
 
 Re-run properly, as ReShade 6.8.0.2155 dropped in as `dxgi.dll` in **PEAK** (AppID 3527290 —
 Windows-only depot, 1.45 GiB, explicit `PEAK using DX12` launch option), launched via
-`steam -applaunch 3527290 -force-d3d12` under Proton on GB10. From `ReShade.log`:
+`steam -applaunch 3527290 -force-d3d12` on GB10, under **Proton Experimental
+`experimental-11.0-20260903b-x86_64`** — Steam's default, since no compat tool was pinned. That is
+an 11.0-branch x86-64 build, so it is representative of the Path A stack, but the result is
+attributable to Experimental and **not** to `proton-11.0-2c` specifically. (Caught by
+`tools/game-run.sh`'s pre-flight on its first use, which reads the actual Proton out of the prefix's
+`config_info` rather than trusting intent. **TODO:** re-run pinned to `proton_11` to confirm it
+carries over.) From `ReShade.log`:
 
 ```
 Initializing crosire's ReShade version '6.8.0.2155' (64-bit)
@@ -972,6 +978,15 @@ The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe 
 | **`tools/pick-test-game.sh`** | Finds the **smallest owned game** matching a render API, from Steam's own metadata — owned apps, real over-the-wire `download` sizes, and each title's declared launch options. Flags titles carrying a non-Windows depot. | Before installing anything to test a graphics hypothesis. It picked PEAK (1.45 GiB) over Shadow of the Tomb Raider (36 GB) — 25:1 |
 | **`tools/setup-mingw.sh`** | Fetches mingw-w64 from **Ubuntu's official archive** and unpacks it to a local prefix. **No sudo, nothing installed system-wide.** | When you need to build Windows PE binaries to test something under FEX |
 | **`tools/fex-inject-tests.sh`** | Builds and runs the Windows-side injection tests under **both FEX and Box64**. Running both is the point — see the note below. | Before betting time or money on any injection-based route |
+| **`tools/game-run.sh`** | Launches a game **inside a systemd cgroup scope** (Wine cannot reparent out of it — teardown is atomic), turns on `DXVK_HUD` + MangoHud CSV logging, records GPU telemetry alongside, and runs pre-flight checks: compat tool actually in use, shader-cache warmth, machine load. `DRY_RUN=1` for checks only. | **Every** test launch. Never launch by hand |
+| **`tools/bench-ab.sh`** | A/B two Proton versions on one title and emit frametime statistics (avg, 1% low, median, p99). Discards the first run of each version automatically. | Any "version X feels faster" claim, before it goes in the table |
+
+> **Why `game-run.sh` exists.** Two of this project's worst self-inflicted failures came from
+> hand-launching: a `timeout`-wrapped launch that killed the launcher but not the game (Wine
+> reparented; the orphaned tree burned ~55% CPU and made the desktop crawl), and results recorded as
+> "smooth"/"choppy" in a log whose whole purpose is performance comparison. Written rules did not
+> prevent either — a cgroup and a CSV do. It earned itself on first use, catching that the ReShade
+> test had actually run under Proton **Experimental**, not the version we believed.
 
 > **Why every FEX test runs under Box64 too.** An early inline-hook test failed identically under
 > both — which is what exposed it as *our* bug (a 12-byte patch clobbering its own jump target)
