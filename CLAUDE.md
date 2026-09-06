@@ -20,6 +20,36 @@ failure it prevents — because that rationale is the point of this repo. Curren
 - **`tools/sync-rootfs-nvidia.sh`** — re-syncs the FEX RootFS's x86 NVIDIA libs to the host driver
   after an apt bump, and prunes the superseded blobs. Idempotent, no sudo, `DRY_RUN=1` supported.
 
+### Process hygiene when testing (all four of these bit us on 2026-09-05)
+
+Testing here means launching Steam, Proton and games on the **user's live desktop**. Every one of
+these caused a real, visible problem in one session. Obey them.
+
+1. **Never wrap a Proton game launch in `timeout`.** Killing the launcher does *not* kill the game —
+   Wine reparents the tree, and `<game>.exe` + `xalia.exe` + `wineserver` keep running and burning
+   CPU after you think the test ended. On a box whose Steam UI renders in software, that makes the
+   whole desktop crawl and looks to the user like Steam is broken. Shut a test down explicitly:
+   ```bash
+   "$STEAM/steamapps/common/<Proton>/files/bin/wineserver" -k
+   kill -9 $(ps -eo pid,args | grep -E '<Proton>/files|<Game>.exe' | grep -v grep | awk '{print $1}')
+   ```
+2. **Never `pgrep -f <pattern>` for a pattern that appears in your own command line.** The watcher
+   matches *itself*, so `until ! pgrep -f 'foo'; do sleep …; done` never exits. Two watchers spun for
+   ~80 minutes each this way before anyone noticed. Use a bracket trick (`pgrep -f '[f]oo'`),
+   `ps -eo args | grep -q '[f]oo'`, or check real state (an appmanifest `StateFlags`, a file, a PID)
+   instead of a process name.
+3. **Poll for a condition you have actually seen occur.** One watcher waited forever for
+   `update finished` lines Steam never writes for compat tools. If you cannot point at a real
+   example of the string, poll something else.
+4. **`setsid` does not fully detach a launched Steam** — the launching bash stays its ancestor
+   (`bash → FEX → exe → steam`). Check parentage with `ps -o ppid=` before killing any long-lived
+   shell, and never process-group-kill one you did not verify.
+
+Related, from the same session: `kill -9` on Steam leaves `~/.steam/steam.pid` pointing at a dead
+process, and the **next launch then silently does nothing** — `rm ~/.steam/steam.pid` first. And
+`steam steam://…` is *not* a cheap call: it re-runs the whole `steam.sh` bootstrap under FEX (~60 s,
+with zenity dialogs flashing over the user's screen). Warn the user before firing several.
+
 Public repo: `https://github.com/AtomicGaryBusey/DGXSparkGaming` (remote `origin`, branch `main`).
 
 ## The translation stack (why games pass or fail)
