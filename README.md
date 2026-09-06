@@ -294,6 +294,31 @@ CPU-bound titles included. Keep it installed as a canary — retest when Valve s
 **TODO:** once a native ARM64 Steam client exists, redo this head-to-head on one CPU-bound title
 (Stellaris/Factorio-shaped) and one GPU-bound DLSS title, and record the split.
 
+#### Proton 11 regression on Half-Life 2 (2026-09-05)
+
+**Measured, on this rig, by AGB — Proton 10.0-4b is clearly better than Proton 11.0-2c for HL2.**
+
+| Proton | Result |
+|--------|--------|
+| **10.0-4b** (`proton_10`) | **Smooth.** |
+| **11.0-2c x86-64** (`proton_11`) | First launch unplayable; second launch improved but **still markedly slower and choppier than 10**, with audio glitching tracking the frame-time spikes. |
+
+**Why the second run matters:** the first Proton 11 launch was confounded — switching Proton version
+empties `shadercache/220/DXVK_state_cache/`, so every pipeline compiled at draw time, *and* Fossilize
+was saturating all 20 cores (load average **18.5**) during play. That first result proves nothing. The
+**second** run, with caches warm and the box otherwise idle, is the real measurement — and it was
+still worse than 10.
+
+**Scope: this is a Half-Life 2 result only.** It has not been retested on any other title, so treat it
+as a per-title caveat, not a blanket verdict on Proton 11. Source-engine-specific and general
+regressions are both consistent with one data point. **TODO:** repeat on a second title (Esoteric Ebb
+is the obvious control — already known-good on both 10 and Experimental) before generalising.
+
+> **Method note for future A/Bs:** always take the *second* run of each Proton version. A first launch
+> after a version switch measures shader compilation, not the runtime. Check
+> `ls shadercache/<appid>/DXVK_state_cache/` is non-empty and `uptime` is quiet before believing a
+> number.
+
 ### Driver Branch Policy
 
 **Stay on 580.** Not conservatism for its own sake — that is where GB10 support lives:
@@ -655,6 +680,37 @@ DISPLAY=:1 setsid FEXBash -c steam &
 > a reliable check on its own, because a shell whose own command line contains the pattern matches
 > itself (see [process hygiene](CLAUDE.md)). Use the bracketed `'[s]teamwebhelper'` form.
 
+> ### ⚠️ Steam window "crashing and relaunching" and stealing focus — usually neither
+>
+> Hit 2026-09-05 while playing. The Steam window kept vanishing and reappearing, **pulling keyboard
+> focus off the running game and off other windows**. It reads exactly like a crash-loop. It is not:
+>
+> - the client had been **up 19 minutes continuously** (no `Startup` lines in `console-linux.txt`),
+> - **every `steamwebhelper` was the same age** as the client — nothing respawning,
+> - `exit_code=8704` count unchanged.
+>
+> What the CEF log actually showed over those 20 minutes:
+>
+> ```
+> 240  X error received
+> 235  ChangeWindowAttributesRequest      ← Steam's CEF fighting the X server
+>   1  _NET_WM_STATE_KEEP_ABOVE
+> ```
+>
+> Steam's Chromium UI repeatedly fails to set window attributes under FEX and re-maps/raises its
+> window, which yanks focus. **Check the restart log before believing a crash-loop** — the fixes are
+> completely different.
+>
+> **The fix: don't run the CEF UI at all during play.**
+> ```bash
+> DISPLAY=:1 setsid FEXBash -c 'steam -no-browser -silent' &
+> DISPLAY=:1 FEXBash -c 'steam -applaunch 220'      # launch by AppID
+> ```
+> `-no-browser` removes the entire Chromium UI — which is both the source of the X-error window churn
+> *and* the thing that renders in software and makes the client sluggish. You lose the store and
+> library views; game launching by AppID still works. On a box used for gaming rather than browsing,
+> that is a good trade, and it sidesteps the crashy CEF dropdown as a bonus.
+
 > **⚠️ Steam `steamwebhelper` crash-loop on first launch (hit on ZGX Nano, 2026-06-18).** Steam
 > may open, then the window closes/reopens endlessly (and the desktop work-area/your terminal may
 > shrink each cycle). Root cause: Steam's CEF UI spawns a **GPU process that crashes under FEX**
@@ -787,10 +843,11 @@ box64 --version
 
 ### Step 4: Configure Steam for Gaming
 
-1. Use **Proton 11.0 x86-64** (AppID `4628710`) as the default compatibility layer — *not* the
-   ARM64 build, which has no NVAPI and therefore no DLSS. See
-   [Which Proton on ARM64](#which-proton-on-arm64). Proton 10.0-4 (`3658110`) remains a valid
-   known-good fallback and is what NVIDIA's own Spark guide specifies.
+1. Use an **x86-64 Proton** — **11.0** (AppID `4628710`) or **10.0-4b** (`3658110`) — *not* the ARM64
+   build, which cannot run here at all. Proton 10.0-4b is what NVIDIA's own Spark guide specifies and
+   what most results in this log were recorded on; it is also the measured winner on
+   [Half-Life 2](#proton-11-regression-on-half-life-2-2026-09-05). **Always record which you used.**
+   See [Which Proton on ARM64](#which-proton-on-arm64).
 2. Enable **DLSS 4 + Multi-Frame Generation** in supported games. DLSS 5 is not reachable on GB10 —
    see [DLSS 5 Status](#dlss-5-status-2026-09-05).
 3. Target **5120x1440 @ 120 Hz** — the ceiling is NVIDIA Linux's lack of **DSC**, not the connector, so it applies on both HDMI 2.1a and DP 1.4a. Drop to 3840×1080 if you want 240 Hz. See [Display Notes](#display-notes).
@@ -920,7 +977,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Heretic: Shadow of the Serpent Riders** | DOS | Smooth | Classic DOS version. No issues. |
 | **Heretic + Hexen** (remastered) | KEX | Smooth | KEX remaster (SDL3). Both Heretic and Hexen from the same launcher. No issues. |
 | **Half-Life** | OpenGL | Smooth, maxed, 5120x1440 | GoldSrc engine via DXVK. No issues. |
-| **Half-Life 2** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
+| **Half-Life 2** | DX9 | Smooth, maxed, 5120x1440 — **on Proton 10** | Source engine via DXVK. No issues on Proton 10.0-4b. **Notably worse on Proton 11.0-2c** — choppy and inconsistent even with warm caches; see [Proton 11 regression](#proton-11-regression-on-half-life-2-2026-09-05). Use Proton 10 for this title. |
 | **Half-Life 2: Episode One** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
 | **Half-Life 2: Episode Two** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
 | **Half-Life 2: Lost Coast** | DX9 | Smooth, maxed, 5120x1440 | Source engine via DXVK. No issues. |
