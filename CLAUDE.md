@@ -34,6 +34,10 @@ failure it prevents — because that rationale is the point of this repo. Curren
   `DRY_RUN=1` checks only. This replaces the hand-written hygiene rules with mechanism.
 - **`tools/bench-ab.sh`** — A/B two Protons on one title, second-run-only, frametime stats. Use
   before any "X feels faster" claim reaches the results table.
+- **`tools/dlssnr-control-run.sh`** — bisects the DLSS-5 NR injection chain against a game hang:
+  arms one of four layers (`baseline`/`reshade`/`probe`/`nr`) by file, then samples CPU until it can
+  say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer
+  owns the bug. Exists because a deadlock was nearly attributed to the NR pass with no baseline.
 
 ### Process hygiene when testing (all four of these bit us on 2026-09-05)
 
@@ -60,6 +64,11 @@ these caused a real, visible problem in one session. Obey them.
 4. **`setsid` does not fully detach a launched Steam** — the launching bash stays its ancestor
    (`bash → FEX → exe → steam`). Check parentage with `ps -o ppid=` before killing any long-lived
    shell, and never process-group-kill one you did not verify.
+
+**Cyberpunk 2077's REDprelauncher looks like it "dies" when it succeeds.** Its window closing is
+the normal hand-off to `Cyberpunk2077.exe`. On 2026-09-06 that was reported as a failure while the
+game was in fact already running and initialising DLSS. It *is* also genuinely flaky (2 real
+failures in 5 launches) — so check for a >10-thread `Cyberpunk2077.exe` before concluding anything.
 
 Related, from the same session: `kill -9` on Steam leaves `~/.steam/steam.pid` pointing at a dead
 process, and the **next launch then silently does nothing** — `rm ~/.steam/steam.pid` first. And
@@ -134,6 +143,18 @@ unqualified; that came from reasoning, not benchmarking. See the README's *Which
   load. Watch whether other Rockstar/RAGE titles share it.
 - **Ubisoft Connect launcher** — crashes outright; blocks all Far Cry titles even though the
   Dunia engine itself runs when the .exe is launched directly.
+- **ReShade-induced engine deadlock (mechanism unknown)** — the game wedges at **0% CPU** with
+  every thread parked (no `dma_fence` wait, no Xid, no crash dump). Confirmed on Cyberpunk 2077,
+  triggered by a character call putting a face on screen. Bisected 2026-09-06: ReShade **alone**
+  reproduces it with no add-on loaded, and the identical scene is clean with ReShade absent — so
+  ReShade's presence is *necessary*. Blocks any ReShade-dependent route (incl. the DLSS 5 NR
+  add-on) over a real play session. **Do not attribute a hang to injected code before running
+  `tools/dlssnr-control-run.sh baseline`.**
+  *Marker, not mechanism:* `Ignoring LoadLibrary('PhysX3Common_x64.dll') call to avoid possible
+  deadlock` appears in both hanging runs. It reads like a refused load and is **not** one — ReShade
+  calls the real `LoadLibrary` unconditionally and returns its handle; only its own delayed-hook
+  install is skipped on mutex contention (`source/hook_manager.cpp`). This log published the wrong
+  reading before checking the source. Treat the line as evidence of hook-mutex contention only.
 - **RTX Remix dual-process IPC** — HL2 RTX, any Remix title: 32-bit↔64-bit shared-memory
   bridge breaks under translation.
 - **Wave64-only AMD shaders** — Black Myth: Wukong requires `WaveSize(64)`; NVIDIA is
@@ -182,6 +203,7 @@ run the tool, then act.**
 | test whether something works under FEX | **`tools/fex-inject-tests.sh`** | Run it under **Box64 too** — identical failure across two JITs means the *test* is wrong |
 | build anything Windows-side | **`tools/setup-mingw.sh`** | Ubuntu's own mingw into a local prefix. Never `sudo`-install a third party's toolchain script |
 | ask "what does Steam think about X" | **`tools/appinfo.py`** | Names, depots, real download sizes, launch options — from Steam's own metadata, not guesswork |
+| blame a hang on the injection chain | **`tools/dlssnr-control-run.sh baseline`** | The Cyberpunk deadlock was nearly published as "the NR pass hangs the game" — the pass was already *disabled* when it died, and nobody had ever loaded a save on this rig with the chain absent |
 | **kill or wait on processes by name** | **`tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
 
 ## Common requests & how to handle them

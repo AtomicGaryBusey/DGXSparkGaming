@@ -10,7 +10,7 @@
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. DLSS 5 **not reachable** — the Linux driver ships no NR snippet at any version. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: **feature 18 created and evaluated on GB10 (2026-09-06)** via the injection route — correctness unverified, and not playable (ReShade deadlocks the game). The Linux *driver* still ships no NR snippet at any version. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -28,7 +28,7 @@ the driver row is a deliberate hold.
 | Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
 | Proton | **11.0-2c x86-64** (+ 11.0-2c ARM64, 10.0-4b) | 11.0-2 (2026-08-21) | Bundles FEX-2607, DXVK 2.7.1, VKD3D-Proton 3.0a, dxvk-nvapi 0.9.2. Installed 2026-09-05; Experimental retained |
 | Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
-| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path** — but not impossible. One unsanctioned route survived refutation and all three FEX risks tested clean. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
+| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path** — but the unsanctioned route now *runs*: `CreateFeature(18)` + `EvaluateFeature` returned Success on GB10 under FEX, 2026-09-06, fed by Cyberpunk's real DLSS-SR frame. Unverified visually, and a [ReShade-induced deadlock](#the-deadlock-is-reshades-not-dlss-5s--bisected-2026-09-06) blocks any real play session. See [Path A executed](#path-a-executed--2026-09-06-cyberpunk-2077-on-gb10) |
 
 ### DLSS 5 Status (2026-09-05, corrected same day)
 
@@ -38,7 +38,10 @@ the driver row is a deliberate hold.
 > different reasons than first given. The wrong version is kept visible below because the *reason*
 > it was wrong is the most useful thing here.
 
-**Verdict: no supported path, and nobody has run DLSS 5 on ARM64. But "impossible" is wrong.**
+**Verdict: no supported path — but as of 2026-09-06, feature 18 creates *and evaluates* on a
+GB10.** See [Path A executed](#path-a-executed--2026-09-06-cyberpunk-2077-on-gb10). Correctness
+is **unconfirmed** (no control, no visual A/B) and it is nowhere near playable. "Impossible" was
+always the wrong word.
 Refined 2026-09-05 after a 102-agent adversarial research run ([notes/](notes/)) plus first-hand
 probes on this machine. Three-part answer:
 
@@ -50,14 +53,14 @@ probes on this machine. Three-part answer:
   under Linux/Proton for the first time on **2026-09-04**, on driver **610.57.04** — a branch this
   machine can install today. It bypasses the driver's NGX dispatch entirely.
   **GB10 clears every hardware gate that was measured.** See
-  [the surviving path](#the-one-surviving-path-and-why-it-is-still-a-long-shot).
+  [the surviving path](#the-one-surviving-path--and-why-it-is-still-a-long-shot).
 - **Practically: don't expect to play anything.** Realistic best case is *"feature 18 returns
   Success and composites a correct frame on a GB10"* — a genuine first worth logging, not a
   playable setting.
 
 | | P |
 |---|---|
-| Feature 18 returns `Success` + correct frame on GB10 | **~35-45%** — revised up 2026-09-06: all three FEX-specific risks tested and **passed** ([C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), [D](#d-ngx-forwarder-under-fex-run-2026-09-05-it-loads-and-executes), [E](#e-reshade-under-fex-run-2026-09-06-full-injection-chain-works)). Remaining risk is concentrated in one untested step: a 165 MB CUDA-bearing PE driving `nvcuda.dll` through FEX → vkd3d-proton → NVX |
+| Feature 18 returns `Success` + correct frame on GB10 | **~35-45%** — revised up 2026-09-06: all three FEX-specific risks tested and **passed** ([C](#c--inline-hooking-under-fex--run-2026-09-05-it-works), [D](#d--ngx-forwarder-under-fex--run-2026-09-05-it-loads-and-executes), [E](#e--reshade-under-fex--run-2026-09-06-full-injection-chain-works)). Remaining risk is concentrated in one untested step: a 165 MB CUDA-bearing PE driving `nvcuda.dll` through FEX → vkd3d-proton → NVX |
 | Playable frame rate | **~0%** — the effect costs 39% frame time on a 4090; GB10 has 273 GB/s against a 5090's ~1.8 TB/s, plus FEX overhead, and no MFG to spend the headroom on |
 
 #### B1 — No R615/R616 Linux driver exists → **STANDS**
@@ -248,6 +251,12 @@ archives, unpacked locally):
 Result: **242,176 bytes — byte-identical in size to the upstream release**, which corroborates that
 their published binary matches its published source.
 
+> Since **2026-09-06** the local build is **patched** and no longer matches upstream (242,688 bytes)
+> — see [the NR parameter contract](#the-nr-parameter-contract--recovered-from-nvidias-own-plugin).
+> `DLSSNR.UICorrection` no longer hardcodes `1` (nothing supplies a UI layer for it to correct), and
+> the five optional resource inputs are cleared every frame because the parameter block is shared
+> with the game's own DLSS feature, so an unwritten key holds whatever was last in it.
+
 **Verified on GB10** (PEAK, DX12, 5120×1440, Proton Experimental):
 
 ```
@@ -291,6 +300,156 @@ driving `nvcuda.dll` through FEX → vkd3d-proton → NVX) works on GB10.
 > "DLSS 5 Neural Rendering created on GB10 — a world first"; the control killed it. Hand-supplying
 > the ~61 DLSSNR.* parameters could not close the gap either, which is precisely why the real
 > add-on — which encodes the correct protocol — was needed.
+
+#### Path A executed — 2026-09-06 (Cyberpunk 2077 on GB10)
+
+**Feature 18 was created *and evaluated* on a GB10, driven by a real game's DLSS-SR output.** This
+is the furthest this log has taken the chain. It is *not* yet a claim that the resulting frame is
+correct — the caveats below are the important part.
+
+Setup: Cyberpunk 2077, **Proton Experimental**, 5120x1440, ReShade 6.8.0.2155 as `dxgi.dll`,
+`dlssnr-linux.addon64`, the `nvngx.dll_nrfwd.dll` forwarder, and `nvngx_dlssnr.dll` symlinked out of
+NBA 2K27. Launch options:
+`PROTON_ENABLE_NVAPI=1 WINEDLLOVERRIDES="dxgi=n,b" %command% -skipStartScreen`
+
+```
+ngx-probe: hooked 5 NGX exports on _nvngx.dll
+swapchain created: 5120x1440 format=28 [srgb (SDR)] buffers=3
+ngx-probe: D3D12_CreateFeature(feature=1 [SuperSampling (DLSS-SR)])
+             Width=2970 Height=835   OutWidth=5120 OutHeight=1440
+ngx-probe: D3D12_EvaluateFeature #1
+             Color 2970x835 f10 - Output 5120x1440 f10 - Depth 2970x835 f39
+             MotionVectors 2970x835 f10 - Jitter -0.245/0.430 - MV.Scale 2970/835
+nr-fwd: forwarder loaded
+nr-fwd: float parameters go through vtable slot 6
+nr-fwd: snippet init => 0x1 (Success)
+nr-fwd: model nvngx_dlssnr.dll -- version 310.8.0.0, 165840496 bytes, sha256=e16bcf15...
+nr-fwd: CreateFeature(18) => 0x1 (Success) handle=0000000075D6F070
+nr-fwd: textures 5120x1440 format=10 (answer, original, proxy)
+nr-fwd: EvaluateFeature #1 => 0x1 (Success)
+nr-fwd: EvaluateFeature #2 => 0x1 (Success)
+nr-fwd: EvaluateFeature #3 => 0x1 (Success)
+```
+
+**Why this got further than the hand-written harness.** The harness stalled at
+`EvaluateFeature => 0xBAD00005 (InvalidParameter)`. The add-on succeeds because it **probes the
+`NVSDK_NGX_Parameter` vtable at runtime** instead of assuming a layout — `float parameters go
+through vtable slot 6`, not the slot 1 the harness assumed. That one line explains every
+`0xBAD00005` in the previous experiment. Guessing an ABI failed; measuring it worked.
+
+**What this does NOT prove — read before citing it:**
+
+1. **No control was run.** The feature-99 experiment proved `CreateFeature` rubber-stamps. There is
+   **no equivalent control for `EvaluateFeature` yet.** Until a deliberately bogus input is shown to
+   be *rejected*, `Success` is suggestive, not conclusive.
+2. **No visual confirmation.** F10 was toggled three times (`pass DISABLED` / `ENABLED` /
+   `DISABLED`) with no change observed. Given what NR actually is (next section), subtlety is
+   expected — but "subtle" and "not running" are indistinguishable without an A/B capture.
+3. **Under 600 frames rendered.** `kHeartbeatEvery = 600` and no `#600` line was ever logged, so the
+   session presented fewer than 600 frames total — under 5 FPS. Nothing here measures performance.
+
+**The session ended in a deadlock — since attributed to ReShade, NOT to the NR pass.** Loading a
+save wedged the game: all 71 threads parked (62 in `anon_pipe_read`, 5 futex, 3 poll), **0% CPU
+across a 20 s sample**, no log growth for 11 minutes, no `dma_fence` waits, no Xid, nothing in
+`dmesg`. A four-layer bisection run the same evening (below) traced it to ReShade itself. The NR
+pass was already **DISABLED** when the game died, which was the first clue that it was not the
+culprit.
+
+Raw log: `~/dgx-gaming-work/evidence/cp2077-dlssnr-2026-09-06-run1.log`.
+
+#### The deadlock is ReShade's, not DLSS 5's — bisected 2026-09-06
+
+Blaming the NR pass would have been the natural write-up: it was the newest, least-understood thing
+in the process. It was also wrong. `tools/dlssnr-control-run.sh` arms one layer of the injection
+chain at a time; the layers were run in order on **the same save, the same scene, and settings
+pinned and verified from the game's own `UserSettings.json`** (DLSS Balanced, Frame Generation off —
+the configuration the hang actually occurred in).
+
+| Layer | What is in the process | Trigger scene | Result |
+|---|---|---|---|
+| `baseline` | nothing — stock Cyberpunk | save load | **clean**, 20/20 samples alive |
+| `baseline` | nothing — stock Cyberpunk | **character call, face on screen** | **clean**, 36/36 samples alive |
+| `reshade` | ReShade only — **no add-on, no NR code** | **character call, face on screen** | **DEADLOCK** |
+| `probe` / `nr` | not reached — the bisection stops at the first hanging layer | | |
+
+CPU per 15 s sample is unambiguous — a live game holds 9,000-17,000 ticks; the deadlock floor is
+10-23. There is no judgement call in that.
+
+**ReShade's presence is necessary for the hang.** The identical scene that kills the `reshade` layer
+plays through untouched with ReShade absent.
+
+**The mechanism is NOT known.** A marker appears in both hanging runs and neither clean one:
+
+```
+WARN | Ignoring LoadLibrary('PhysX3Common_x64.dll') call to avoid possible deadlock.
+```
+
+> ⚠️ **The obvious reading of that line is wrong, and this log published it before checking.**
+> It looks like "ReShade refused to load PhysX, so the game waits forever for a module that never
+> arrives" — tidy, plausible, and false. ReShade's source (`source/hook_manager.cpp`) says
+> otherwise:
+>
+> ```cpp
+> const HMODULE handle = trampoline(lpFileName);   // the real LoadLibrary — unconditional
+> if (handle != nullptr && handle != g_module_handle)
+>     install_delayed_hooks(lpFileName, true);     // only ReShade's own bookkeeping
+> return handle;                                   // real handle returned regardless
+> ```
+>
+> `install_delayed_hooks()` is what gives up on a `try_to_lock` failure, and all it skips is
+> installing *ReShade's* hooks into the newly loaded module. **PhysX loads normally and the game
+> gets a valid handle.** Nothing is refused. A "preload PhysX so ReShade need not refuse it"
+> experiment was planned off this misreading and would have tested nothing.
+
+What the line *does* indicate is **contention inside ReShade's hook machinery** at the moment of the
+hang: `s_delayed_hook_paths_mutex` was already held by another thread, on two threads in the same
+millisecond in the 20:13 run and three in the 19:12 run. That is a symptom worth keeping, not a
+diagnosis. **The mechanism remains unidentified — the next step is thread backtraces from the
+deadlocked process, not another blind experiment.**
+
+> **This constrains the whole injection route regardless of mechanism.** The NR add-on *requires*
+> ReShade — that is how it obtains its D3D12 hooks and overlay. Since ReShade alone reliably
+> deadlocks Cyberpunk on this rig, **no DLSS 5 result can survive a normal play session here**,
+> however well feature 18 behaves in isolation. It also re-explains the "<600 frames rendered" note
+> above: that session was not slow because NR is expensive, it was walking into this deadlock the
+> whole time.
+
+Reports: `~/dgx-gaming-work/runs/control-*.txt`.
+
+#### The NR parameter contract — recovered from NVIDIA's own plugin
+
+NBA 2K27 ships `data/streamline/sl.dlss_nr.dll` — **NVIDIA's own consumer of the NR snippet**, and
+therefore the authoritative parameter list. It sits alongside `sl.interposer.dll`, `sl.dlss.dll`,
+`sl.dlss_g.dll` and the three `nvngx_*` models: a complete shipping DLSS 5 integration on disk.
+`strings` yields **60** `DLSSNR.*` keys. But the plugin is only one *caller* — the authority on what
+is actually consumed is the **snippet**, `nvngx_dlssnr.dll`, which reads **61**. Checking both is
+what kept the next paragraph honest.
+
+Three-way diff — snippet (61 read) vs plugin (60 written) vs this project's forwarder (35 set):
+
+- **Every one of the forwarder's 35 keys is real.** The snippet reads all of them. No fabrications.
+- **`DLSSNR.GlobalToneStrength` is written by NVIDIA's own plugin but never read by the snippet** —
+  dead or legacy in build 310.8.0.0. *Do not add it.*
+- **`DLSSNR.ScalingRatio` is read by the snippet and written by nobody** — not by the plugin, not by
+  us. Units are unknown (render÷output or output÷render), so it stays unset rather than guessed.
+- **Never set (15 others, ignoring `SubrectBase*` which default to 0):** `Backbuffer`, `UI`,
+  `UIAlpha`, `ControlMask`, `BidirectionalDistortionField` and their subrect width/height. All are
+  *resources we do not have*, not values we forgot.
+
+> ⚠️ **A draft of this section claimed `DLSSNR.Enabled` was "invented, set on faith".** That was
+> wrong, and wrong in this log's most familiar way: asserting a negative from one source. It is
+> absent from NVIDIA's plugin but **present in the snippet**, which is the component that actually
+> reads it. Diffing against the caller instead of the consumer produced a confident falsehood in
+> under five minutes. Check the consumer.
+
+**What the tuning knobs reveal about the feature itself.** The full list includes
+`SkinStructureStrength`, `LocalStructureStrength`, `GlobalToneStrength`, `LocalToneStrength`,
+`Intensity`, `Style` and `UICorrection`. DLSS 5 Neural Rendering is a neural **appearance /
+material-detail** pass — in NBA 2K27, transparently aimed at faces and skin. It is **not** an
+upscaler and **not** a denoiser; it post-processes an existing DLSS-SR frame.
+**Correct output should therefore look subtle**, which recalibrates the F10 A/B test: the absence of
+a dramatic change is not evidence of failure. Any future verdict needs a screenshot pair, not an
+impression.
 
 #### Definitive dead ends — do not re-tread
 
@@ -431,7 +590,7 @@ validation), with `__NGX_LOG_LEVEL=2`. No game and no leaked binary required. Th
 
 #### C · Inline hooking under FEX — **RUN 2026-09-05. IT WORKS.**
 
-The biggest untested risk in [Path A](#the-one-surviving-path-and-why-it-is-still-a-long-shot) was
+The biggest untested risk in [Path A](#the-one-surviving-path--and-why-it-is-still-a-long-shot) was
 whether runtime code patching survives FEX's JIT — the mechanism ReShade, Detours and MinHook all
 rely on. If FEX kept executing stale translated code after a hook was installed, the whole route
 would be dead before the model even mattered.
@@ -475,7 +634,7 @@ step4 nrfwd_evaluate(NULL,NULL,NULL) -> 0 (guarded path executed correctly)
 RESULT: FORWARDER LOADS AND EXECUTES UNDER THIS TRANSLATOR (4/4 exports)
 ```
 
-Combined with [test C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), **both FEX-specific
+Combined with [test C](#c--inline-hooking-under-fex--run-2026-09-05-it-works), **both FEX-specific
 risks in Path A are now retired.** What remains untested is the part needing the proprietary model:
 whether a 165 MB CUDA-bearing PE drives `nvcuda.dll` through FEX → vkd3d-proton → NVX.
 
@@ -529,7 +688,7 @@ ReShade 6.8.0.2155 (verified genuine: `crosire's ReShade post-processing injecto
 from the official reshade.me installer — PE byte-complete, all imports satisfiable in-prefix) fails a
 standalone `LoadLibraryW` with `ERROR_DLL_INIT_FAILED` (1114) — **identically under FEX and Box64.**
 
-Per the [lesson from test C](#c-inline-hooking-under-fex-run-2026-09-05-it-works), identical
+Per the [lesson from test C](#c--inline-hooking-under-fex--run-2026-09-05-it-works), identical
 failure across two unrelated JITs points at the method, not the translator. ReShade is designed to be
 loaded *as* `dxgi.dll` by a Direct3D application; refusing a bare standalone load is normal injector
 behaviour. **This is not evidence that ReShade fails under FEX**, and must not be recorded as such.
@@ -825,7 +984,7 @@ is the obvious control — already known-good on both 10 and Experimental) befor
 
 > **⚠️ CORRECTED 2026-09-05.** This section previously said *"NVIDIA's sbsa repo offers 580.65.06 →
 > 580.178.04 and nothing newer"* and told you to stay on 580. **That was wrong** — see
-> [B2](#b2-gb10-is-pinned-to-the-580-branch-dead-this-was-our-error). The sbsa repo carries
+> [B2](#b2--gb10-is-pinned-to-the-580-branch--dead-this-was-our-error). The sbsa repo carries
 > **590, 595 and 610 up to 610.57.04**. The error came from querying the *old* metapackage name;
 > NVIDIA renamed `nvidia-driver-<N>-open` → **`nvidia-open`** from R590 on, so the old query returns
 > nothing and reads like a ceiling.
@@ -1049,7 +1208,7 @@ Full upstream-vs-installed comparison, and why the driver is deliberately held a
 
 ## Tools
 
-The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe to re-run.
+Every script here is plain bash, needs **no sudo**, and is safe to re-run.
 
 | Script | What it does | When to run it |
 |--------|--------------|----------------|
@@ -1057,6 +1216,7 @@ The repo ships two scripts. Both are plain bash, need **no sudo**, and are safe 
 | **`tools/sync-rootfs-nvidia.sh`** | Detects a RootFS↔host NVIDIA driver mismatch, fetches the matching x86_64 `.run`, re-copies the 64/32-bit libs and NGX wine DLLs, repoints the `.0/.1/.2` symlinks, and prunes superseded blobs (~1.2 GB per stale version) — only when nothing still references them. Idempotent; no-ops when already in sync. | After **every** host driver bump. See [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump) |
 | **`tools/pick-test-game.sh`** | Finds the **smallest owned game** matching a render API, from Steam's own metadata — owned apps, real over-the-wire `download` sizes, and each title's declared launch options. Flags titles carrying a non-Windows depot. | Before installing anything to test a graphics hypothesis. It picked PEAK (1.45 GiB) over Shadow of the Tomb Raider (36 GB) — 25:1 |
 | **`tools/setup-mingw.sh`** | Fetches mingw-w64 from **Ubuntu's official archive** and unpacks it to a local prefix. **No sudo, nothing installed system-wide.** | When you need to build Windows PE binaries to test something under FEX |
+| **`tools/dlssnr-control-run.sh`** | Bisects the DLSS-5 NR injection chain against a game hang by arming one of four layers (`baseline` no ReShade / `reshade` no add-on / `probe` add-on with the pass off / `nr` full chain), then sampling `/proc/<pid>/stat` until it can call **HUNG** or **EXITED**. Layer selection is by file, never by Steam launch options — opening a game's Properties dialog crashes this rig's Steam. Process lookup goes through `safe-proc.sh`. | Before attributing any hang to the injection chain. The 2026-09-06 Cyberpunk deadlock was nearly written up as "the NR pass hangs the game" with **no baseline ever measured** |
 | **`tools/fex-inject-tests.sh`** | Builds and runs the Windows-side injection tests under **both FEX and Box64**. Running both is the point — see the note below. | Before betting time or money on any injection-based route |
 | **`tools/game-run.sh`** | Launches a game **inside a systemd cgroup scope** (Wine cannot reparent out of it — teardown is atomic), turns on `DXVK_HUD` + MangoHud CSV logging, records GPU telemetry alongside, and runs pre-flight checks: compat tool actually in use, shader-cache warmth, machine load. `DRY_RUN=1` for checks only. | **Every** test launch. Never launch by hand |
 | **`tools/bench-ab.sh`** | A/B two Proton versions on one title and emit frametime statistics (avg, 1% low, median, p99). Discards the first run of each version automatically. | Any "version X feels faster" claim, before it goes in the table |
@@ -1626,6 +1786,7 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
 | **Halo Infinite** | DX12-only. Crashes at launch — `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. Same `VK_EXT_descriptor_buffer` gap as NMS and Wukong. Fails on both Proton 10.0 and Proton Experimental. |
 | **No Man's Sky** | Crashes ~16 seconds into launch, never renders a frame. `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. `-force d3d11` launch option does not help — game still probes Vulkan extensions and crashes. Tested on Proton 10.0 and Experimental. |
+| **NBA 2K27** | DX12. Never reaches the game — EasyAntiCheat fails at launch with `Launcher finished with: 210, 'Unexpected error. (#1)'`. **Not the usual "dev never enabled Linux EAC" wall:** the bootstrapper correctly reports `System name: 'linux64'`, fetches the Linux EAC module from Epic's CDN (HTTP 200, 9,622,837 bytes), then dies 32 s into `Starting Wine module mapping, Wine version: 11.0`. The `.so` is downloaded at runtime, so it never appears in the game directory. Exact cause unattributed — anti-tamper detecting FEX's JIT is the most likely of several candidates, and since rewriting every instruction is what FEX does and detecting rewritten code is what EAC does, treat this as **probably permanent**. Owned here solely as the only legal source of `nvngx_dlssnr.dll`; the DLSS 5 work does not need the game to run. |
 | **The Legend of Khiimori Demo** | .NET 9 WPF application (system check tool, not a game). Hangs indefinitely on launch — WPF/PresentationCore initialization never completes. Wine's WPF support is fundamentally incomplete; not a FEX-specific issue. |
 | **Final Doom** | Launches but doesn't load into gameplay — hangs at title screen. Multiple launch options available but not yet iterated through. |
 | **Far Cry 3 / Blood Dragon / 4 / 5 / Primal / New Dawn / 6** | Ubisoft Connect launcher crashes with unrecoverable error. Tested on Proton 10.0 and Experimental, online and offline mode. FC3 and Blood Dragon confirmed; remaining titles expected identical. Direct-launching Blood Dragon's `fc3_blooddragon_d3d11.exe` bypasses the launcher and the DX11 renderer works — game runs, but forced online server check blocks gameplay progression, resolution defaults wrong, and audio loops during Bink sequences. The game engine (Dunia) is compatible; Ubisoft Connect is the blocker. |
