@@ -107,7 +107,14 @@ over a check that was cheap and available. The rules that would have caught them
 4. **Secondary reporting of a changelog is not evidence.** "Valve fixed the CEF crash" came from
    three tech sites and was true — and still wrong here, because the fix was validated on native
    x86-64, not x86-64 CEF under FEX. Testing it took five minutes and broke the user's Steam.
-5. **Agent- and search-surfaced artefacts are untrusted input.** A research agent left stub `.so`
+5. **Count the SPECIFIC counter, not the generic hook it rides on.** On 2026-09-07 this log
+   published "3,983 evaluates, DLSS 5 NR running every frame" — committed and pushed. Wrong:
+   `NVSDK_NGX_D3D12_EvaluateFeature` is the *generic* NGX evaluate hook and those calls were the
+   **game's own DLSS-SR**. The NR-specific line, `Dispatch DLSS-NR running after SR`, occurred
+   **twice**. A one-line grep would have caught it before the commit. The user caught it instead,
+   by toggling the feature and observing the image was identical — **a human A/B beat every
+   counter I was reading.** When a feature is supposed to change pixels, look at the pixels.
+6. **Agent- and search-surfaced artefacts are untrusted input.** A research agent left stub `.so`
    files named like NGX snippets in the scratch dir; they were nearly reported as evidence NVIDIA
    ships aarch64 DLSS. Check `file` and `strings` for a `/dvs/p4/build/...` provenance path.
    Reading a repo's own README to decide whether to trust that repo is circular.

@@ -10,7 +10,7 @@
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. **DLSS 5 Neural Rendering RUNS on GB10 (2026-09-07)** — ~8 min of live Cyberpunk 2077, 3,983 evaluates, 0 errors, via self-built OptiScaler. ~15 FPS at 5120x1440; visual correctness still unverified. The Linux *driver* still ships no NR snippet at any version. See [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: the self-built OptiScaler host **runs on GB10 and the ReShade deadlock is gone**, but **NR does not apply per frame** — it dispatches twice and the exposure scan rejects every candidate resource, with no visible change on screen. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -28,7 +28,7 @@ the driver row is a deliberate hold.
 | Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
 | Proton | **11.0-2c x86-64** (+ 11.0-2c ARM64, 10.0-4b) | 11.0-2 (2026-08-21) | Bundles FEX-2607, DXVK 2.7.1, VKD3D-Proton 3.0a, dxvk-nvapi 0.9.2. Installed 2026-09-05; Experimental retained |
 | Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
-| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path — but it runs anyway.** 2026-09-07: NR dispatching every frame in live Cyberpunk 2077 on GB10 under FEX, hosted by an OptiScaler built from source here. The ReShade deadlock that blocked play sessions is gone (different host). ~15 FPS, correctness unverified, no NR-off control yet. See [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07) |
+| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path.** The host problem is solved — a self-built OptiScaler runs on GB10 under FEX and the ReShade deadlock is gone — but **NR itself does not reach the image**: 2 dispatches, 124 rejected scan candidates, no visual change. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
 
 ### DLSS 5 Status (2026-09-05, corrected same day)
 
@@ -38,12 +38,12 @@ the driver row is a deliberate hold.
 > different reasons than first given. The wrong version is kept visible below because the *reason*
 > it was wrong is the most useful thing here.
 
-**Verdict: no supported path — but as of 2026-09-07 it RUNS.** DLSS 5 Neural Rendering dispatched
-every frame through ~8 minutes of live Cyberpunk 2077 on a GB10 under FEX, hosted by an OptiScaler
-built from source on this machine: see [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07).
-Roughly **15 FPS** at 5120x1440. Visual correctness is still **unverified** and there is **no NR-off
-control run**, so the frame cost cannot yet be attributed. "Impossible" was always the wrong word;
-"unreachable" turned out to be wrong too.
+**Verdict: no supported path, and NR still does not reach the image.** The *host* problem is solved
+— a self-built OptiScaler runs on GB10 under FEX for a full session and the ReShade deadlock is gone
+— but the neural pass dispatches only twice and its resource scan rejects every candidate, with no
+visible change. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07),
+including the claim this log got wrong first. "Impossible" was always the wrong word; "it runs" was
+premature.
 Refined 2026-09-05 after a 102-agent adversarial research run ([notes/](notes/)) plus first-hand
 probes on this machine. Three-part answer:
 
@@ -463,11 +463,30 @@ OptiScaler's own logic** — every patch is a portability fix where MSVC is lax 
 | in-class `inline static` of a nested type → out-of-line | evaluates the nested type's initialisers while the enclosing class is incomplete |
 | `static` after an `extern` declaration (incl. via `VALIDATE_HOOK`) | does **not** get internal linkage, so every TU emits the symbol and lld reports duplicates |
 
-#### IT RUNS — DLSS 5 Neural Rendering live on GB10, 2026-09-07
+#### OptiScaler runs on GB10 — but NR does NOT apply per frame, 2026-09-07
 
-**Cyberpunk 2077, ~8 minutes of live gameplay, 3,983 `NVSDK_NGX_D3D12_EvaluateFeature` calls, zero
-NR errors, clean exit.** Neural Rendering dispatching every frame on a GB10 Grace-Blackwell under
-FEX, hosted by an OptiScaler we compiled ourselves on this ARM64 box.
+> ⚠️ **CORRECTION (same day).** This section first claimed "**3,983 evaluates, NR dispatching every
+> frame**". That was **wrong**, and it is the most serious error in this log so far — it was written
+> up, committed and pushed before being checked. `NVSDK_NGX_D3D12_EvaluateFeature` is the *generic*
+> NGX evaluate hook: those 3,483 calls are **Cyberpunk's own DLSS-SR**, which OptiScaler hooks and
+> logs. The NR-specific counters tell the real story:
+>
+> | log line | count |
+> |---|---|
+> | `NVSDK_NGX_D3D12_EvaluateFeature` (generic — the game's DLSS-SR) | 3,483 |
+> | `Dispatch DLSS-NR running after SR` | **2** |
+> | `Dispatch DLSS-NR guides` | **2** |
+> | `DLSS-NR exposure scan` (every candidate **rejected**) | 124 |
+>
+> What surfaced it was AGB toggling **Enable Neural Rendering** in the overlay and reporting that
+> the image looked **identical either way**. That is exactly consistent with a pass that is not
+> running, and it beat every counter I had been reading.
+
+**What is actually established:** OptiScaler built from source here **loads, initialises and runs**
+on a GB10 under FEX, and **the ReShade deadlock is gone** — the character-call scene that wedged
+ReShade twice played through untouched. The NR snippet loads, the forwarder loads, the vtable slot
+is discovered, and NR dispatches **twice**. It does not run per frame, and it changes nothing on
+screen.
 
 ```
 OptiScaler v10.0.0-dev (6cdb5f7) (20260907_060000) loaded      <- our own build
@@ -485,21 +504,35 @@ NVSDK_NGX_D3D12_EvaluateFeature - Handle: 1000000
 **The ReShade deadlock is gone.** The character-call scene that wedged ReShade twice — the
 discriminating trigger from the bisection above — played through untouched. That closes the loop:
 ReShade was the blocker, and changing the host removes it. The OptiScaler log records **zero**
-PhysX-related events; it is not even an occurrence here.
+PhysX-related events; it is not even an occurrence here. **This part stands.**
+
+**Why NR does not apply — the open question.** OptiScaler's exposure scan inspects UAVs looking for
+the surface to run NR against, and rejects all of them:
+
+```
+NoteResource DLSS-NR scan near-miss #4: UAV dim 3 5120x1440x1 fmt 10 (filter rejected)
+NoteResource DLSS-NR scan near-miss #5: UAV dim 3 5120x1440x1 fmt 27 (filter rejected)
+NoteResource DLSS-NR scan near-miss #6: UAV dim 3 2560x720x1 fmt 27 (filter rejected)
+```
+
+Candidates at the right resolution and plausible formats are being filtered out. Whether that is a
+Cyberpunk-specific resource-shape mismatch, an ordering problem, an OptiScaler tuning knob
+(`RunBeforeSR`, `Passes`, `WorkingScale`, `ScalingDownscaler` are all still `auto`), or something
+FEX-specific is **not yet known**. That is the next thing to investigate.
 
 Independent corroboration worth noting: `DiscoverFloatSlot ... vtable slot 6` is a completely
 separate codebase rediscovering exactly what our own add-on's runtime probe found.
 
-**Performance — reported honestly.** 6,685 frames at 5120x1440, NR running *after* SR
+**Performance — and note this is performance with NR effectively OFF, since the pass never ran.** 6,685 frames at 5120x1440, NR running *after* SR
 (3011x847 -> 5120x1440): **mean 65.3 ms = 15.3 FPS**, min 4.8 ms, max 4784 ms. A 60-frame window
 during in-world gameplay averaged **117.8 ms = 8.5 FPS**. The whole-session mean is flattered by
 cheap menu frames; the gameplay window is the pessimistic end. Either way this log's earlier
 "~0% playable" estimate was **too pessimistic** — this is not playable, but it is not 1 FPS either.
 
-> **What is still NOT proven.** There is **no NR-off control run**, so none of the frame cost can
-> yet be attributed to the neural pass rather than to ultrawide Cyberpunk under FEX. And visual
-> correctness is unverified — NR is an appearance pass (`SkinStructure`, `LocalTone`), so a
-> screenshot A/B is required, not an impression. Both are cheap; neither has been done.
+> **What is still NOT proven.** NR has never been shown to affect a single pixel on this machine.
+> The `Enabled` toggle produces no visible change because the pass is not dispatching per frame.
+> Everything below the host layer — snippet load, forwarder, feature creation, vtable discovery —
+> works; the pass itself does not reach the image.
 
 #### The bug that cost three launches: clang + dynamic MSVC CRT vs Wine's builtin
 
