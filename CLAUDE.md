@@ -76,8 +76,24 @@ itself. Registered in `.claude/settings.json`; both are tested (9 and 11 cases).
   `user.reg`. Editing from a stale view silently contaminated two DLSS experiments.
   It catches Bash/python-heredoc writes too, which is how most edits here actually happen.
 
-Escape hatch for both: append `# HOOK_OVERRIDE: <reason>` to the command. Deliberate,
-visible in the transcript, and it makes you say why. There is no silent bypass.
+- **`commit-claim-guard.sh`** is a **git `commit-msg`** hook (install once:
+  `ln -sf ../../.claude/hooks/commit-claim-guard.sh .git/hooks/commit-msg`). It must be
+  `commit-msg`, not `pre-commit` — `pre-commit` runs before the message exists and will
+  silently check the *previous* commit's text instead. A commit whose
+  message makes a result claim must carry an `Evidence: <path>` line naming a file that
+  exists — or an explicit `Evidence: none — <reason>`, which then lives in the history.
+  **Be clear about what it cannot do:** it would not have caught the 2026-09-07 error, because
+  "3,983 evaluates" was a real number in a real log and only the *interpretation* was wrong.
+  It refuses claims with no artifact; the judgement lives in the `log-result` skill.
+
+Escape hatch for the two PreToolUse hooks: append `# HOOK_OVERRIDE: <reason>` to the command.
+Deliberate, visible in the transcript, and it makes you say why. There is no silent bypass.
+
+**Skill: `log-result`** (`.claude/skills/log-result/`) — invoke it before adding any result to
+README.md. It asks the six questions that would have prevented the worst claim in this log:
+is the counter *specific* to the feature or a generic hook it rides on; what is the control;
+if it should change pixels, did anyone look at the pixels; what would falsify it; where is the
+artifact. A human A/B beat every counter being read that day.
 
 ### Process hygiene when testing (all four of these bit us on 2026-09-05)
 
