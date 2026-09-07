@@ -34,6 +34,13 @@ failure it prevents — because that rationale is the point of this repo. Curren
   `DRY_RUN=1` checks only. This replaces the hand-written hygiene rules with mechanism.
 - **`tools/bench-ab.sh`** — A/B two Protons on one title, second-run-only, frametime stats. Use
   before any "X feels faster" claim reaches the results table.
+- **`tools/watch-run.sh`** — the one correct game watcher: CPU **delta** (not `ps` %CPU, which is a
+  lifetime average and shows 228% for a hung process), log growth, and `--count` probes for the
+  specific thing you claim is happening. Finds the game by **thread count**, so it cannot latch
+  onto your own shell or a wrapper. Written after hand-rolling it ten times in one day.
+- **`tools/config-snapshot.sh`** — `save`/`diff` the config files other programs rewrite behind
+  you (OptiScaler.ini, UserSettings.json, user.reg, localconfig.vdf, ReShade.ini). Pair it with
+  the guard hook: the hook stops you editing blind, this shows what changed.
 - **`tools/wine-dll-loadtest.sh`** — loads a Windows DLL under Wine/FEX and reports the faulting
   **module** + RVA, not just a failure. Use it the moment a DLL fails to initialise; guessing cost
   three wrong diagnoses and three 10-minute game launches on 2026-09-07.
@@ -254,6 +261,8 @@ run the tool, then act.**
 | build anything Windows-side | **`tools/setup-mingw.sh`** | Ubuntu's own mingw into a local prefix. Never `sudo`-install a third party's toolchain script |
 | ask "what does Steam think about X" | **`tools/appinfo.py`** | Names, depots, real download sizes, launch options — from Steam's own metadata, not guesswork |
 | blame a hang on the injection chain | **`tools/dlssnr-control-run.sh baseline`** | The Cyberpunk deadlock was nearly published as "the NR pass hangs the game" — the pass was already *disabled* when it died, and nobody had ever loaded a save on this rig with the chain absent |
+| watch a launch / decide if it is hung | **`tools/watch-run.sh`** | Hand-rolled ten times on 2026-09-07, wrong twice (own shell; the 1-thread launch wrapper). `ps` %CPU is a lifetime average — only a `/proc/<pid>/stat` delta is honest |
+| start OR finish an experiment | **`tools/config-snapshot.sh save/diff`** | OptiScaler rewrites its own ini on exit; Cyberpunk re-enabled Frame Generation by itself. Two DLSS runs were contaminated by settings nobody knew were set |
 | a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
 | **kill or wait on processes by name** | **`tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
 
