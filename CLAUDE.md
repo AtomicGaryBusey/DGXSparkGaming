@@ -34,6 +34,20 @@ failure it prevents — because that rationale is the point of this repo. Curren
   `DRY_RUN=1` checks only. This replaces the hand-written hygiene rules with mechanism.
 - **`tools/bench-ab.sh`** — A/B two Protons on one title, second-run-only, frametime stats. Use
   before any "X feels faster" claim reaches the results table.
+- **`tools/wine-dll-loadtest.sh`** — loads a Windows DLL under Wine/FEX and reports the faulting
+  **module** + RVA, not just a failure. Use it the moment a DLL fails to initialise; guessing cost
+  three wrong diagnoses and three 10-minute game launches on 2026-09-07.
+- **`tools/fix-steam-launcher.sh`** — makes the Steam desktop icon work. Valve's own
+  `bin_steam.sh` does `FEXBash $0 "$@"` (a script path, not `-c`), so dash fails on `[[` and
+  `function` and Steam silently never starts. Installs a user-level `.desktop` override + a
+  `steam-fex` wrapper; no sudo, survives apt overwriting the root-owned script. `--undo` reverts.
+  **DISPLAY here is `:0`** (Wayland + Xwayland), not `:1`.
+- **`tools/build-optiscaler-nr.sh`** — builds **OptiScaler + DLSS-5 NR** from source on ARM64 with
+  clang-20 + xwin + lld-link (no MSBuild, no sudo, no third-party prebuilt DLL). Use it when you
+  need an NR host that is **not** ReShade — upstream OptiScaler has zero NR support, so it builds
+  a GPL-3.0 fork whose bundled libs were verified byte-identical to upstream first. Patches are
+  idempotent; every one is a clang-vs-MSVC portability fix, documented in the script header.
+  **Built 2026-09-07, never yet run in a game.**
 - **`tools/dlssnr-control-run.sh`** — bisects the DLSS-5 NR injection chain against a game hang:
   arms one of four layers (`baseline`/`reshade`/`probe`/`nr`) by file, then samples CPU until it can
   say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer
@@ -143,6 +157,14 @@ unqualified; that came from reasoning, not benchmarking. See the README's *Which
   load. Watch whether other Rockstar/RAGE titles share it.
 - **Ubisoft Connect launcher** — crashes outright; blocks all Far Cry titles even though the
   Dunia engine itself runs when the .exe is launched directly.
+- **clang-built DLL + dynamic MSVC CRT → access violation in Wine's builtin `MSVCP140.dll`** —
+  `err:module:loader_init "<name>.dll" failed to initialize, aborting`, or `LoadLibrary` returning
+  `GetLastError=998 (ERROR_NOACCESS)`. Anything cross-compiled here with `-fms-runtime-lib=dll`
+  hits it; the same source built `-fms-runtime-lib=static` loads fine. **The override is a trap:**
+  a prefix can already say `"msvcp140"="native,builtin"` and still use Wine's builtin, because with
+  no native file present Wine falls back silently. Fix = drop Microsoft's genuine CRT DLLs beside
+  the exe (pull the package URL from the VS manifest in xwin's cache and verify its SHA-256).
+  **Diagnose with `tools/wine-dll-loadtest.sh`, which names the faulting module** — do not guess.
 - **ReShade-induced engine deadlock (mechanism unknown)** — the game wedges at **0% CPU** with
   every thread parked (no `dma_fence` wait, no Xid, no crash dump). Confirmed on Cyberpunk 2077,
   triggered by a character call putting a face on screen. Bisected 2026-09-06: ReShade **alone**
@@ -204,6 +226,7 @@ run the tool, then act.**
 | build anything Windows-side | **`tools/setup-mingw.sh`** | Ubuntu's own mingw into a local prefix. Never `sudo`-install a third party's toolchain script |
 | ask "what does Steam think about X" | **`tools/appinfo.py`** | Names, depots, real download sizes, launch options — from Steam's own metadata, not guesswork |
 | blame a hang on the injection chain | **`tools/dlssnr-control-run.sh baseline`** | The Cyberpunk deadlock was nearly published as "the NR pass hangs the game" — the pass was already *disabled* when it died, and nobody had ever loaded a save on this rig with the chain absent |
+| a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
 | **kill or wait on processes by name** | **`tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
 
 ## Common requests & how to handle them

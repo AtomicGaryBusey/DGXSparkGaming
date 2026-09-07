@@ -10,7 +10,7 @@
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: **feature 18 created and evaluated on GB10 (2026-09-06)** via the injection route — correctness unverified, and not playable (ReShade deadlocks the game). The Linux *driver* still ships no NR snippet at any version. See [DLSS 5 Status](#dlss-5-status-2026-09-05-corrected-same-day) |
+| DLSS | Working | **DLSS 4 + MFG**. **DLSS 5 Neural Rendering RUNS on GB10 (2026-09-07)** — ~8 min of live Cyberpunk 2077, 3,983 evaluates, 0 errors, via self-built OptiScaler. ~15 FPS at 5120x1440; visual correctness still unverified. The Linux *driver* still ships no NR snippet at any version. See [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -28,7 +28,7 @@ the driver row is a deliberate hold.
 | Box64 | **v0.4.4** (was v0.4.3) | v0.4.4 (2026-08-02) | Rebuilt from source 2026-09-05. A `v0.4.5-1` git tag exists but is **not** a published release — don't chase it |
 | Proton | **11.0-2c x86-64** (+ 11.0-2c ARM64, 10.0-4b) | 11.0-2 (2026-08-21) | Bundles FEX-2607, DXVK 2.7.1, VKD3D-Proton 3.0a, dxvk-nvapi 0.9.2. Installed 2026-09-05; Experimental retained |
 | Steam client | auto-updated 2026-09-05 | — | Self-updates on launch (~460 MB after a long gap) |
-| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path** — but the unsanctioned route now *runs*: `CreateFeature(18)` + `EvaluateFeature` returned Success on GB10 under FEX, 2026-09-06, fed by Cyberpunk's real DLSS-SR frame. Unverified visually, and a [ReShade-induced deadlock](#the-deadlock-is-reshades-not-dlss-5s--bisected-2026-09-06) blocks any real play session. See [Path A executed](#path-a-executed--2026-09-06-cyberpunk-2077-on-gb10) |
+| DLSS | **4 + Multi-Frame Generation** | DLSS 5 (2026-09-03) | **No supported path — but it runs anyway.** 2026-09-07: NR dispatching every frame in live Cyberpunk 2077 on GB10 under FEX, hosted by an OptiScaler built from source here. The ReShade deadlock that blocked play sessions is gone (different host). ~15 FPS, correctness unverified, no NR-off control yet. See [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07) |
 
 ### DLSS 5 Status (2026-09-05, corrected same day)
 
@@ -38,10 +38,12 @@ the driver row is a deliberate hold.
 > different reasons than first given. The wrong version is kept visible below because the *reason*
 > it was wrong is the most useful thing here.
 
-**Verdict: no supported path — but as of 2026-09-06, feature 18 creates *and evaluates* on a
-GB10.** See [Path A executed](#path-a-executed--2026-09-06-cyberpunk-2077-on-gb10). Correctness
-is **unconfirmed** (no control, no visual A/B) and it is nowhere near playable. "Impossible" was
-always the wrong word.
+**Verdict: no supported path — but as of 2026-09-07 it RUNS.** DLSS 5 Neural Rendering dispatched
+every frame through ~8 minutes of live Cyberpunk 2077 on a GB10 under FEX, hosted by an OptiScaler
+built from source on this machine: see [IT RUNS](#it-runs--dlss-5-neural-rendering-live-on-gb10-2026-09-07).
+Roughly **15 FPS** at 5120x1440. Visual correctness is still **unverified** and there is **no NR-off
+control run**, so the frame cost cannot yet be attributed. "Impossible" was always the wrong word;
+"unreachable" turned out to be wrong too.
 Refined 2026-09-05 after a 102-agent adversarial research run ([notes/](notes/)) plus first-hand
 probes on this machine. Three-part answer:
 
@@ -415,6 +417,147 @@ deadlocked process, not another blind experiment.**
 > whole time.
 
 Reports: `~/dgx-gaming-work/runs/control-*.txt`.
+
+#### Escaping ReShade — OptiScaler built from source on ARM64 (2026-09-07)
+
+Since ReShade is the blocker and the NR add-on *requires* ReShade, the way forward is a different
+injector. **OptiScaler** proxies `dxgi`/`winmm`/`version`/`d3d12` directly and never loads ReShade.
+
+**Upstream OptiScaler has no neural rendering.** Cloned and grepped the official tree
+(`optiscaler/OptiScaler`, 632 sources): `dlssnr` → **0 files**. Its only DLSS-5 references are jokes
+in the menu strings (*"Neural Slop Sampling with DLSS5"*). NR lives in community forks, and the
+build in the circulating screenshot is one of them — its commit `0910b95` is **not** in the official
+repo, and its "v0.8.0-dev" postdates upstream's v0.9.4.
+
+**What "the patched files from RenoDX discord" actually are.** Not a patched model. From the fork's
+own install doc: *"For **RTX 20/30/40**, obtain the compatibility runtime…"* — it is a compatibility
+build for **pre-Blackwell** cards. GB10 reports `sm_120` and passes every gate we measured, and the
+**retail** 310.8.0.0 model already returned Success here. We never needed that file.
+
+**The caller check, verified against the binary.** The fork's `FORWARDER_INVESTIGATION.md` says the
+model resolves its caller via `RtlPcToFileHeader` and rejects any path not containing `nvngx.dll`
+with `FAIL_PlatformError`. `RtlPcToFileHeader` **is** imported by our retail copy, and a UTF-16
+`nvngx.dll` string is present. So the bypass is a *naming trick* (`nvngx.dll_dlssnr.dll`), **not a
+binary patch**. That document also independently states *"the float setter lives at vtable slot 6"* —
+matching what our own add-on's runtime probe found, from a completely separate codebase.
+
+**Built from source, not downloaded.** `tools/build-optiscaler-nr.sh` builds
+[wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass)
+(GPL-3.0) with clang-20 + xwin + lld-link — **no MSBuild, no Visual Studio, no sudo, no prebuilt
+DLL from anyone.** Supply chain checked first: its OptiScaler base files are byte-identical to
+upstream, and **28 of its 30 bundled `.lib` blobs match upstream byte-for-byte** (the other two are
+NVIDIA's own nvapi libs from `NVIDIA/nvapi`). It bundles **no** NR model.
+
+Result: `OptiScaler.dll` **28,972,544 bytes**, PE32+ x86-64, 947 exports, 37 `DLSSNR.*` keys, plus
+the `nvngx.dll_dlssnr.dll` forwarder (25 exports). **199/199 sources compile with zero changes to
+OptiScaler's own logic** — every patch is a portability fix where MSVC is lax and clang is correct:
+
+| Fix | Why MSVC never sees it |
+|---|---|
+| clang's intrinsic headers must precede xwin's `crt/include` | MSVC declares `_mm_*` as extern functions its compiler implements; MSVC's `xmmintrin.h` made clang emit calls to a nonexistent `_mm_rsqrt_ss` |
+| `-DUNICODE -D_UNICODE` | code passes `L"..."` to `GetModuleHandle`; MSVC projects define these by default |
+| `-D_CRT_USE_BUILTIN_OFFSETOF` | the UCRT's `offsetof` uses `reinterpret_cast`, so imgui's `IM_STATIC_ASSERT(offsetof(...))` is not constant |
+| `-fms-runtime-lib=dll` | bundled FidelityFX libs are `MD_DynamicRelease`; clang defaults to `MT` and lld rejects the mismatch |
+| Case-sensitivity shims (symlinks, both include-path and *relative*) | `Config.h`/`config.h`, `Dxgi_Proxy.h`/`DXGI_Proxy.h`, `bcds_*`/`BCDS_*`, lowercase SDK libs. Windows does not care |
+| `sl_pcl.h`: `using to_underlying = std::to_underlying;` | a type alias to a **function template** — invalid C++. MSVC reports `__cplusplus == 199711L` without `/Zc:__cplusplus` (it gates C++23 on `_MSVC_LANG`), so it never compiles that branch |
+| in-class `inline static` of a nested type → out-of-line | evaluates the nested type's initialisers while the enclosing class is incomplete |
+| `static` after an `extern` declaration (incl. via `VALIDATE_HOOK`) | does **not** get internal linkage, so every TU emits the symbol and lld reports duplicates |
+
+#### IT RUNS — DLSS 5 Neural Rendering live on GB10, 2026-09-07
+
+**Cyberpunk 2077, ~8 minutes of live gameplay, 3,983 `NVSDK_NGX_D3D12_EvaluateFeature` calls, zero
+NR errors, clean exit.** Neural Rendering dispatching every frame on a GB10 Grace-Blackwell under
+FEX, hosted by an OptiScaler we compiled ourselves on this ARM64 box.
+
+```
+OptiScaler v10.0.0-dev (6cdb5f7) (20260907_060000) loaded      <- our own build
+hkD3D12CreateDevice Adapter Desc: NVIDIA GB10
+DlssNr.Enabled: true
+InitDLSS _CreateFeature result: NVSDK_NGX_Result_Success
+DlssNr_Dx12 Neural Rendering start!
+EnsureForwarder DLSS-NR forwarder loaded from ...\nvngx.dll_dlssnr.dll
+DiscoverFloatSlot DLSS-NR float parameters go through vtable slot 6
+Dispatch DLSS-NR guides: depth inverted, motion vector scale 3011 x 847, guides 3011x847
+Dispatch DLSS-NR running after SR: target 5120x1440, model 5120x1440, guides 3011x847
+NVSDK_NGX_D3D12_EvaluateFeature - Handle: 1000000
+```
+
+**The ReShade deadlock is gone.** The character-call scene that wedged ReShade twice — the
+discriminating trigger from the bisection above — played through untouched. That closes the loop:
+ReShade was the blocker, and changing the host removes it. The OptiScaler log records **zero**
+PhysX-related events; it is not even an occurrence here.
+
+Independent corroboration worth noting: `DiscoverFloatSlot ... vtable slot 6` is a completely
+separate codebase rediscovering exactly what our own add-on's runtime probe found.
+
+**Performance — reported honestly.** 6,685 frames at 5120x1440, NR running *after* SR
+(3011x847 -> 5120x1440): **mean 65.3 ms = 15.3 FPS**, min 4.8 ms, max 4784 ms. A 60-frame window
+during in-world gameplay averaged **117.8 ms = 8.5 FPS**. The whole-session mean is flattered by
+cheap menu frames; the gameplay window is the pessimistic end. Either way this log's earlier
+"~0% playable" estimate was **too pessimistic** — this is not playable, but it is not 1 FPS either.
+
+> **What is still NOT proven.** There is **no NR-off control run**, so none of the frame cost can
+> yet be attributed to the neural pass rather than to ultrawide Cyberpunk under FEX. And visual
+> correctness is unverified — NR is an appearance pass (`SkinStructure`, `LocalTone`), so a
+> screenshot A/B is required, not an impression. Both are cheap; neither has been done.
+
+#### The bug that cost three launches: clang + dynamic MSVC CRT vs Wine's builtin
+
+The first three attempts died at `err:module:loader_init "<name>.dll" failed to initialize` with an
+access violation, and produced **three confident wrong diagnoses** before any evidence was gathered:
+a `dxgi` self-import, then a proxy-name collision, then my own build patches. Renaming the proxy to
+`winmm` disproved the first two — identical fault, different name.
+
+`tools/wine-dll-loadtest.sh` answered it in seconds by reporting the *module* of the fault:
+
+```
+fault address : 0x6FFFFBFE2EB0
+faulting module: C:\windows\system32\MSVCP140.dll   <- BELOW our DLL's base: never our code
+RVA            : 0x12EB0
+```
+
+A 30-line control DLL then isolated it completely:
+
+| Minimal DLL, identical toolchain | Wine builtin CRT | Genuine Microsoft CRT |
+|---|---|---|
+| `-fms-runtime-lib=dll` (dynamic) | **crash, ERROR_NOACCESS (998)** | **loads** |
+| `-fms-runtime-lib=static` | **loads** | — |
+
+**Clang-built DLLs linking the dynamic MSVC CRT fault inside Wine's builtin `MSVCP140.dll` under
+FEX.** And the reason it was so well hidden: the prefix *already* had `"msvcp140"="native,builtin"`,
+but with **no native file present Wine silently falls back to its builtin**. The override only bites
+once the real DLLs exist.
+
+**Fix:** drop Microsoft's genuine CRT beside the game exe. Obtained officially — the package URL
+came out of the **VS manifest xwin had already cached**
+(`Microsoft.VC.14.44.17.14.CRT.Redist.X64.base.vsix`), verified against the SHA-256 in Microsoft's
+own manifest before unpacking. No installer, no third-party mirror.
+
+*Dead end for the record:* the static-CRT route compiles 199/199 but fails to link — four undefined
+`__imp_` C++ locale symbols, because the bundled FidelityFX libs are `/MD` and dllimport-declared
+std symbols have no static counterpart. Stripping their `.drectve` directives gets close but not
+past those four.
+
+#### The working configuration (Cyberpunk 2077, 2026-09-07)
+
+| File | What |
+|---|---|
+| `bin/x64/winmm.dll` | OptiScaler, built by `tools/build-optiscaler-nr.sh`. **Not `dxgi`/`version`/`d3d12`/`winhttp`** — the build imports those, and a proxy cannot statically import what it impersonates |
+| `bin/x64/nvngx.dll_dlssnr.dll` | NR forwarder (satisfies the snippet's `RtlPcToFileHeader` caller check) |
+| `bin/x64/nvngx_dlssnr.dll` | **your own retail** 310.8.0.0 model, symlinked from NBA 2K27 |
+| `bin/x64/msvcp140*.dll`, `vcruntime140*.dll`, `concrt140.dll` | genuine Microsoft CRT — **required**, see above |
+| `bin/x64/OptiScaler.ini` | `[DlssNr] Enabled=true` |
+| prefix `user.reg` | `"winmm"="native,builtin"` (+ the CRT names) in `[Software\Wine\DllOverrides]` |
+| `REDprelauncher.exe` | replaced by a 10 KB shim that launches `bin\x64\Cyberpunk2077.exe` directly and waits on it |
+
+Two notes that cost real time. **Steam launch options beat Proton's `user_settings.py` for
+`WINEDLLOVERRIDES`** (`PROTON_LOG` there works, that does not) — use the prefix registry instead,
+which needs neither a Steam restart nor the Properties dialog that crashes this rig. And
+**REDlauncher is a Qt+CEF app**, the least reliable component in the stack: it failed to hand off
+~10 times in a row. The shim removes it from every future test.
+
+Evidence: `~/dgx-gaming-work/evidence/cp2077-optiscaler-nr-SUCCESS-*.log`.
+
 
 #### The NR parameter contract — recovered from NVIDIA's own plugin
 
@@ -1216,6 +1359,9 @@ Every script here is plain bash, needs **no sudo**, and is safe to re-run.
 | **`tools/sync-rootfs-nvidia.sh`** | Detects a RootFS↔host NVIDIA driver mismatch, fetches the matching x86_64 `.run`, re-copies the 64/32-bit libs and NGX wine DLLs, repoints the `.0/.1/.2` symlinks, and prunes superseded blobs (~1.2 GB per stale version) — only when nothing still references them. Idempotent; no-ops when already in sync. | After **every** host driver bump. See [RootFS driver drift](#rootfs-driver-drift-re-sync-after-every-host-driver-bump) |
 | **`tools/pick-test-game.sh`** | Finds the **smallest owned game** matching a render API, from Steam's own metadata — owned apps, real over-the-wire `download` sizes, and each title's declared launch options. Flags titles carrying a non-Windows depot. | Before installing anything to test a graphics hypothesis. It picked PEAK (1.45 GiB) over Shadow of the Tomb Raider (36 GB) — 25:1 |
 | **`tools/setup-mingw.sh`** | Fetches mingw-w64 from **Ubuntu's official archive** and unpacks it to a local prefix. **No sudo, nothing installed system-wide.** | When you need to build Windows PE binaries to test something under FEX |
+| **`tools/wine-dll-loadtest.sh`** | Loads a Windows DLL under Wine/FEX inside `__try/__except` and reports the exception code, address, **owning module** and RVA. `998` = AV inside `DllMain`; `126` = missing dependency. Run it in the game's directory with the game's prefix. | Before guessing at a DLL that fails to initialise. Three wrong diagnoses and three 10-minute game launches preceded this tool; it found the real cause — a fault inside *Wine's* `MSVCP140.dll` — on the first run |
+| **`tools/fix-steam-launcher.sh`** | Repairs the Steam desktop icon. Valve's `bin_steam.sh` runs `FEXBash $0 "$@"` — handing FEXBash a *script path* rather than `-c`, so the script is parsed by `dash`, which fails on `[[` and `function`, and Steam never starts. Installs a user-level `.desktop` override plus a `steam-fex` wrapper (deliberately not named `steam`: `~/.local/bin` is inherited into FEX and would recurse). No sudo; `--undo` reverts. | When the Steam icon does nothing. Also the reference for launching Steam by hand: `DISPLAY=:0 FEXBash -c steam` — **`:0`, not `:1`** |
+| **`tools/build-optiscaler-nr.sh`** | Builds OptiScaler **with DLSS-5 Neural Rendering** from source on ARM64 — clang-20 + xwin + lld-link, replacing MSBuild entirely. Fetches submodules, applies 7 idempotent clang-portability patches, generates the case-sensitivity symlink shims, builds `detours.lib`, compiles 199 sources and links `OptiScaler.dll` + the `nvngx.dll_dlssnr.dll` forwarder. No sudo, no Visual Studio, **no prebuilt DLL from anyone**. | When you need an NR host that is **not** ReShade. Upstream OptiScaler has zero NR support; this builds a GPL-3.0 community fork whose libs were verified byte-identical to upstream first |
 | **`tools/dlssnr-control-run.sh`** | Bisects the DLSS-5 NR injection chain against a game hang by arming one of four layers (`baseline` no ReShade / `reshade` no add-on / `probe` add-on with the pass off / `nr` full chain), then sampling `/proc/<pid>/stat` until it can call **HUNG** or **EXITED**. Layer selection is by file, never by Steam launch options — opening a game's Properties dialog crashes this rig's Steam. Process lookup goes through `safe-proc.sh`. | Before attributing any hang to the injection chain. The 2026-09-06 Cyberpunk deadlock was nearly written up as "the NR pass hangs the game" with **no baseline ever measured** |
 | **`tools/fex-inject-tests.sh`** | Builds and runs the Windows-side injection tests under **both FEX and Box64**. Running both is the point — see the note below. | Before betting time or money on any injection-based route |
 | **`tools/game-run.sh`** | Launches a game **inside a systemd cgroup scope** (Wine cannot reparent out of it — teardown is atomic), turns on `DXVK_HUD` + MangoHud CSV logging, records GPU telemetry alongside, and runs pre-flight checks: compat tool actually in use, shader-cache warmth, machine load. `DRY_RUN=1` for checks only. | **Every** test launch. Never launch by hand |
