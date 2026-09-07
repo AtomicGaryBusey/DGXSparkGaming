@@ -10,7 +10,7 @@
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: the self-built OptiScaler host **runs on GB10 and the ReShade deadlock is gone**, but **NR does not apply per frame** — it dispatches twice and the exposure scan rejects every candidate resource, with no visible change on screen. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: the host problem is **solved** — a self-built OptiScaler runs stably on GB10 and the ReShade deadlock is gone — but **NR never reaches the image**. Five independent signals, incl. OptiScaler's own Debug view being unable to change the frame. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -506,8 +506,38 @@ discriminating trigger from the bisection above — played through untouched. Th
 ReShade was the blocker, and changing the host removes it. The OptiScaler log records **zero**
 PhysX-related events; it is not even an occurrence here. **This part stands.**
 
-**Why NR does not apply — the open question.** OptiScaler's exposure scan inspects UAVs looking for
-the surface to run NR against, and rejects all of them:
+**NR does not reach the image — five independent signals, 2026-09-07.** Tested at 5120x1440
+fullscreen and again at 1920x1080 windowed, ~22 min, 87 samples, clean exit:
+
+| Signal | Result |
+|---|---|
+| Toggling **Enable Neural Rendering** in the overlay | no visible change |
+| **Debug view** (`Proxy` / `Model output` / `Difference`) | **no visible change** — and this is supposed to *replace* the image |
+| `dlssnr-capture/` folder (AutoCapture defaults **true**, writes on first run) | **never created** |
+| Exposure scan | **every** candidate rejected, incl. correctly-shaped `5120x1440 fmt 10` UAVs |
+| Frame Generation on vs off | no difference either way |
+
+The second row is the decisive one. `DebugView` is documented in OptiScaler's own ini as
+*"0 off, 1 the picture the model sees, 2 its raw answer, 3 what it changed amplified twenty times.
+**A flat grey difference view means the model is doing nothing.**"* AGB saw **not even flat grey** —
+no change at all, from any control. A debug view that cannot alter the displayed frame is not a
+model doing nothing; it is a pass that is **not in the render path**. In AGB's words: *"a control
+panel that literally does nothing."*
+
+**So: the injection route delivers a working host and a fully loaded model, and stops short of the
+pixels.** Given how much circulating footage implies otherwise, that is worth recording as
+carefully as a success would have been.
+
+*Remaining lead, untested:* `[DlssNr] RunBeforeSR` is still `auto`. It controls **where** NR inserts
+relative to upscaling — the one axis that plausibly decides whether it touches the frame at all.
+`Passes`, `WorkingScale` and `ScalingDownscaler` are also still `auto`.
+
+*Also unresolved:* OptiScaler rewrites its own ini with spaces (`LogToFile = true`) and then wrote
+**no log at all** for the 1080p session — quite possibly its parser not accepting the format it
+emits. Fix logging before the next attempt; without it, diagnosis degrades into inference from
+process maps and missing folders, which is exactly how two wrong readings got published below.
+
+**For the record, the exposure-scan rejections:**
 
 ```
 NoteResource DLSS-NR scan near-miss #4: UAV dim 3 5120x1440x1 fmt 10 (filter rejected)
