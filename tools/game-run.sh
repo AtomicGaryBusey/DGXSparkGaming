@@ -20,10 +20,22 @@
 #       wrong/absent compat tool, missing Proton runtime, cold shader cache,
 #       and a busy machine.
 #
+#   THIRD BUG, fixed 2026-09-07: this script used to wait on the cgroup scope
+#   (`while systemctl --user is-active ...`). That is wrong whenever Steam is
+#   ALREADY RUNNING, which is the normal case: `steam -applaunch` merely forwards a
+#   request to the Steam daemon and exits, so the scope went inactive within seconds
+#   while the game was still starting — and the EXIT trap then tore down the game
+#   this script had just launched. Daikatana died that way twice in a row before
+#   anyone noticed Steam had never even logged the app start. It now waits for
+#   game_pids() to become non-empty (up to APPEAR_TIMEOUT), then waits for it to
+#   empty again. The scope is still used for teardown, which is what it is good at.
+#
 # Usage:
 #   tools/game-run.sh <appid> [-- extra game args]
 #     PROTON=proton_11        compat tool to expect (warn if different)
 #     SECONDS_MAX=0           auto-stop after N seconds (0 = run until you quit)
+#     APPEAR_TIMEOUT=300      how long to wait for the game to show up (Proton prefix
+#                             upgrades and cold shader caches can take minutes)
 #     NO_HUD=1                disable DXVK_HUD
 #     DRY_RUN=1               run pre-flight checks only, launch nothing
 #     OUT=<dir>               where to write logs (default ~/dgx-gaming-work/runs)
@@ -167,5 +179,27 @@ if [ "$MAXS" -gt 0 ]; then
   sleep "$MAXS"
 else
   note "running — press Ctrl-C here to stop the game and tear down cleanly"
-  while systemctl --user is-active --quiet "$SCOPE.scope"; do sleep 5; done
+  # Wait for the GAME, not for the cgroup scope.
+  #
+  # `steam -applaunch` only forwards a request to the already-running Steam daemon and
+  # then exits, so the scope goes inactive within seconds while the game is still
+  # starting. Waiting on the scope therefore fell straight through to teardown and this
+  # script killed the game it had just launched — observed twice on Daikatana
+  # (2026-09-07): both runs died instantly and Steam never even logged the app start.
+  # game_pids() already knows how to find the game however it was started, so use it.
+  APPEAR_TIMEOUT="${APPEAR_TIMEOUT:-300}"
+  appeared=0
+  waited=0
+  while [ "$waited" -lt "$APPEAR_TIMEOUT" ]; do
+    [ -n "$(game_pids)" ] && { appeared=1; break; }
+    sleep 2; waited=$((waited + 2))
+  done
+  if [ "$appeared" -eq 0 ]; then
+    note "game never appeared within ${APPEAR_TIMEOUT}s — nothing to wait on"
+    note "  (Steam may still be starting it; check 'logs/console-linux.txt' for the appid)"
+  else
+    note "game is up (pids:$(game_pids) ) — waiting for it to exit"
+    while [ -n "$(game_pids)" ]; do sleep 5; done
+    note "game exited on its own"
+  fi
 fi
