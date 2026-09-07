@@ -102,17 +102,48 @@ systemd-run --user --scope --unit="$SCOPE" --quiet -- \
   "$STEAM/ubuntu12_32/steam" -applaunch "$APPID" "$@" >"$RUNDIR/launch.log" 2>&1 &
 LAUNCH=$!
 
+# Everything belonging to this game, however it was started. The cgroup scope is
+# NOT sufficient: `steam -applaunch` forwards a request to the already-running
+# Steam daemon, which starts the game in ITS OWN cgroup — our scope only ever
+# held the short-lived forwarding process. And matching `compatdata/<appid>`
+# alone misses the game binary itself, whose cmdline is the install path.
+# Both bugs together once reported "no orphaned processes" while the game ran
+# for 1h46m at 501% CPU and had to be killed by hand.
+game_pids() {
+  local instdir pids=""
+  instdir=$(sed -n 's/.*"installdir"[[:space:]]*"\([^"]*\)".*/\1/p' "$M" | head -1)
+  for d in /proc/[0-9]*; do
+    local pid=${d#/proc/} cl
+    [ "$pid" = "$$" ] && continue
+    [ -r "$d/cmdline" ] || continue
+    cl=$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null) || continue
+    case "$cl" in
+      *"compatdata/$APPID"*|*"shadercache/$APPID"*|*"AppId=$APPID"*) pids="$pids $pid";;
+      *) [ -n "$instdir" ] && case "$cl" in *"common/$instdir/"*) pids="$pids $pid";; esac;;
+    esac
+  done
+  echo $pids
+}
+
 cleanup() {
   echo
   echo "== teardown =="
-  systemctl --user stop "$SCOPE.scope" >/dev/null 2>&1 && note "scope stopped (all descendants killed)"
+  systemctl --user stop "$SCOPE.scope" >/dev/null 2>&1 && note "scope stopped"
   kill "$TELE" 2>/dev/null
-  # belt and braces: anything Wine left outside the scope
-  pkill -f "compatdata/$APPID" 2>/dev/null
-  sleep 1
-  local left
-  left=$(ps -eo args | grep -c "[c]ompatdata/$APPID")
-  [ "$left" -eq 0 ] && note "no orphaned processes" || warn "$left processes still alive — inspect manually"
+  # Proton games reparent freely; ask Wine to shut its prefix down first.
+  local ws="$STEAM/steamapps/common/$USED/files/bin/wineserver"
+  [ -x "$ws" ] && WINEPREFIX="$STEAM/steamapps/compatdata/$APPID/pfx" "$ws" -k 2>/dev/null
+  sleep 2
+  local p
+  p=$(game_pids)
+  if [ -n "$p" ]; then
+    warn "still running after wineserver -k: $(echo $p | wc -w) proc(s) — terminating"
+    kill $p 2>/dev/null; sleep 3
+    p=$(game_pids)
+    [ -n "$p" ] && { warn "forcing: $(echo $p | wc -w)"; kill -9 $p 2>/dev/null; sleep 2; p=$(game_pids); }
+  fi
+  if [ -z "$p" ]; then note "no game processes remain (verified by install dir AND appid)"
+  else warn "$(echo $p | wc -w) SURVIVED: $p"; warn "  inspect: tools/safe-proc.sh list '$APPID'"; fi
   # did instrumentation actually produce data? (MangoHud's x86-64 layer lives in the FEX
   # RootFS; whether it loads for an x86-64 game under FEX was never confirmed by probing —
   # vulkaninfo yields no stdout in the guest — so the first real run is the test.)

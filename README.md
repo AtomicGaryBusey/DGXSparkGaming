@@ -2032,6 +2032,36 @@ These games run natively on ARM64 — no FEX-Emu, Box64, Proton, or DXVK in the 
 
 ## Display Notes
 
+> ### ⚠️ HDMI 2.1 FRL link training fails at 5120×1440 — use DisplayPort (2026-09-06)
+>
+> Switched the G9 from USB-C DisplayPort to **HDMI** on one boot. Result: **no display at all**, and
+> the driver silently retrying forever:
+>
+> ```
+> nvidia-modeset: WARNING: GPU:0: HDMI FRL link training failed.     (x10)
+> ```
+>
+> Symptoms that make this look like a dead GPU when it is not: every DRM connector reads
+> `disconnected`, **no EDID on any connector**, `nvidia-smi -q` says `Display Active: Disabled`,
+> and forcing a re-probe (`echo detect > /sys/class/drm/card*-HDMI-A-1/status`) changes nothing.
+> **Crucially there is no `Xid`** — the GPU is healthy; only the display link failed.
+>
+> **Cause.** 5120×1440 needs more bandwidth than HDMI 2.0 TMDS carries, so the driver must negotiate
+> HDMI 2.1 **FRL** (Fixed Rate Link). NVIDIA's Linux driver has **no DSC**
+> (see below), so the mode must go out uncompressed — right at the top of what FRL can do, with no
+> headroom for a marginal cable. FRL training fails, the link never comes up, and no EDID handshake
+> ever completes.
+>
+> **Fix: use USB-C DisplayPort.** It drives 5120×1440 @ 120 Hz on this rig without complaint.
+> Switching the cable back restored the display **with no reboot**. If you need HDMI specifically it
+> requires an **Ultra High Speed (48 Gbps) certified** cable — one that works fine at 4K60 will still
+> fail here.
+>
+> **Diagnostic order for "no signal" on this box:** check for an `Xid` first (GPU fault vs link
+> fault), then `cat /sys/class/drm/card*/edid | wc -c` (zero = no handshake), then
+> `dmesg | grep -i 'link training'`. Do not assume a runaway process is holding the display — that
+> was the wrong first guess here and it cost time.
+
 Measured on the ZGX Nano + Samsung Odyssey G9 OLED, 2026-09-05 (`xrandr`, X11 `:1`):
 
 - **The active output is `USB-C-2` — DisplayPort 1.4a over USB-C alt mode, not HDMI.** Earlier
