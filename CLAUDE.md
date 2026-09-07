@@ -53,6 +53,25 @@ failure it prevents — because that rationale is the point of this repo. Curren
   say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer
   owns the bug. Exists because a deadlock was nearly attributed to the NR pass with no baseline.
 
+### Enforced by hooks — not by your good intentions (added 2026-09-07)
+
+`.claude/hooks/` now blocks, at the tool call, the things this project keeps doing to
+itself. Registered in `.claude/settings.json`; both are tested (9 and 11 cases).
+
+- **`guard-bash.sh`** blocks: a game launch wrapped in `timeout`; `pgrep -f` / `pkill -f`;
+  a bare `steam -applaunch` outside `game-run.sh`. Every one of those is a documented
+  self-inflicted failure here, and the `timeout` rule was violated on **2026-09-07**, hours
+  after being read at session start.
+- **`guard-foreign-files.sh`** blocks writes to config files another program owns —
+  `OptiScaler.ini`, `UserSettings.json`, the prefix `user.reg`, `localconfig.vdf`,
+  `ReShade.ini` — unless you Read the file *after* its last change on disk. OptiScaler
+  rewrites its ini on exit, Cyberpunk rewrites `UserSettings.json`, Wine rewrites
+  `user.reg`. Editing from a stale view silently contaminated two DLSS experiments.
+  It catches Bash/python-heredoc writes too, which is how most edits here actually happen.
+
+Escape hatch for both: append `# HOOK_OVERRIDE: <reason>` to the command. Deliberate,
+visible in the transcript, and it makes you say why. There is no silent bypass.
+
 ### Process hygiene when testing (all four of these bit us on 2026-09-05)
 
 Testing here means launching Steam, Proton and games on the **user's live desktop**. Every one of
