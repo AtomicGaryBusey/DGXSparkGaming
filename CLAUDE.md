@@ -159,7 +159,9 @@ unqualified; that came from reasoning, not benchmarking. See the README's *Which
 - **`vkGetPhysicalDeviceDescriptorSizeEXT` unthunked** — `VK_EXT_descriptor_buffer` gap in
   FEX. Crashes at/just after launch. Seen in No Man's Sky, Halo Infinite, Elden Ring.
 - **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006) crash on map load
-  ("FPU stack is not empty"). All id Tech 4 broken under FEX. id Tech 3 and 6+ are fine.
+  ("FPU stack is not empty"). All id Tech 4 broken under FEX. **id Tech 2, 3 and 6+ are fine** —
+  Daikatana (id Tech 2, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own
+  per-frame assertion, NOT a general x87-under-FEX problem. Matrix: 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅.
 - **Rockstar/FPU float exceptions** — RDR2 hits `EXCEPTION_FLT_INVALID_OPERATION` on world
   load. Watch whether other Rockstar/RAGE titles share it.
 - **Ubisoft Connect launcher** — crashes outright; blocks all Far Cry titles even though the

@@ -1908,6 +1908,7 @@ Games personally tested on this DGX Spark (GB10, Proton 10.0, FEX-Emu, driver 58
 | **Balatro** | DX11 | Smooth, fullscreen | No issues. |
 | **BioShock Remastered** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **Brotato** | DX11 | Smooth, fullscreen | No issues. |
+| **Daikatana** | OpenGL | Excellent — very high framerate, stable visuals, snappy loading | **id Tech 2** (Quake II engine), 2000. **32-bit x86** (`daikatana.exe` = PE32/Intel 80386) through FEX's 32-bit path — the Cortex-X925/A725 cores have no 32-bit ARM support at all, so this is pure translation. Renderer is `ref_gl.dll` → Wine `opengl32.dll` → `winex11.drv` → native ARM64 GL: **no DXVK/Vulkan involved**, unlike almost everything else in this table. Steam runs `dxsetup.exe` on first launch (harmless; the game's backends are OpenGL/Glide/PowerVR and never need D3D). 13 `err:` lines in the Proton log, all benign. |
 | **Dark Souls II: Scholar of the First Sin** | DX11 | Smooth, maxed settings | DX11 via DXVK. No issues. |
 | **DOOM 64** | KEX | Smooth | KEX engine (SDL2/FMOD). No issues. |
 | **DOOM + DOOM II** (remastered) | KEX | Smooth | Non-DOS remastered version. Runs great. |
@@ -2038,7 +2039,7 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **Burnout Paradise: The Ultimate Box** | DX9. Refuses to launch — error dialog: "This machine does not support the SSE2 Command Set." Game's CPUID check doesn't detect SSE2 under FEX translation, even though FEX fully supports SSE2 emulation. |
 | **DOOM 3** | 32-bit x86 OpenGL (id Tech 4). Launches, initializes OpenGL (ARB2 renderer), loads to menu, crashes on map load. x87 FPU stack corruption — NaN/INF values, engine's FPU state check fails: `the FPU stack is not empty at the end of the frame`. 32-bit binary goes through BOX32 mode. |
 | **DOOM 3 BFG Edition** | 64-bit OpenGL (id Tech 4 remaster). Same FPU stack check crash as DOOM 3 — engine validates x87 state every frame. FPU values are clean (all zeros) but engine still bails. GLSL `gl_FragColor` deprecation warnings are cosmetic, not the cause. id Tech 4's aggressive FPU validation is incompatible with FEX's x87 translation. id Tech 6+ (DOOM 2016, Eternal, Q2 RTX) all work fine — newer engines dropped x87 checks. |
-| **Prey (2006)** | OpenGL (id Tech 4 variant, Human Head). Same x87 FPU stack crash as DOOM 3 and BFG Edition. All id Tech 4 games are broken on the Spark due to FPU state validation. |
+| **Prey (2006)** | OpenGL (id Tech 4 variant, Human Head). Same x87 FPU stack crash as DOOM 3 and BFG Edition. All id Tech 4 games are broken on the Spark due to FPU state validation. **Bounded 2026-09-07:** Daikatana (**id Tech 2**, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own per-frame FPU assertion, **not** a general x87-under-FEX problem. Engine matrix: id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅. |
 | **Dark Souls: Prepare to Die Edition** | DX9 via DXVK. Crashes at launch — GStreamer deadlock in Wine's media pipeline during intro video playback. Log shows `Trying to join task from its thread would deadlock`. The infamously bad PC port uses Windows Media Foundation for videos, which Wine handles via GStreamer — the threading model breaks under FEX translation. |
 | **Dark Souls III** | DX11 via DXVK. Launches and renders the intro cutscene, but crashes to desktop at the cutscene-to-gameplay transition every time. Crash occurs whether skipping or watching the cutscene, and with movie files removed entirely. No crash dump or Vulkan extension error — silent exit. Surprising given Sekiro (same studio, same API) works flawlessly. |
 | **Red Dead Redemption 2** | Requires Proton Experimental (Proton 10.0 can't launch Rockstar Launcher). Gets to main menu on Vulkan renderer, but crashes with `EXCEPTION_FLT_INVALID_OPERATION` (0xc0000090) during world load — FPU translation issue under FEX. DX12 mode fails to get past the launcher. Freezes when changing graphics settings. Neither renderer is viable. |
@@ -2205,7 +2206,7 @@ Games installed but not yet launched/tested. Grouped by expected compatibility b
 
 **id Tech Engine Family — Diagnostic Priority:**
 
-These test the id Tech 4 FPU crash pattern (DOOM 3, BFG, Prey all crash on x87 FPU validation) and whether id Tech 5 inherits the issue. id Tech 3 (Q3A) and id Tech 6+ (DOOM 2016, Eternal) work fine.
+These test the id Tech 4 FPU crash pattern (DOOM 3, BFG, Prey all crash on x87 FPU validation) and whether id Tech 5 inherits the issue. **Note (2026-09-07):** id Tech **2** is now confirmed fine — Daikatana runs excellently at 32-bit x86 over OpenGL — so the fault is specific to id Tech 4's per-frame assertion rather than x87 translation generally. id Tech 3 (Q3A) and id Tech 6+ (DOOM 2016, Eternal) work fine.
 
 | Game | Engine | Notes |
 |------|--------|-------|
