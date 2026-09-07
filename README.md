@@ -229,6 +229,69 @@ black frame, proving that path is load-bearing.
 > `0xBAD00002`), and a mismatched model *reports `Success` on every evaluate and then crashes the
 > game minutes in*.
 
+#### Path A progress — 2026-09-06
+
+The add-on was the missing piece. **It is now built from source** on this machine, and the whole
+injection scaffold is verified on GB10.
+
+**Building `dlssnr-linux.addon64` without `sudo`** (the project's own `install-deps.sh` wants
+`apt-get install` plus a remote script piped to root — declined; all of this came from official
+archives, unpacked locally):
+
+| Piece | Source | Note |
+|---|---|---|
+| clang **20**.1.2 | Ubuntu archive | **clang-18 fails**: MSVC's STL hard-errors `STL1000: expected Clang 19.0.0 or newer`. clang-20 is in Ubuntu's own archive — no need for the `_ALLOW_COMPILER_AND_STL_VERSION_MISMATCH` hatch |
+| MSVC CRT + Windows SDK | `xwin` 0.10.0 (native aarch64) | 630 MB. **`splat` alone does nothing** — the sequence is `download` → `unpack` → `splat` |
+| DXC 1.9 | Microsoft release, x86-64 only | **Runs under box64** — an x86-64 shader compiler on an ARM64 host. Compiled all 4 HLSL compute shaders to DXIL |
+| Detours, ReShade, ImGui, NGX headers | `renodx` submodules | ReShade bundles the exact ImGui it demands (`deps/imgui`, `IMGUI_VERSION_NUM != 19250` is a hard error) |
+
+Result: **242,176 bytes — byte-identical in size to the upstream release**, which corroborates that
+their published binary matches its published source.
+
+**Verified on GB10** (PEAK, DX12, 5120×1440, Proton Experimental):
+
+```
+Registered add-on "DLSSNR Linux" v0.0.0.0 using ReShade API version 18
+[DLSSNR Linux] DLSSNR Linux loaded (clang x86_64-pc-windows-msvc, built on Linux)
+[DLSSNR Linux] environment: Wine/Proton 11.0
+[DLSSNR Linux] swapchain created: 5120x1440 format=28 [srgb (SDR)] buffers=3
+```
+
+It loads, registers, detects Proton, and hooks the swapchain — then stops, because **PEAK has no
+DLSS**. Per the add-on's README: *"this add-on runs off the game's DLSS-SR output, so DLSS must be
+active."* NR is not synthesised from nothing; it post-processes a DLSS-SR frame. Any test title
+**must** have working DLSS Super Resolution.
+
+**Also settled: CDPR has not shipped DLSS 5.** Cyberpunk 2077 ships `nvngx_dlss.dll`,
+`nvngx_dlssg.dll` and `nvngx_dlssd.dll` but **no `nvngx_dlssnr.dll`** — so the circulating CP2077
+neural-rendering footage is this same injection route, not native support (confirmed by AGB).
+**NBA 2K27 remains the only legitimate source of the model.**
+
+#### The last untested step — and what the harness proved
+
+A hand-written D3D12 harness (`tools/fex-tests/`) took the chain as far as it can go without the
+add-on. On GB10 under FEX:
+
+```
+adapter: NVIDIA GB10  vendor=0x10DE device=0x2E12
+NVSDK_NGX_D3D12_Init_Ext => 0x1   GetCapabilityParameters => 0x1
+nrfwd_init  => 1        ← the 158 MB CUDA-bearing NR snippet LOADS AND INITIALISES
+CreateFeature(18) => 0x1
+EvaluateFeature   => 0xBAD00005 (InvalidParameter)
+GPU execute => completed;  device removed reason => 0x0 (healthy)
+```
+
+**`nrfwd_init => 1` is the real result** — Path A's last untested step (a 158 MB CUDA-bearing PE
+driving `nvcuda.dll` through FEX → vkd3d-proton → NVX) works on GB10.
+
+> ⚠️ **`CreateFeature` proves nothing on its own — verify with a bogus feature id.** A control
+> forwarder built identically but requesting **feature 99** also returned `0x1 Success` with a live
+> handle, and `EvaluateFeature` returned the same `0xBAD00005`. The snippet does not validate the
+> feature number at these entry points. An earlier draft of this section was about to claim
+> "DLSS 5 Neural Rendering created on GB10 — a world first"; the control killed it. Hand-supplying
+> the ~61 DLSSNR.* parameters could not close the gap either, which is precisely why the real
+> add-on — which encodes the correct protocol — was needed.
+
 #### Definitive dead ends — do not re-tread
 
 - **Waiting for an R615/R616 Linux driver.** An R615 Linux **aarch64** NGX core *already exists*
