@@ -10,7 +10,7 @@
 | Steam | Installed + Launched | client auto-updated 2026-09-05 |
 | Box64 | Installed | **v0.4.4** (Dynarec, armv9.2-a) |
 | Proton | Configured | **11.0-2c x86-64** — the one to use. 11.0-2c ARM64 installed but **unusable** (no aarch64 Steam client); 10.0-4b as fallback. See [Which Proton](#which-proton-on-arm64) |
-| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: the host problem is **solved** — a self-built OptiScaler runs stably on GB10 and the ReShade deadlock is gone — but **NR never reaches the image**. Five independent signals, incl. OptiScaler's own Debug view being unable to change the frame. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
+| DLSS | Working | **DLSS 4 + MFG**. DLSS 5: host problem **solved** (self-built OptiScaler runs stably on GB10, ReShade deadlock gone) but **NR does not work either way** — post-SR it is inert, pre-SR it hangs the game. Both branches tested cleanly, reproduced twice each. See [the correction](#optiscaler-runs-on-gb10--but-nr-does-not-apply-per-frame-2026-09-07) |
 
 > This table is the **reference configuration** proven on the DGX Sparks (target versions). For
 > the live bring-up state of a given machine, run the [Prerequisites Checklist](#prerequisites-checklist).
@@ -528,9 +528,44 @@ panel that literally does nothing."*
 pixels.** Given how much circulating footage implies otherwise, that is worth recording as
 carefully as a success would have been.
 
-*Remaining lead, untested:* `[DlssNr] RunBeforeSR` is still `auto`. It controls **where** NR inserts
-relative to upscaling — the one axis that plausibly decides whether it touches the frame at all.
-`Passes`, `WorkingScale` and `ScalingDownscaler` are also still `auto`.
+**Both insertion points have now been tested, each with a clean single-variable config, and each
+reproduced twice.** `[DlssNr] RunBeforeSR` controls where NR inserts relative to upscaling, and it
+is the only knob that changes behaviour at all:
+
+| `RunBeforeSR` | Exposure scan | NR pass | Game |
+|---|---|---|---|
+| `false` (default, post-SR) | **rejects every candidate** | inert — no control in the panel alters a pixel | runs fine |
+| `true` (pre-SR) | **adopts 8 resources** | never builds its feature | **hangs**, killed by the engine watchdog |
+
+**Neither produces working Neural Rendering on this stack.** Post-SR, NR cannot find anything to
+work on. Pre-SR, it finds resources and the game wedges before the pass ever runs.
+
+The pre-SR hang is extremely reproducible — three crashes, byte-identical signature:
+
+```
+Message: Watchdog timeout! (120 seconds)
+File: E:\R6.Release\dev\src\common\engine\src\engineWatchdog.cpp  Line: 198
+stopThreadID: 520      uptimeSeconds: 142 / 144 / 143
+```
+
+Same thread, same timeout, within two seconds across three runs — and the third of those was the
+clean run with **only** `Enabled`, `RunBeforeSR`, `DebugView` and `AutoCapture` set. It always stalls
+at the same point in the same scan (`near-miss #28`, UAV shapes `2560x1x1` and `15360x1x1`).
+
+*A confound that turned out not to matter:* the first two pre-SR runs were contaminated — OptiScaler
+writes overlay changes back to its ini on exit, so `Style=1`, `WhitePointSource=2`, `CompareTags` and
+an empty `ScanAnchors` were sitting under the values this log set, unnoticed. The clean run
+reproduced the stall exactly, so those were **not** the cause. **Re-read `OptiScaler.ini` before
+editing it; it is not a file you own.**
+
+*Cost is a real lever, but not the cure:* at `WorkingScale=1.0, Passes=3` the pre-SR path produced
+**19x `VK_ERROR_DEVICE_LOST`** and froze on the first logo frame. At `WorkingScale=0.5, Passes=1`
+the device loss disappeared entirely and the logo rendered at 49 FPS — then stalled anyway. The GPU
+is never at fault: **no Xid, no kernel error, 35 C throughout**. Vulkan-level device loss and
+CPU-side stalls only (`33 futex_wait_multiple + 33 futex_do_wait + 10 poll`, GPU idle at 2%).
+
+Evidence: `~/dgx-gaming-work/evidence/optiscaler-runbeforesr-clean-*.log`,
+`watchdog-Cyberpunk2077-*.txt` (x3), `stacks-nr-runbeforesr-stall-*.txt`.
 
 *Also unresolved:* OptiScaler rewrites its own ini with spaces (`LogToFile = true`) and then wrote
 **no log at all** for the 1080p session — quite possibly its parser not accepting the format it

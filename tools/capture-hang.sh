@@ -31,9 +31,12 @@
 #   Restore with:             sudo sysctl -w kernel.yama.ptrace_scope=1
 #   Without it the wchan census still works; only the backtraces are skipped.
 #
-# STATUS: WRITTEN BUT NEVER RUN (as of 2026-09-07). It was built to diagnose the ReShade
-#   deadlock, which was then sidestepped entirely by moving to OptiScaler, so it has never
-#   fired in anger. Treat its output format and the wineserver reasoning as untested.
+# STATUS: RUN 2026-09-07 on a stalled Cyberpunk process. PARTIALLY USEFUL, and the limitation
+#   matters: gdb attached fine and captured all 78 threads, but **every frame was an
+#   unsymbolizable FEX JIT address** -- zero resolved symbols. Under FEX this tool gives you
+#   the wchan census (which is genuinely useful: 33 futex_wait_multiple + 33 futex_do_wait +
+#   10 poll = a CPU-side stall, not a GPU wait) but it will NOT name the lock. Do not plan a
+#   diagnosis around its backtraces on a translated process.
 #
 # Usage:  tools/capture-hang.sh [label]
 #
