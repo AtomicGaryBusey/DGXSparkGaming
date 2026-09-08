@@ -42,8 +42,8 @@
 # Usage:
 #   tools/game-run.sh <appid> [-- extra game args]
 #     PROTON=proton_11        compat tool to expect (warn if different)
-#     WORKDIR=<dir>           launch cwd (default: the game dir). Prey needs the
-#                             mod dir, because it reads ../base/preykey.
+#     WORKDIR=<dir>           launch cwd (default: the game dir). NOT a fix for
+#                             Prey's CD key -- see the note by LAUNCHDIR below.
 #     RUNTIME=auto|fex|box64  which JIT to run under. ALWAYS recorded in run.json;
 #                             `auto` is Box64 here, because binfmt says so.
 #     LAUNCH_OPTION=          pick a non-default launch entry (e.g. option1), or
@@ -246,11 +246,14 @@ case "$RUNTIME" in
   *) die "RUNTIME must be auto, fex or box64" ;;
 esac
 
-# WORKDIR overrides the launch directory. Needed because some engines resolve
-# data paths RELATIVE TO THE CWD and Steam's own choice is not always the game
-# root: Prey (2006) reads its CD key from "../base/preykey", which only resolves
-# if the cwd is the mod directory. With cwd=<game>/ it looks in common/base/ and
-# reports "Couldn't read ../base/preykey" even though the file is right there.
+# WORKDIR overrides the launch directory, for engines that resolve data paths
+# relative to the cwd.
+#
+# DO NOT use it to chase Prey's "Couldn't read ../base/preykey" -- that was tried
+# on 2026-09-08 and is WRONG. id Tech 4 appends its mod directory to the cwd, so
+# cwd=<game>/base makes the search path <game>/base/base: no .pk4 loads at all
+# and the engine dies with "Couldn't load default.cfg". The key-path arithmetic
+# looked right and the fix broke the thing that was already working.
 LAUNCHDIR="${WORKDIR:-$GAMEDIR}"
 [ -d "$LAUNCHDIR" ] || die "WORKDIR=$LAUNCHDIR does not exist"
 [ "$LAUNCHDIR" != "$GAMEDIR" ] && note "cwd override: $LAUNCHDIR"

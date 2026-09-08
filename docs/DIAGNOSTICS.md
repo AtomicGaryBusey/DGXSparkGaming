@@ -107,6 +107,34 @@ control word, status word, tag word, instruction pointer, all eight ST registers
 decoded stack depth. This log went years without anyone turning that on. `tools/idtech4-prep.sh`
 does it for you.
 
+## 4b. What Steam does that a direct Proton launch does not
+
+Launching Proton directly (as `tools/game-run.sh` does, so that the environment actually reaches
+the game) skips several things the Steam client normally does. Each has bitten this project:
+
+| Steam does | Symptom when skipped | Fix |
+|---|---|---|
+| Creates `steamapps/compatdata/<appid>/` | Proton dies with a Python traceback ending `FileNotFoundError: .../pfx.lock`, which reads exactly like lock contention and is not | `game-run.sh` now creates it |
+| Writes the **legacy CD-key file** for pre-2010 titles | The game prompts for a CD key it should already have | Launch the title **once from the Steam UI**, then use direct launches |
+| Injects the Steam overlay (`gameoverlayrenderer.so`) | No overlay, no in-game Steam UI | expected; not usually a problem |
+
+**The CD-key one is easy to misread as licensing.** Steam's `appinfo` marks these titles with
+`legacykeyregistrationmethod` (`disk` or `registry`) and `legacykeydisklocation`
+(e.g. `base\preykey`, `q4base\quake4key`). Read them with
+`tools/appinfo.py <appid> --launch` / `--json`.
+
+The file's **first line is the key**; everything after is the engine's own `//` comments. So the
+diagnosis is one command, and it has a built-in control — compare a title that works against one
+that prompts:
+
+```bash
+awk 'NR==1{gsub(/\r/,""); print length($0)" chars"}' "<game>/<moddir>/<name>key"
+```
+
+Measured on this box 2026-09-08: Quake 4 **21 chars** (works), DOOM 3 **7 chars** (populated),
+Prey **0 chars** (empty template, prompts). Quake 4 and DOOM 3 had been launched through Steam
+at some point; Prey never had.
+
 ## 5. Crash dumps
 
 - `<prefix>/drive_c/users/steamuser/Temp/` — Wine and most games drop `.dmp` here
