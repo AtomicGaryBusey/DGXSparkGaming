@@ -11,6 +11,13 @@
 #
 #   Prose in a context window is not an enforcement mechanism. This is.
 #
+# MATCHING LIVES IN guard-bash-match.py
+#   The first version matched plain substrings and fired on its OWN documentation:
+#   a command that WROTE the words "pgrep -f" into a README row was blocked as if
+#   it were running them. A hook that cries wolf gets switched off, which is worse
+#   than no hook. The matcher now strips heredoc bodies (docs, scripts and commit
+#   messages live there) and requires a real command position.
+#
 # CONTRACT
 #   stdin: JSON with .tool_name and .tool_input.command
 #   exit 0 -> allow.  exit 2 -> BLOCK, and stderr is shown to the model.
@@ -20,17 +27,18 @@
 #   transcript, and requires stating why -- which is the point. Silent bypass is
 #   not available.
 set -uo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
 
 INPUT="$(cat)"
 CMD="$(printf '%s' "$INPUT" | python3 -c 'import json,sys
 try:
     d=json.load(sys.stdin)
-    if d.get("tool_name")!="Bash": print("");
-    else: print(d.get("tool_input",{}).get("command",""))
+    print(d.get("tool_input",{}).get("command","") if d.get("tool_name")=="Bash" else "")
 except Exception: print("")' 2>/dev/null)"
-
 [ -z "$CMD" ] && exit 0
-case "$CMD" in *"HOOK_OVERRIDE:"*) exit 0;; esac
+
+RULE="$(printf '%s' "$CMD" | python3 "$HERE/guard-bash-match.py" 2>/dev/null)"
+[ -z "$RULE" ] && exit 0
 
 block() {
   printf 'BLOCKED by .claude/hooks/guard-bash.sh\n\n%s\n\n' "$1" >&2
@@ -39,36 +47,15 @@ block() {
   exit 2
 }
 
-# 1. `timeout` wrapping a game launch. Killing the launcher does NOT kill the game:
-#    Wine reparents and the tree keeps burning CPU. Only matches unambiguous game
-#    launches, so `timeout` around gdb/curl/wine-harnesses stays allowed.
-case "$CMD" in
-  *timeout*)
-    case "$CMD" in
-      *game-run.sh*|*-applaunch*|*steam.sh*)
-        block "A game launch is wrapped in \`timeout\`. Rule #1: killing the launcher does not kill the game — Wine reparents the tree and <game>.exe + wineserver keep running. This orphaned a Wine tree for 1h46m at 501% CPU once." \
-              "tools/game-run.sh <appid>  (it tears down via a cgroup scope), or SECONDS_MAX=<n> for a time-boxed run" ;;
-    esac ;;
-esac
-
-# 2. pgrep -f / pkill -f — matches the invoking shell, because the pattern is IN
-#    that shell's command line. Three occurrences in this project.
-case "$CMD" in
-  *"pkill -f"*|*"pkill  -f"*|*"pgrep -f"*|*"pgrep  -f"*)
-    block "\`pgrep -f\` / \`pkill -f\` match your own shell — the pattern appears in its command line. This happened 3x here, twice after a written rule forbade it, killing a monitor and a shell mid-heredoc." \
+case "$RULE" in
+  procmatch)
+    block "A process match by full command line matches YOUR OWN shell — the pattern appears in its command line. This happened 3x here, twice after a written rule forbade it, killing a monitor and a shell mid-heredoc." \
           "tools/safe-proc.sh {list|wait|kill} <pattern>  (excludes self, ancestors and descendants by construction)" ;;
+  timeout-launch)
+    block "A game launch is wrapped in \`timeout\`. Rule #1: killing the launcher does not kill the game — Wine reparents the tree and <game>.exe + wineserver keep running. This orphaned a Wine tree for 1h46m at 501% CPU once." \
+          "tools/game-run.sh <appid>  (cgroup scope teardown), or SECONDS_MAX=<n> for a time-boxed run" ;;
+  applaunch)
+    block "Hand-launching a game with \`steam -applaunch\`. No cgroup scope (so no atomic teardown), no telemetry, no pre-flight — and this is exactly how the 1h46m orphan happened." \
+          "tools/game-run.sh <appid>" ;;
 esac
-
-# 3. Hand-launching a game. game-run.sh gives cgroup teardown, telemetry and
-#    pre-flight; a bare applaunch gives none of it and orphans on failure.
-case "$CMD" in
-  *-applaunch*)
-    case "$CMD" in
-      *game-run.sh*) ;;
-      *)
-        block "Hand-launching a game with \`steam -applaunch\`. No cgroup scope (so no atomic teardown), no telemetry, no pre-flight — and this is exactly how the 1h46m orphan happened." \
-              "tools/game-run.sh <appid>" ;;
-    esac ;;
-esac
-
 exit 0

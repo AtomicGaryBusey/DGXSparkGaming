@@ -55,6 +55,14 @@ failure it prevents — because that rationale is the point of this repo. Curren
   a GPL-3.0 fork whose bundled libs were verified byte-identical to upstream first. Patches are
   idempotent; every one is a clang-vs-MSVC portability fix, documented in the script header.
   **Built 2026-09-07, never yet run in a game.**
+- **`tools/experiment.sh`** — runs ONE controlled experiment end to end and makes its inputs part
+  of its output: refuses to start if the game is running, snapshots foreign-owned config, applies
+  `--set 'Section:Key=value'` showing old -> new, clears the evidence you name, watches, then diffs
+  config against the **armed** baseline so drift means "what the game changed". Use it for any A/B.
+- **`tools/capture-hang.sh`** — wchan census + gdb backtraces for a wedged game and for wineserver.
+  **Under FEX the backtraces are unsymbolizable JIT addresses** — the wchan census is the useful part.
+- **`tools/build-dlssnr-addon.sh`** — builds the ReShade NR add-on from source, no sudo. Four
+  documented gotchas in its header, each of which cost a build cycle.
 - **`tools/dlssnr-control-run.sh`** — bisects the DLSS-5 NR injection chain against a game hang:
   arms one of four layers (`baseline`/`reshade`/`probe`/`nr`) by file, then samples CPU until it can
   say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer
