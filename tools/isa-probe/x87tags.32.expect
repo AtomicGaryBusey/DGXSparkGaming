@@ -1,0 +1,13 @@
+# Intel SDM: FINIT leaves CW=0x037F and every tag Empty (0b11 each -> 0xFFFF).
+CWD0  0x037f
+TAG0  0xffff
+# Three FLDs from empty leave TOP=5 with physical R5,R6,R7 in use.
+# Tag word is indexed by PHYSICAL register, so that is 0x03FF -- NOT 0xFFC0,
+# which is the same three registers written in stack-relative order.
+TAG3  0x03ff
+TOP3  0x5
+# A balanced push/pop returns the stack to empty.
+TAGB  0xffff
+# FIP should name the last non-control x87 instruction. Both JITs report 0 here;
+# informational, because almost nothing reads it and no game is known to.
+FIP1  *

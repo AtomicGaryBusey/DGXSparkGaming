@@ -1,0 +1,16 @@
+# Every bit here is architecturally implied by a CPU that reports SSE2.
+# A game testing a MASK of leaf-1 EDX bits fails if ANY of them is missing,
+# which is why "SSE2 is advertised" does not settle the Burnout question.
+MAXL  !0
+FPU   0x1
+# DE (debugging extensions) and PSE (page size extension): present on every real
+# x86 since the Pentium. FEX 2607/2608 reports 0 for both.
+DE    0x1
+PSE   0x1
+TSC   0x1
+CX8   0x1
+CMOV  0x1
+MMX   0x1
+SSE   0x1
+SSE2  0x1
+SSE3  0x1

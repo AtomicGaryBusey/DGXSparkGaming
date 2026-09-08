@@ -108,35 +108,91 @@ else
 fi
 note "logs: $RUNDIR"
 
-if [ "${DRY_RUN:-0}" = 1 ]; then
-  echo "== dry run: pre-flight only, nothing launched =="
-  note "would launch in scope '$SCOPE' with: ${ENVS[*]}"
-  rmdir "$RUNDIR" 2>/dev/null
-  exit 0
-fi
-
 # GPU telemetry alongside the run — answers GPU-bound vs CPU-bound, this project's core thesis
 ( nvidia-smi --query-gpu=timestamp,utilization.gpu,clocks.sm,power.draw,memory.used \
     --format=csv -l 1 > "$RUNDIR/gpu.csv" 2>/dev/null ) &
 TELE=$!
 
-echo "== launching in cgroup scope '$SCOPE' =="
-# LAUNCH_OPTION selects a NON-default launch entry (see tools/appinfo.py: a title
-# can ship several, e.g. NBA 2K27's "NBA 2K27 without EAC (offline only)" = option1).
-# `steam -applaunch` always takes the default, so that needs the steam:// form --
-# which must still happen INSIDE the scope, or there is no atomic teardown. Doing it
-# by hand from a shell would also slip guard-bash.sh, which only matches -applaunch.
-# NOTE: option selection via steam://launch/<appid>/<option> is UNVERIFIED; Valve
-# documents only steam://launch/<appid>/dialog, which needs a human click. If the
-# default starts anyway, use LAUNCH_OPTION=dialog and pick from the chooser.
-if [ -n "${LAUNCH_OPTION:-}" ]; then
-  note "launch option: $LAUNCH_OPTION (unverified selector — check which exe actually starts)"
-  set -- "$STEAM/ubuntu12_32/steam" "steam://launch/$APPID/$LAUNCH_OPTION"
+# --- resolve the real launch chain -------------------------------------------
+# LAUNCH_VIA=steam restores the old `steam -applaunch` path. It is NOT the
+# default any more, because it does not work for instrumentation: -applaunch is
+# an IPC request to the already-running Steam daemon, which then spawns the game
+# with ITS environment. Everything in ENVS was silently dropped. Measured
+# 2026-09-07: five runs produced gpu.csv (nvidia-smi, our own process) and ZERO
+# MangoHud CSVs. game-run.sh's entire reason for existing -- "every run produces
+# numbers instead of adjectives" -- was quietly false for its whole life.
+#
+# The default now replicates Steam's own chain, which we can read straight out of
+# its console log:
+#   reaper SteamLaunch AppId=N -- <runtime>/_v2-entry-point --verb=waitforexitandrun
+#     -- <proton>/proton waitforexitandrun <game exe>
+# Launching it ourselves means our env is the game's env.
+GAMEDIR="$STEAM/steamapps/common/$(sed -n 's/.*"installdir"[[:space:]]*"\([^"]*\)".*/\1/p' "$M" | head -1)"
+
+if [ "${LAUNCH_VIA:-proton}" = "steam" ]; then
+  warn "LAUNCH_VIA=steam — env vars will NOT reach the game (no HUD, no MangoHud, no PROTON_LOG)"
+  if [ -n "${LAUNCH_OPTION:-}" ]; then
+    set -- "$STEAM/ubuntu12_32/steam" "steam://launch/$APPID/$LAUNCH_OPTION"
+  else
+    set -- "$STEAM/ubuntu12_32/steam" -applaunch "$APPID" "$@"
+  fi
 else
-  set -- "$STEAM/ubuntu12_32/steam" -applaunch "$APPID" "$@"
+  # compat tool: the prefix's own record first, then $PROTON, then Experimental
+  COMPAT="${USED:-}"
+  [ -z "$COMPAT" ] && case "${PROTON:-}" in
+    proton_11) COMPAT="Proton 11.0";; proton_10) COMPAT="Proton 10.0";; *) COMPAT="Proton - Experimental";;
+  esac
+  CT="$STEAM/steamapps/common/$COMPAT"
+  [ -x "$CT/proton" ] || die "no proton at $CT/proton (set PROTON= or LAUNCH_VIA=steam)"
+
+  # the runtime named by the compat tool itself, not a guess
+  RT_APPID=$(sed -n 's/.*"require_tool_appid"[[:space:]]*"\([0-9]*\)".*/\1/p' "$CT/toolmanifest.vdf" 2>/dev/null | head -1)
+  RT_DIR=""
+  if [ -n "$RT_APPID" ]; then
+    RT_DIR=$(sed -n 's/.*"installdir"[[:space:]]*"\([^"]*\)".*/\1/p' \
+             "$STEAM/steamapps/appmanifest_$RT_APPID.acf" 2>/dev/null | head -1)
+  fi
+  ENTRY="$STEAM/steamapps/common/$RT_DIR/_v2-entry-point"
+  [ -x "$ENTRY" ] || die "runtime for $COMPAT (appid ${RT_APPID:-?}) not installed — steam://install/$RT_APPID"
+
+  # the executable, from Steam's metadata rather than from a guess about the dir
+  EXE=$(python3 "$(dirname "$0")/appinfo.py" "$APPID" --launch 2>/dev/null \
+        | awk -F'\t' -v want="${LAUNCH_OPTION:-}" '
+            want=="" && NR==1 {print $3; exit}
+            want!="" && $2==want {print $3; exit}')
+  [ -n "$EXE" ] || die "could not resolve an executable for $APPID (tools/appinfo.py $APPID --launch)"
+  EXE=$(printf '%s' "$EXE" | tr '\\' '/')
+  note "compat: $COMPAT   runtime: $RT_DIR"
+  note "exe: $EXE${LAUNCH_OPTION:+  (launch option: $LAUNCH_OPTION)}"
+  [ -f "$GAMEDIR/$EXE" ] || warn "$GAMEDIR/$EXE does not exist — launch will probably fail"
+
+  # Proton needs these; SteamAppId/SteamGameId are what the Steam API keys off.
+  ENVS+=("STEAM_COMPAT_DATA_PATH=$STEAM/steamapps/compatdata/$APPID"
+         "STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM"
+         "STEAM_COMPAT_APP_ID=$APPID" "SteamAppId=$APPID" "SteamGameId=$APPID")
+  # Now that env actually arrives, log every run. This is the corpus
+  # tools/signature-check.sh needs: a claimed failure signature is worth nothing
+  # until a WORKING title's log has been checked for it, and on 2026-09-07 only
+  # three such logs existed in total.
+  [ "${NO_PROTON_LOG:-0}" = 1 ] || ENVS+=("PROTON_LOG=1")
+  set -- "$STEAM/ubuntu12_32/reaper" "SteamLaunch" "AppId=$APPID" -- \
+         "$ENTRY" --verb=waitforexitandrun -- \
+         "$CT/proton" waitforexitandrun "$GAMEDIR/$EXE" "$@"
 fi
-systemd-run --user --scope --unit="$SCOPE" --quiet -- \
-  env "${ENVS[@]}" "$@" >"$RUNDIR/launch.log" 2>&1 &
+
+if [ "${DRY_RUN:-0}" = 1 ]; then
+  echo "== dry run: pre-flight only, nothing launched =="
+  note "cwd:  $GAMEDIR"
+  note "env:  ${ENVS[*]}"
+  note "argv: $*"
+  rmdir "$RUNDIR" 2>/dev/null
+  exit 0
+fi
+
+echo "== launching in cgroup scope '$SCOPE' =="
+( cd "$GAMEDIR" 2>/dev/null || cd "$HOME"
+  systemd-run --user --scope --unit="$SCOPE" --quiet -- \
+    env "${ENVS[@]}" "$@" >"$RUNDIR/launch.log" 2>&1 ) &
 LAUNCH=$!
 
 # Everything belonging to this game, however it was started. The cgroup scope is

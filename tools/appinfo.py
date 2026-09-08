@@ -27,3 +27,52 @@ def apps():
         try: kv,_=parse(d[off+8:off+8+sz], 4+4+8+20+4+20); yield a, kv.get('appinfo',{})
         except Exception: pass
         off += 8+sz
+
+# ---------------------------------------------------------------------------
+# CLI, added 2026-09-07. game-run.sh needs to know a title's real executable to
+# launch Proton directly instead of going through `steam -applaunch` (which is
+# an IPC forwarder, so no environment we set ever reached the game -- five runs
+# produced zero MangoHud CSVs before anyone checked). Guessing the exe from the
+# install dir is exactly the kind of guess this file exists to replace.
+# Importing the module is unaffected.
+if __name__ == "__main__":
+    import sys, json as _json
+
+    def _find(appid):
+        for a, info in apps():
+            if a == appid:
+                return info
+        return None
+
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help"):
+        print("usage: appinfo.py <appid> [--launch|--name|--json]")
+        print("  --launch  one line per launch entry: <key> <type> <exe> <description>")
+        print("  --name    the store name")
+        print("  --json    the whole appinfo record")
+        sys.exit(2)
+
+    try:
+        _appid = int(args[0])
+    except ValueError:
+        print(f"not an appid: {args[0]}"); sys.exit(2)
+    what = args[1] if len(args) > 1 else "--name"
+
+    _info = _find(_appid)
+    if _info is None:
+        print(f"appid {_appid} not present in appinfo.vdf"); sys.exit(1)
+
+    if what == "--name":
+        print(_info.get("common", {}).get("name", ""))
+    elif what == "--json":
+        print(_json.dumps(_info, indent=1, default=str))
+    elif what == "--launch":
+        launch = _info.get("config", {}).get("launch", {})
+        if not launch:
+            print("no launch entries"); sys.exit(1)
+        for k in sorted(launch, key=lambda x: int(x) if x.isdigit() else 999):
+            e = launch[k]
+            print("\t".join([k, e.get("type", ""), e.get("executable", ""),
+                             e.get("description", "")]))
+    else:
+        print(f"unknown mode: {what}"); sys.exit(2)
