@@ -24,6 +24,10 @@
 #   * -DENABLE_LTO=False. It defaults TRUE, and clang + the system GNU ld without
 #     an LLVMgold plugin fails at link.
 #   * -DBUILD_TESTING=False, not -DBUILD_TESTS.
+#   * -DBUILD_FEXCONFIG=False, or configure hard-fails on a missing Qt5/Qt6. The
+#     config GUI is useless here anyway; ~/.fex-emu/Config.json is edited directly.
+#   * The tree may be a SPARSE checkout. git then calls it clean while files are
+#     absent, and cmake fails on a file `git ls-files` swears is tracked.
 #   * Submodules are NOT initialised in ~/dgx-gaming-work/fexsrc. Init them, do
 #     not re-clone -- the tree is already at a known commit.
 #   * NEVER install over /usr. The system FEX stays the fallback; this prefix is
@@ -48,7 +52,8 @@ die()  { printf '  \033[31mx %s\033[0m\n' "$*"; exit 1; }
 
 probe_test() {
   echo "== regression gate: tools/isa-probe.sh against the new build =="
-  [ -x "$PREFIX/bin/FEXInterpreter" ] || die "no FEXInterpreter at $PREFIX/bin"
+  [ -x "$PREFIX/bin/FEXInterpreter" ] || [ -x "$PREFIX/bin/FEX" ] \
+    || die "no FEXInterpreter or FEX at $PREFIX/bin"
   note "packaged FEX first, for comparison:"
   ( cd "$REPO" && tools/isa-probe.sh 2>&1 | sed 's/^/    /' ) || true
   echo
@@ -79,6 +84,18 @@ note "source:   $SRC ($(cd "$SRC" && git log --oneline -1))"
 note "prefix:   $PREFIX   jobs=$JOBS"
 command -v cmake >/dev/null || die "cmake not found"
 
+# A SPARSE CHECKOUT is the nastiest failure mode here, because git reports the
+# tree as CLEAN and `git ls-files` lists files that are not on disk. On
+# 2026-09-07 ~/dgx-gaming-work/fexsrc had only 3600 of its files materialised,
+# and configure died with "Config.json.in does not exist" for a file git happily
+# said was tracked and unmodified.
+echo "== sparse checkout =="
+if [ "$(cd "$SRC" && git config core.sparseCheckout 2>/dev/null)" = "true" ]; then
+  note "sparse checkout detected — materialising the full tree"
+  ( cd "$SRC" && git sparse-checkout disable ) || die "could not disable sparse checkout"
+fi
+note "files on disk: $(find "$SRC" -type f -not -path '*/.git/*' | wc -l)"
+
 echo "== submodules =="
 ( cd "$SRC" && git submodule update --init --recursive --depth 1 ) \
   || die "submodule init failed"
@@ -93,6 +110,7 @@ cmake -S "$SRC" -B "$BUILD" \
   -DCMAKE_INSTALL_PREFIX="$PREFIX" \
   -DENABLE_LTO=False \
   -DBUILD_TESTING=False \
+  -DBUILD_FEXCONFIG=False \
   -DENABLE_ASSERTIONS=False \
   > "$BUILD/configure.log" 2>&1 || { tail -25 "$BUILD/configure.log"; die "configure failed (full log: $BUILD/configure.log)"; }
 note "ok"

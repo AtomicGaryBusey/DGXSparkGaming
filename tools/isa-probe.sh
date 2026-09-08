@@ -43,8 +43,13 @@ command -v FEXBash >/dev/null 2>&1 || { echo "!! FEXBash not found"; exit 2; }
 # FEX_BIN=<prefix>/bin points the RUN step at a locally built FEX while still
 # building the probes with the system FEXBash (which supplies the RootFS).
 if [ -n "${FEX_BIN:-}" ]; then
-  FEX_INTERP="$FEX_BIN/FEXInterpreter"
-  [ -x "$FEX_INTERP" ] || { echo "!! no FEXInterpreter at $FEX_INTERP"; exit 2; }
+  # A source build installs the interpreter as `FEX`; the packaged one also
+  # provides the `FEXInterpreter` alias. Accept either.
+  FEX_INTERP=""
+  for cand in "$FEX_BIN/FEXInterpreter" "$FEX_BIN/FEX"; do
+    [ -x "$cand" ] && { FEX_INTERP="$cand"; break; }
+  done
+  [ -n "$FEX_INTERP" ] || { echo "!! no FEXInterpreter or FEX in $FEX_BIN"; exit 2; }
   echo "  using FEX build: $FEX_INTERP"
   export FEX_INTERP
 fi
