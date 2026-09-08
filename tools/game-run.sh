@@ -422,7 +422,18 @@ trap cleanup EXIT INT TERM
 
 if [ "$MAXS" -gt 0 ]; then
   note "will auto-stop after ${MAXS}s"
-  sleep "$MAXS"
+  # Poll instead of a bare sleep, so the JIT is sampled WHILE the game is alive.
+  # detect_jit() at teardown only is too late for a title that dies early: Prey
+  # (2026-09-07) exited in seconds and recorded runtime_actual=unknown, which is
+  # exactly the run you most want attributed.
+  _el=0; _ann=0
+  while [ "$_el" -lt "$MAXS" ]; do
+    if [ "$_ann" = 0 ] && detect_jit; then
+      note "runtime ACTUALLY executing the game: $ACTUAL_JIT"; _ann=1
+    fi
+    sleep 3; _el=$((_el+3))
+  done
+  [ "$_ann" = 0 ] && warn "never saw a live process to read the JIT from — the game may have exited immediately"
 else
   note "running — press Ctrl-C here to stop the game and tear down cleanly"
   # Wait for the GAME, not for the cgroup scope.

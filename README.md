@@ -2082,6 +2082,38 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **Dark Souls III** | DX11 via DXVK. Launches and renders the intro cutscene, but crashes to desktop at the cutscene-to-gameplay transition every time. Crash occurs whether skipping or watching the cutscene, and with movie files removed entirely. No crash dump or Vulkan extension error — silent exit. Surprising given Sekiro (same studio, same API) works flawlessly. |
 | **Red Dead Redemption 2** | Requires Proton Experimental (Proton 10.0 can't launch Rockstar Launcher). Gets to main menu on Vulkan renderer, but crashes with `EXCEPTION_FLT_INVALID_OPERATION` (0xc0000090) during world load — FPU translation issue under FEX. DX12 mode fails to get past the launcher. Freezes when changing graphics settings. Neither renderer is viable. |
 
+> ### :warning: CORRECTION (2026-09-07): id Tech 4 was never tested per-JIT, and the two JITs disagree
+>
+> This log has recorded "all id Tech 4 is broken on the Spark" since the beginning, attributed to
+> FEX's x87 emulation. Two separate errors underneath that:
+>
+> **1. Nothing ever recorded which translator ran a game.** `binfmt_misc` here registers **only
+> Box64** for x86 ELF; FEX is not registered at all. A game launched from a shell is Box64. Steam's
+> own process is FEX-hosted, so its children usually are FEX — but no run ever wrote it down, so
+> every historical id Tech 4 result is of *unknown provenance*. `tools/game-run.sh` now records
+> `runtime_actual`, read from `/proc/<pid>/exe`, into a `run.json` beside every run.
+>
+> **2. With everything else held constant, the two JITs give opposite results.** Same title, same
+> Proton, same runtime container, same prefix, same `autoexec.cfg`, 2560x1440 — only `RUNTIME`
+> differs:
+>
+> | | `runtime_actual` | Outcome | Artifacts |
+> |---|---|---|---|
+> | **Box64** | `Box64` | **Plays.** Main menu, `game/airdefense1` loads (16.3 s, 1635 images, 1130 models), autosave written, movement and weapons work — confirmed by a human at the keyboard | `runs/2210-20260907-223229/` |
+> | **FEX** | `FEX` | **`SetPixelFormat failed` x2 → `Unable to initialize OpenGL`.** Never creates a GL context, never renders. `FPU fatals = 0` | `runs/2210-20260907-225230/` |
+>
+> So on this rig **Quake 4 — an id Tech 4 title — is playable**, and the thing that stops it under
+> FEX is not the famous x87 assertion at all (it never fires) but WGL pixel-format selection.
+>
+> **What this does NOT establish.** The original crash that started this whole thread printed
+> `TAGS=0000ffc0`, and `0xffc0` is *Box64's* signature tag-word bug (it writes the FSAVE tag word in
+> stack-relative order where Intel specifies physical — see `tools/isa-probe/`, where FEX gets it
+> right and Box64 does not). That run's log was overwritten before its runtime could be read, so it
+> can no longer be attributed. Runs now archive their own logs precisely so this cannot recur.
+>
+> **The engine matrix (2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅) is therefore not safe to state as a fact about
+> the family.** It was measured without knowing the runtime, and at least one member plays.
+
 #### The id Tech 4 x87 failure, measured (2026-09-07)
 
 Quake 4 was installed specifically to read the diagnostic id Tech 4 prints one line before it

@@ -78,6 +78,11 @@ if [ "$found" -eq 0 ]; then
     printf '%s' "$missing"
     echo
     echo "Point it at a real artifact, or write:  Evidence: none — <reason>"
+    echo
+    echo "Note: the line is split on commas and each piece must be a bare path."
+    echo "Prose in it becomes part of a path and will not exist:"
+    echo "  BAD   Evidence: runs/foo (Box64, GL ok)   -> tries \"runs/foo (Box64\""
+    echo "  GOOD  Evidence: runs/foo, runs/bar"
   } >&2
   exit 1
 fi

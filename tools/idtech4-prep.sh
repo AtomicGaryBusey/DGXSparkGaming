@@ -42,11 +42,25 @@ DIR="$STEAM/steamapps/common/$INST"
 # The mod directory is whichever one holds the .pk4 archives: base (DOOM 3),
 # q4base (Quake 4), preybase (Prey), d3xp (Resurrection of Evil). Detect it
 # rather than hardcoding a table that will be wrong for the next title.
+# id Tech 4 does not use one archive format across the family:
+#   .pk4        DOOM 3, Quake 4, Prey, RoE, Phobos
+#   .resources  DOOM 3 BFG Edition (the 2012 remaster)
+# and licensees nest the game root a level down (Wolfenstein 2009 ships SP/base
+# and MP/base). Searching only for *.pk4 at depth 1 silently skipped both, so
+# this now matches either format and looks one level deeper.
 BASE=""
-for d in "$DIR"/*/; do
-  if ls "$d"*.pk4 >/dev/null 2>&1; then BASE="${d%/}"; break; fi
+for pat in '*.pk4' '*.resources'; do
+  for d in "$DIR"/*/ "$DIR"/*/*/; do
+    [ -d "$d" ] || continue
+    if ls "$d"$pat >/dev/null 2>&1; then BASE="${d%/}"; break 2; fi
+  done
 done
-[ -n "$BASE" ] || { echo "!! no directory with .pk4 files under $DIR"; echo "   (still downloading?)"; exit 1; }
+[ -n "$BASE" ] || { echo "!! no directory with .pk4 or .resources files under $DIR"; echo "   (still downloading?)"; exit 1; }
+# Wolfenstein (2009) ships SP/base and MP/base; the glob finds MP first purely
+# because M sorts before S, which would arm multiplayer for a singleplayer test.
+case "$BASE" in
+  */MP/*) _sp=$(printf '%s' "$BASE" | sed 's|/MP/|/SP/|'); [ -d "$_sp" ] && BASE="$_sp" ;;
+esac
 CFG="$BASE/autoexec.cfg"
 
 if [ "$UNDO" = 1 ]; then
