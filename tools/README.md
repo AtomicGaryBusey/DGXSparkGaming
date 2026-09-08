@@ -113,6 +113,7 @@ under both JITs because it clobbered its own jump target.
 | Tool | Use it when |
 |---|---|
 | **`pick-test-game.sh <api>`** | **Before installing anything** to test a graphics hypothesis. Guessing from memory once cost 36 GB and 45 minutes, and pulled a native Linux depot useless for a Windows-side test. |
+| **`save-workflow-report.sh <output.json>`** | A multi-agent workflow finished. Persists its synthesis into `notes/` with a provenance header (agents, tokens, tool calls), because those runs cost ~1-2M tokens each and otherwise vanish with the job. |
 | **`appinfo.py <appid> --launch\|--name\|--json`** | Anything you need from Steam's own metadata: real download sizes, depots, and **launch entries** (this is how NBA 2K27's "without EAC (offline only)" entry was found). |
 
 ---
