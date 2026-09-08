@@ -1,0 +1,601 @@
+<title>Spark Game Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+/* ── Tokens ────────────────────────────────────────────────────────────────
+   Direction (AGB, 2026-09-08): lead with the DGX Spark chassis GOLD, drop
+   NVIDIA green, add arcade neon so this reads as a GAMER app, not an NVIDIA
+   app. That is an aesthetic call and also the safer one: trade dress is the
+   harder half of the trademark question, and a palette that visibly is not
+   NVIDIA's is affirmative evidence of non-imitation.
+
+   NVIDIA green is now used ZERO times. Removing it entirely — rather than
+   merely reducing it — is the single highest-leverage change for that goal and
+   costs nothing functionally, because green was only ever the action colour.
+
+   Every colour has EXACTLY ONE JOB. An arcade palette is loud, and this UI's
+   whole purpose is that an unverified claim must not look exciting. Neon as
+   free decoration would fight that, so each hue is assigned and none floats:
+     gold        action + app identity        (the only thing you click)
+     neon-blue   navigation + interactive chrome
+     neon-purple agent authorship            (provenance, never status)
+     neon-pink   REGRESSED — worked before, fails now
+     red         BROKEN
+     neutral     verified / unverified / retracted — carried by SHAPE
+   Status is still shape-first; hue remains decoration on top of it.        */
+:root{
+  --shell:#000000; --canvas:#0B0C0F; --container:#17181D; --container-accent:#1E1F26;
+  --overlay:#262832; --border-muted:#2A2C35; --border:#33363F; --border-emphasis:#4A4E5C;
+  --text:#C9CFE3; --text-strong:#EAF0FF; --text-muted:#9BA2B6; --text-disabled:#61657333;
+  --text-dis:#616573;
+  --gold:#D9B87C; --gold-strong:#EBCF9A; --gold-dim:#B2915C; --gold-deep:#8A6E3F;
+  --neon-blue:#38E8FF; --neon-purple:#B98CFF; --neon-pink:#FF4FD8;
+  --broken:#FF5A5F; --mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --ui:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r-sm:4px; --r:6px; --r-lg:8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--canvas);color:var(--text);font:400 14px/1.375 var(--ui);
+  -webkit-font-smoothing:antialiased;font-feature-settings:"zero","ss02","ss04","tnum"}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--neon-blue);outline-offset:2px;border-radius:var(--r-sm)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--text-muted)}
+
+/* ── App frame ─────────────────────────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:56px 216px 1fr;height:100vh;min-height:600px}
+.rail{background:linear-gradient(180deg,#0A0510 0%,var(--shell) 42%);
+  border-right:1px solid var(--border-muted);
+  display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 0}
+.brand{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;
+  border:1px solid color-mix(in srgb,var(--gold) 58%,transparent);
+  background:radial-gradient(120% 120% at 30% 0%,rgba(255,79,216,.30),rgba(56,232,255,.16) 55%,transparent 78%),
+             color-mix(in srgb,var(--gold) 13%,transparent);
+  color:var(--gold-strong);font-weight:700;font-size:16px;margin-bottom:16px;letter-spacing:-.03em;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 16px -4px rgba(255,79,216,.55),0 0 22px -6px rgba(56,232,255,.4);
+  text-shadow:0 0 10px rgba(235,207,154,.65)}
+.rail button{width:36px;height:36px;border-radius:var(--r);display:grid;place-items:center;
+  color:var(--text-dis)}
+.rail button:hover{background:var(--overlay);color:var(--text)}
+.rail button[aria-current="page"]{background:var(--container-accent);color:var(--neon-blue);
+  box-shadow:inset 2px 0 0 var(--neon-blue),0 0 18px -8px var(--neon-blue)}
+.rail svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+
+.side{background:var(--shell);border-right:1px solid var(--border-muted);
+  padding:16px 12px;display:flex;flex-direction:column;gap:20px;overflow-y:auto}
+.side h1{font-size:13px;font-weight:600;color:var(--text-strong);margin:0;letter-spacing:-.01em}
+.side .sub{font-size:11px;color:var(--text-dis);margin-top:2px}
+.grp{display:flex;flex-direction:column;gap:2px}
+.grp .lbl{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-dis);padding:0 8px 6px}
+.filt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;
+  border-radius:var(--r-sm);font-size:12.5px;color:var(--text-muted);text-align:left;width:100%}
+.filt:hover{background:var(--overlay);color:var(--text)}
+.filt[aria-pressed="true"]{background:var(--container-accent);color:var(--text-strong);
+  box-shadow:inset 2px 0 0 var(--border-emphasis)}
+.filt .n{font-family:var(--mono);font-size:11px;color:var(--text-dis)}
+.filt[aria-pressed="true"] .n{color:var(--text-muted)}
+
+main{overflow-y:auto;background:var(--canvas)}
+.topbar{position:sticky;top:0;z-index:5;background:var(--canvas);
+  border-bottom:1px solid var(--border-muted);padding:16px 24px 12px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.topbar h2{margin:0;font-size:18px;font-weight:600;color:var(--text-strong);letter-spacing:-.01em}
+.topbar .crumb{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dis);margin-bottom:5px}
+.vision{display:flex;gap:6px;align-items:center}
+.vision button{font-size:11px;padding:5px 9px;border:1px solid var(--border);border-radius:var(--r-sm);
+  color:var(--text-muted);background:var(--container)}
+.vision button[aria-pressed="true"]{border-color:var(--border-emphasis);color:var(--text-strong);background:var(--overlay)}
+.wrap{padding:20px 24px 56px;max-width:1500px}
+.screen{display:none}
+.screen.on{display:block}
+
+/* ── Buttons: GOLD is action, and only action. #0B0A07 on #D9B87C ≈ 11:1.
+   Gold is the DGX Spark chassis finish — the app's own identity rather than a
+   borrowed one, and the only colour that ever means "you can click this". ──── */
+.btn-primary{background:linear-gradient(180deg,var(--gold-strong),var(--gold));color:#0B0A07;
+  font-weight:700;padding:9px 17px;border-radius:var(--r);font-size:13.5px;letter-spacing:-.005em;
+  box-shadow:0 0 20px -8px rgba(217,184,124,.9)}
+.btn-primary:hover{background:var(--gold-strong)}
+.btn-primary:active{background:var(--gold-dim)}
+.btn-secondary{border:1px solid var(--border-emphasis);color:var(--text-strong);
+  padding:9px 16px;border-radius:var(--r);font-size:13.5px;font-weight:500;background:var(--container)}
+.btn-secondary:hover{background:var(--overlay)}
+
+/* ── Evidence chips: SHAPE first. Hue is decoration and never load-bearing. ─── */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+  padding:2.5px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.01em}
+.chip .g{font-size:10px;line-height:1}
+.chip.verified{background:var(--container-accent);border:1px solid var(--border-emphasis);color:var(--text-strong)}
+.chip.unverified{border:1px dashed var(--border-emphasis);color:var(--text-muted);background:none}
+.chip.reported{border:1px dashed var(--border-emphasis);color:var(--text-muted);background:none}
+.chip.broken{background:color-mix(in srgb,var(--broken) 17%,var(--container));
+  border:1px solid color-mix(in srgb,var(--broken) 55%,transparent);color:#FFD7D9;
+  border-left:3px solid var(--broken);border-radius:2px 999px 999px 2px}
+.chip.regressed{background:color-mix(in srgb,var(--neon-pink) 16%,var(--container));
+  border:1px solid color-mix(in srgb,var(--neon-pink) 62%,transparent);color:#FFD3F3}
+/* Retracted is NEUTRAL on purpose: purple means "an agent wrote this", and a
+   provenance colour must never double as a status colour. Shape + strike carry it. */
+.chip.retracted{background:var(--container-accent);border:1px solid var(--border-emphasis);
+  color:var(--text-muted)}
+.chip.stale{background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.055) 3px 6px)}
+.ev{font-family:var(--mono);font-size:10.5px;color:var(--text-muted);white-space:nowrap}
+.noart{color:var(--text-dis);font-family:var(--mono)}
+
+/* ── Library table ─────────────────────────────────────────────────────────── */
+.tablewrap{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--container)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1180px}
+thead th{background:var(--container-accent);text-align:left;font-size:10.5px;font-weight:600;
+  letter-spacing:.075em;text-transform:uppercase;color:var(--text-muted);
+  padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0}
+tbody td{padding:0 12px;height:40px;border-bottom:1px solid var(--border-muted);font-size:13px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--overlay)}
+tbody tr:focus-visible{outline:2px solid var(--neon-blue);outline-offset:-2px}
+.thumb{width:26px;height:26px;border-radius:var(--r-sm);background:var(--container-accent);
+  border:1px solid var(--border);display:grid;place-items:center;font-size:9.5px;font-weight:700;
+  color:var(--text-muted);font-family:var(--mono)}
+tr.untested .thumb{border-style:dashed}
+tr.untested .gname{color:var(--text-muted)}
+.gname{font-weight:500;color:var(--text-strong)}
+.rt{font-family:var(--mono);font-size:11.5px}
+.rt.unknown{color:var(--text-dis)}
+
+/* ── Panels ────────────────────────────────────────────────────────────────── */
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;align-items:start}
+.panel{background:var(--container);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.panel > header{background:var(--container-accent);border-bottom:1px solid var(--border);
+  padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.panel > header h3{margin:0;font-size:12px;font-weight:600;color:var(--text-strong);letter-spacing:.01em}
+.pid{font-family:var(--mono);font-size:10px;color:var(--text-dis)}
+.panel .body{padding:14px}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr auto;gap:0}
+dl > *{padding:7px 0;border-bottom:1px solid var(--border-muted);min-width:0}
+dl > :nth-last-child(-n+3){border-bottom:none}
+dt{color:var(--text-muted);font-size:12.5px;padding-right:18px;white-space:nowrap}
+dd{margin:0;color:var(--text-strong);font-size:12.5px;overflow-wrap:anywhere}
+.prov{font-size:10px;color:var(--text-dis);text-align:right;padding-left:14px;white-space:nowrap;font-family:var(--mono)}
+.prov.agent{color:var(--neon-purple);text-shadow:0 0 10px rgba(185,140,255,.4)}
+dd.bad{color:#FFD7D9}
+.rowflag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;
+  color:#FFD7D9;background:color-mix(in srgb,var(--broken) 16%,transparent);
+  border-left:3px solid var(--broken);padding:2px 7px;border-radius:0 var(--r-sm) var(--r-sm) 0;margin-left:8px}
+
+/* ── Graphics-path chain ───────────────────────────────────────────────────── */
+.chain{display:flex;align-items:center;gap:0;flex-wrap:wrap;padding:4px 0}
+.node{border:1px solid var(--border-emphasis);background:var(--container-accent);color:var(--text);
+  padding:7px 11px;border-radius:var(--r);font-size:11.5px;font-family:var(--mono);white-space:nowrap}
+.node.fail{border-color:var(--broken);background:color-mix(in srgb,var(--broken) 18%,var(--container));
+  color:#FFD7D9;font-weight:700;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--broken) 35%,transparent)}
+.link{width:20px;height:1px;background:var(--border-emphasis);flex:none}
+.link.fail{background:var(--broken)}
+
+/* ── Run timeline ──────────────────────────────────────────────────────────── */
+.tl{list-style:none;margin:0;padding:0}
+.tl li{display:grid;grid-template-columns:15px 1fr auto;gap:11px;align-items:start;padding:0 0 14px;position:relative}
+.tl li:not(:last-child)::before{content:"";position:absolute;left:7px;top:15px;bottom:-1px;width:1px;background:var(--border)}
+.dot{width:15px;height:15px;border-radius:50%;border:2px solid var(--border-emphasis);
+  background:var(--container);display:grid;place-items:center;font-size:8px;color:var(--text-strong);margin-top:1px}
+.dot.done{background:var(--container-accent);border-color:var(--text-muted)}
+.dot.fail{border-color:var(--broken);background:color-mix(in srgb,var(--broken) 30%,var(--container));color:#FFD7D9}
+.dot.skip{border-style:dashed;border-color:var(--text-dis)}
+.tl .what{font-size:12.5px;color:var(--text-strong)}
+.tl .why{font-size:11.5px;color:var(--text-muted);margin-top:2px}
+.tl .t{font-family:var(--mono);font-size:11px;color:var(--text-dis);white-space:nowrap;padding-top:1px}
+.tl li.skipped .what{color:var(--text-dis);text-decoration:line-through}
+
+pre{margin:0;background:var(--container-accent);border:1px solid var(--border);border-radius:var(--r);
+  padding:11px 13px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.62;color:var(--text)}
+pre .hi{background:color-mix(in srgb,var(--broken) 26%,transparent);color:#FFD7D9;
+  padding:1px 3px;border-radius:2px;font-weight:700}
+pre .dim{color:var(--text-dis)}
+
+.note{border-left:3px solid var(--border-emphasis);padding:2px 0 2px 13px;color:var(--text-muted);font-size:12.5px}
+.note.warn{border-left-color:var(--neon-pink);color:#FFD3F3}
+.note strong{color:var(--text-strong);font-weight:600}
+.note.warn strong{color:#FFD3F3}
+
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin:0 0 18px}
+.tabs button{padding:8px 13px;font-size:12.5px;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button:hover{color:var(--text)}
+.tabs button[aria-selected="true"]{color:var(--text-strong);border-bottom-color:var(--neon-blue);font-weight:500;
+  box-shadow:0 2px 12px -6px var(--neon-blue)}
+
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border-muted)}
+.metric{background:var(--container);padding:12px 14px}
+.metric .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dis)}
+.metric .v{font-family:var(--mono);font-size:19px;color:var(--text-strong);margin-top:5px;font-weight:500}
+.metric .v.none{color:var(--text-dis);font-size:19px}
+.metric .n{font-size:10.5px;color:var(--text-dis);margin-top:2px}
+
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px 20px}
+.legend .row{display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--text-muted)}
+h4.sec{font-size:11px;letter-spacing:.085em;text-transform:uppercase;color:var(--text-dis);
+  margin:26px 0 11px;font-weight:600}
+h4.sec:first-child{margin-top:0}
+.stack{display:flex;flex-direction:column;gap:16px}
+
+/* Vision-check filters — the plan's acceptance criterion, made operable */
+body.grey .app{filter:grayscale(1)}
+body.deut .app{filter:url(#deut)}
+.mockbar{background:var(--container-accent);border-bottom:1px solid var(--border);
+  padding:6px 24px;font-size:11px;color:var(--text-muted);display:flex;gap:8px;align-items:center}
+.mockbar b{color:var(--gold);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+@media (prefers-reduced-motion:no-preference){.screen.on{animation:f .16s ease-out}}
+@keyframes f{from{opacity:.55}to{opacity:1}}
+@media (max-width:1000px){.app{grid-template-columns:56px 1fr}.side{display:none}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="deut"><feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter>
+</defs></svg>
+
+<div class="app">
+  <nav class="rail" aria-label="Sections">
+    <div class="brand" title="Spark Game Launcher">S</div>
+    <button data-nav="library" aria-current="page" title="Library"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/></svg></button>
+    <button data-nav="title" title="Title"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></button>
+    <button data-nav="run" title="Run"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg></button>
+    <button data-nav="contradictions" title="Contradictions"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v4.5M12 17.2v.2"/></svg></button>
+    <button data-nav="machine" title="Machine"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h2M17 10v4"/></svg></button>
+    <button data-nav="about" title="About" style="margin-top:auto"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10.5v6M12 7.6v.2"/></svg></button>
+  </nav>
+
+  <aside class="side">
+    <div>
+      <h1>Spark Game Launcher</h1>
+      <div class="sub mono">DGX Spark · GB10 · DGX OS</div>
+    </div>
+    <div class="grp">
+      <div class="lbl">Filters</div>
+      <button class="filt" data-filter="all" aria-pressed="true">All titles <span class="n">11</span></button>
+      <button class="filt" data-filter="untested">Untested <span class="n">3</span></button>
+      <button class="filt" data-filter="unattributable">Unattributable <span class="n">2</span></button>
+      <button class="filt" data-filter="human">Human-observed only <span class="n">2</span></button>
+      <button class="filt" data-filter="contradiction">Open contradiction <span class="n">1</span></button>
+      <button class="filt" data-filter="needsbuild">Needs a translator build <span class="n">2</span></button>
+    </div>
+    <div class="grp">
+      <div class="lbl">Evidence states</div>
+      <div class="legend" style="padding:0 8px">
+        <div class="row"><span class="chip verified"><span class="g">✓</span>verified</span></div>
+        <div class="row"><span class="chip unverified"><span class="g">○</span>unverified</span></div>
+        <div class="row"><span class="chip broken"><span class="g">✕</span>broken</span></div>
+        <div class="row"><span class="chip regressed"><span class="g">▲</span>regressed</span></div>
+        <div class="row"><span class="chip retracted"><span class="g">⊘</span>retracted</span></div>
+        <div class="row"><span class="prov agent" style="font-family:var(--mono);font-size:10px">agent</span><span style="font-size:11px">authored by an agent</span></div>
+        <div class="row"><span class="chip unverified stale"><span class="g">○</span>stale</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="mockbar"><b>Mockup</b> <span>Static clickable prototype for aesthetic review — values are this project's real measurements, not live data.</span></div>
+
+    <!-- ══ LIBRARY ══ -->
+    <section class="screen on" id="s-library">
+      <div class="topbar">
+        <div><div class="crumb">Library</div><h2>11 titles · 8 with at least one run</h2></div>
+        <div class="vision">
+          <span class="muted" style="font-size:11px;margin-right:4px">Vision check</span>
+          <button id="btn-grey" aria-pressed="false">Greyscale</button>
+          <button id="btn-deut" aria-pressed="false">Deuteranopia</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="note warn" style="margin-bottom:16px"><strong>No display output attached.</strong>
+          <span class="mono">DISPLAY=:0 xrandr</span> reports <span class="mono">current 0 x 0</span>. A performance run started now
+          would complete and mean nothing. → <span class="mono">Machine</span></div>
+        <div class="tablewrap"><div class="scroll"><table>
+          <thead><tr>
+            <th></th><th>Title</th><th>AppID</th><th>Size</th><th>Render API</th><th>Runtime verdict</th>
+            <th>Evidence</th><th>Last run</th><th>runtime_actual</th><th style="text-align:right">FPS</th>
+          </tr></thead>
+          <tbody id="lib"></tbody>
+        </table></div></div>
+        <p class="muted" style="font-size:11.5px;margin:12px 2px 0">
+          Rows are clickable. Gold appears only on things you can act on, so no evidence state can be
+          mistaken for “safe” in peripheral vision. There is no NVIDIA green anywhere in this app.</p>
+      </div>
+    </section>
+
+    <!-- ══ TITLE ══ -->
+    <section class="screen" id="s-title">
+      <div class="topbar">
+        <div><div class="crumb">Library / Quake 4</div><h2>Quake 4 <span class="mono muted" style="font-size:14px;font-weight:400">2210</span></h2></div>
+        <div style="display:flex;gap:8px"><button class="btn-secondary">Test run</button><button class="btn-primary">Play</button></div>
+      </div>
+      <div class="wrap">
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true">Profile</button><button role="tab" aria-selected="false">Runs</button>
+          <button role="tab" aria-selected="false">Evidence</button><button role="tab" aria-selected="false">Diagnosis</button>
+          <button role="tab" aria-selected="false">Dead ends</button>
+        </div>
+        <div class="cols">
+          <div class="stack">
+            <div class="panel">
+              <header><h3>Translation</h3><span class="pid">profile.translation</span></header>
+              <div class="body"><dl>
+                <dt>Requested runtime</dt><dd>Box64</dd><span class="prov">human · 09-08</span>
+                <dt>Actual runtime</dt><dd>Box64 <span class="muted mono" style="font-size:11px">/proc/&lt;pid&gt;/exe</span></dd><span class="prov">extractor</span>
+                <dt>Build identity</dt><dd class="bad"><span class="mono">89cd9de8…</span><span class="rowflag">✕ not stock</span></dd><span class="prov">extractor</span>
+                <dt>Required build</dt><dd><span class="mono">89cd9de8…</span> patched</dd><span class="prov agent">agent · 09-08</span>
+                <dt>Under FEX</dt><dd><span class="chip broken"><span class="g">✕</span>broken</span></dd><span class="prov">instrumented</span>
+              </dl>
+              <div class="note" style="margin-top:12px">This title needs a <strong>locally patched Box64</strong>.
+                A stock binary cannot reach gameplay — two upstream bugs.</div></div>
+            </div>
+            <div class="panel">
+              <header><h3>Graphics path</h3><span class="pid">profile.graphics</span></header>
+              <div class="body">
+                <div class="chain">
+                  <span class="node">OpenGL</span><span class="link"></span>
+                  <span class="node">native GL</span><span class="link fail"></span>
+                  <span class="node fail">WGL SetPixelFormat</span><span class="link"></span>
+                  <span class="node">NVIDIA 580.173.02</span><span class="link"></span>
+                  <span class="node">GB10</span>
+                </div>
+                <div class="note" style="margin-top:13px"><strong>0 of 320</strong> pixel formats settable under FEX;
+                  Box64 sets 320/320. Only the failing node is coloured.</div>
+              </div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <header><h3>Config</h3><span class="pid">profile.config</span></header>
+              <div class="body"><dl>
+                <dt>Proton</dt><dd>Experimental <span class="muted" style="font-size:11px">from prefix config_info</span></dd><span class="prov">extractor</span>
+                <dt>Resolution</dt><dd class="bad">2560 × 1440 <span class="rowflag">✕ display is 5120 × 1440</span></dd><span class="prov">extractor</span>
+                <dt>env placement</dt><dd><span class="mono">direct Proton</span> — not <span class="mono">-applaunch</span></dd><span class="prov">human</span>
+                <dt>Working dir</dt><dd class="mono" style="font-size:11.5px">…/common/Quake 4</dd><span class="prov">extractor</span>
+                <dt>Workarounds</dt><dd>idtech4-prep · autoexec.cfg</dd><span class="prov agent">agent · 09-08</span>
+              </dl>
+              <div class="note warn" style="margin-top:12px">A window narrower than the display broke mouse capture and
+                cost a day as a suspected translator bug. The mismatch is flagged, not merely stored.</div></div>
+            </div>
+            <div class="panel">
+              <header><h3>Claims</h3><span class="pid">profile.claims</span></header>
+              <div class="body" style="display:flex;flex-direction:column;gap:11px">
+                <div><span class="chip verified"><span class="g">✓</span>verified · instrumented</span>
+                  <div class="ev" style="margin-top:5px">runs/2210-20260907-223229/run.json</div></div>
+                <div><span class="chip retracted"><span class="g">⊘</span>retracted</span>
+                  <div style="margin-top:5px;font-size:12px"><s>x87 tag word explains the crash</s></div>
+                  <div class="muted" style="font-size:11.5px;margin-top:2px">Both games report TOP=0, where the rotation is a no-op.</div></div>
+                <div><span class="chip unverified"><span class="g">○</span>unverified</span>
+                  <div class="muted" style="font-size:12px;margin-top:5px">Mouse anomaly cause — no candidate</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ RUN ══ -->
+    <section class="screen" id="s-run">
+      <div class="topbar">
+        <div><div class="crumb">Quake 4 / Run</div><h2 class="mono" style="font-size:15px">2210-20260907-223229</h2></div>
+        <span class="chip verified"><span class="g">✓</span>attributable</span>
+      </div>
+      <div class="wrap">
+        <div class="metrics" style="border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:18px">
+          <div class="metric"><div class="k">Runtime actual</div><div class="v">Box64</div><div class="n">from /proc/&lt;pid&gt;/exe</div></div>
+          <div class="metric"><div class="k">Wall clock</div><div class="v">3<span class="muted" style="font-size:13px">m</span> 41<span class="muted" style="font-size:13px">s</span></div><div class="n">scope teardown clean</div></div>
+          <div class="metric"><div class="k">Frametime samples</div><div class="v none">—</div><div class="n">no artifact</div></div>
+          <div class="metric"><div class="k">Avg FPS</div><div class="v none">—</div><div class="n">no artifact</div></div>
+          <div class="metric"><div class="k">GPU samples</div><div class="v">221</div><div class="n">gpu.csv</div></div>
+        </div>
+        <div class="cols">
+          <div class="panel">
+            <header><h3>Phase timeline</h3><span class="pid">run.timeline</span></header>
+            <div class="body"><ul class="tl">
+              <li><span class="dot done">✓</span><div><div class="what">Pre-flight</div><div class="why">compat tool, shader cache, machine load</div></div><span class="t">+0.0s</span></li>
+              <li><span class="dot done">✓</span><div><div class="what">Scope started</div><div class="why mono">systemd-run --user --scope --unit=game-2210</div></div><span class="t">+0.4s</span></li>
+              <li><span class="dot done">✓</span><div><div class="what">First pid in cgroup</div><div class="why">runtime read from /proc/&lt;pid&gt;/exe → Box64</div></div><span class="t">+1.2s</span></li>
+              <li><span class="dot done">✓</span><div><div class="what">Game-shaped process</div><div class="why">&gt;10 threads, not the launcher wrapper</div></div><span class="t">+6.8s</span></li>
+              <li><span class="dot done">✓</span><div><div class="what">GPU above idle baseline</div><div class="why">nvidia-smi utilisation &gt; baseline</div></div><span class="t">+9.1s</span></li>
+              <li class="skipped"><span class="dot skip">○</span><div><div class="what">First frametime sample</div><div class="why">no i386 MangoHud exists — 32-bit titles get no CSV</div></div><span class="t">—</span></li>
+              <li><span class="dot fail">✕</span><div><div class="what">Exit</div><div class="why">FPU stack is not empty at the end of the frame</div></div><span class="t">+221s</span></li>
+            </ul></div>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <header><h3>Artifacts</h3><span class="pid">run.artifacts</span></header>
+              <div class="body"><dl>
+                <dt>run.json</dt><dd><span class="chip verified"><span class="g">✓</span>present</span></dd><span class="prov">2.1 KB</span>
+                <dt>proton.log</dt><dd><span class="chip verified"><span class="g">✓</span>present</span></dd><span class="prov">7268 lines</span>
+                <dt>qconsole.log</dt><dd><span class="chip verified"><span class="g">✓</span>present</span></dd><span class="prov">engine</span>
+                <dt>gpu.csv</dt><dd><span class="chip verified"><span class="g">✓</span>present</span></dd><span class="prov">221 rows</span>
+                <dt>mangohud.csv</dt><dd><span class="chip broken"><span class="g">✕</span>absent</span></dd><span class="prov">no i386 build</span>
+              </dl>
+              <div class="note" style="margin-top:12px">Absent is shown, never omitted. A missing engine log means the game
+                never reached its config — a different failure from crashing later.</div></div>
+            </div>
+            <div class="panel">
+              <header><h3>Engine log</h3><span class="pid">run.log.qconsole</span></header>
+              <div class="body"><pre><span class="dim">--------------- R_InitOpenGL ----------------</span>
+Initializing OpenGL subsystem
+ ...registered window class
+ ...created window @ 0,0 (<span class="hi">2560x1440</span>)
+ ...PIXELFORMAT 1 selected
+<span class="dim">FPU State: CTRL=0000013f STAT=00000100</span>
+<span class="dim">           TAGS=</span><span class="hi">0000ffc0</span><span class="dim">  TOP=0</span>
+<span class="hi">idCommon::Frame: the FPU stack is not empty</span></pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ CONTRADICTIONS ══ -->
+    <section class="screen" id="s-contradictions">
+      <div class="topbar"><div><div class="crumb">Contradictions</div><h2>1 open</h2></div></div>
+      <div class="wrap"><div class="panel">
+        <header><h3>Daikatana — 242980</h3><span class="pid">contradiction.0001</span></header>
+        <div class="body" style="display:flex;flex-direction:column;gap:14px">
+          <div class="cols" style="gap:14px">
+            <div><div class="muted" style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px">Recorded claim</div>
+              <span class="chip unverified stale"><span class="g">○</span>unverified · stale</span>
+              <p style="margin:8px 0 0;font-size:12.5px">Runs <strong>excellently</strong> through FEX's 32-bit path — <span class="mono">ref_gl.dll → opengl32.dll</span>, no Vulkan.</p>
+              <div class="ev" style="margin-top:6px">runs/242980-* — no run.json, no runtime_actual</div></div>
+            <div><div class="muted" style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px">Measurement</div>
+              <span class="chip verified"><span class="g">✓</span>verified · instrumented</span>
+              <p style="margin:8px 0 0;font-size:12.5px">FEX sets <strong>0 of 320</strong> pixel formats for any 32-bit Wine program. Box64 sets 320/320.</p>
+              <div class="ev" style="margin-top:6px">tools/probes/wgl/wgl-formatsweep32.c</div></div>
+          </div>
+          <div class="note"><strong>Both cannot be true.</strong> <span class="mono">ref_gl.dll</span> imports
+            <span class="mono">SetPixelFormat</span>, and the Daikatana runs predate <span class="mono">run.json</span>,
+            so they carry no verified runtime.</div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="btn-primary">Run resolver</button>
+            <code class="mono" style="font-size:12px;color:var(--text-muted)">tools/ab-runtime.sh 242980</code>
+          </div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ══ MACHINE ══ -->
+    <section class="screen" id="s-machine">
+      <div class="topbar"><div><div class="crumb">Machine</div><h2>HP ZGX Nano G1n AI Station</h2></div>
+        <span class="chip regressed"><span class="g">▲</span>1 check needs attention</span></div>
+      <div class="wrap"><div class="cols">
+        <div class="panel">
+          <header><h3>Platform</h3><span class="pid">machine.platform</span></header>
+          <div class="body"><dl>
+            <dt>DMI family</dt><dd class="mono">DGX Spark</dd><span class="prov">extractor</span>
+            <dt>SoC</dt><dd>NVIDIA GB10 Grace Blackwell</dd><span class="prov">extractor</span>
+            <dt>CPU</dt><dd>10 × Cortex-X925 + 10 × Cortex-A725</dd><span class="prov">extractor</span>
+            <dt>Memory</dt><dd>128 GB unified · 273 GB/s</dd><span class="prov">extractor</span>
+            <dt>Storage</dt><dd>931.5 GB NVMe</dd><span class="prov">extractor</span>
+            <dt>Driver</dt><dd class="mono">580.173.02</dd><span class="prov">extractor</span>
+          </dl></div>
+        </div>
+        <div class="panel">
+          <header><h3>Stack fingerprint</h3><span class="pid">machine.stack</span></header>
+          <div class="body"><dl>
+            <dt>Display</dt><dd class="bad">none attached<span class="rowflag">✕ xrandr 0 × 0</span></dd><span class="prov">extractor</span>
+            <dt>binfmt x86 ELF</dt><dd>Box64 only — <span class="muted">FEX not registered</span></dd><span class="prov">extractor</span>
+            <dt>Steam host</dt><dd class="mono">/usr/bin/FEX</dd><span class="prov">extractor</span>
+            <dt>box64</dt><dd class="bad"><span class="mono">89cd9de8…</span><span class="rowflag">✕ not stock</span></dd><span class="prov">extractor</span>
+            <dt>Proton</dt><dd>Experimental</dd><span class="prov">extractor</span>
+          </dl>
+          <div class="note warn" style="margin-top:12px">Steam is FEX-hosted, so anything Steam launches runs under FEX
+            regardless of what <span class="mono">binfmt</span> says. This is why a 32-bit OpenGL title fails when launched from Steam.</div></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- ══ ABOUT ══ -->
+    <section class="screen" id="s-about">
+      <div class="topbar"><div><div class="crumb">About</div><h2>Spark Game Launcher</h2></div></div>
+      <div class="wrap"><div class="cols">
+        <div class="stack">
+          <div class="panel" style="border-color:var(--gold-deep)">
+            <header style="background:linear-gradient(90deg,color-mix(in srgb,var(--gold) 14%,var(--container-accent)),var(--container-accent))">
+              <h3 style="color:var(--gold-strong)">Not affiliated with NVIDIA</h3><span class="pid">about.disclaimer</span></header>
+            <div class="body" style="display:flex;flex-direction:column;gap:12px;font-size:12.5px;line-height:1.55">
+              <p style="margin:0"><strong style="color:var(--text-strong)">Spark Game Launcher is an unofficial,
+                not-for-profit fan project.</strong> It is not affiliated with, endorsed by, sponsored by, or
+                connected to NVIDIA Corporation, HP Inc., Valve Corporation, or any hardware vendor.</p>
+              <p style="margin:0">No money is made from this software. It is free and open source.</p>
+              <p style="margin:0">“NVIDIA”, “DGX”, “DGX Spark”, “RTX”, “GeForce”, “CUDA”, “Grace” and “Blackwell”
+                are trademarks of NVIDIA Corporation. They are used here only to describe hardware and software
+                this tool runs on — nominative use — and appear nowhere in this application's name, icon or branding.</p>
+              <p style="margin:0">This application deliberately does <strong style="color:var(--text-strong)">not</strong>
+                imitate NVIDIA's visual identity. It uses none of NVIDIA's logos, wordmarks or brand colours;
+                its palette is its own.</p>
+              <div class="note" style="border-left-color:var(--gold)">The same notice ships in the repository README
+                and in <span class="mono">NOTICE</span>, not only in this dialog — a disclaimer nobody opens is not a disclaimer.</div>
+            </div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="panel">
+            <header><h3>Palette</h3><span class="pid">about.palette</span></header>
+            <div class="body"><dl>
+              <dt><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--gold);vertical-align:-1px;margin-right:7px"></span>Gold</dt>
+                <dd>Action &amp; identity</dd><span class="prov">the chassis finish</span>
+              <dt><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--neon-blue);vertical-align:-1px;margin-right:7px"></span>Neon blue</dt>
+                <dd>Navigation &amp; focus</dd><span class="prov">arcade</span>
+              <dt><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--neon-purple);vertical-align:-1px;margin-right:7px"></span>Neon purple</dt>
+                <dd>Agent authorship</dd><span class="prov">provenance</span>
+              <dt><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--neon-pink);vertical-align:-1px;margin-right:7px"></span>Neon pink</dt>
+                <dd>Regressed</dd><span class="prov">status</span>
+              <dt><span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:var(--broken);vertical-align:-1px;margin-right:7px"></span>Red</dt>
+                <dd>Broken</dd><span class="prov">status</span>
+            </dl>
+            <div class="note" style="margin-top:12px">One job per colour. Verified, unverified and retracted are
+              <strong>neutral</strong> and carried by shape, so no status can borrow the energy of the action colour.</div></div>
+          </div>
+          <div class="panel">
+            <header><h3>Credits</h3><span class="pid">about.credits</span></header>
+            <div class="body"><dl>
+              <dt>Licence</dt><dd>MIT · docs CC BY 4.0</dd><span class="prov">repo</span>
+              <dt>Typefaces</dt><dd>Inter · JetBrains Mono <span class="muted">(OFL 1.1)</span></dd><span class="prov">vendored</span>
+              <dt>Toolkit</dt><dd>Qt 6.11 / PySide6 <span class="muted">(LGPL v3)</span></dd><span class="prov">pinned</span>
+            </dl></div>
+          </div>
+        </div>
+      </div></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const TITLES=[
+ {n:"Quake 4",id:"2210",sz:"2.8 GB",api:"OpenGL",v:"Box64 only",st:"verified",g:"✓",ev:"runs/2210-…223229/run.json",lr:"09-07",rt:"Box64",fps:"—",tags:["needsbuild"]},
+ {n:"Prey (2006)",id:"3970",sz:"3.1 GB",api:"OpenGL",v:"Box64 only",st:"verified",g:"✓",ev:"runs/3970-…070400/run.json",lr:"09-08",rt:"Box64",fps:"—",tags:["needsbuild"]},
+ {n:"Daikatana",id:"242980",sz:"1.2 GB",api:"OpenGL",v:"contested",st:"unverified stale",g:"○",ev:"no run.json",lr:"09-07",rt:"unknown",fps:"—",tags:["unattributable","contradiction"]},
+ {n:"DOOM 3",id:"9050",sz:"2.1 GB",api:"OpenGL",v:"Box64 expected",st:"unverified",g:"○",ev:"never run",lr:"—",rt:"—",fps:"—",tags:["untested"]},
+ {n:"Cyberpunk 2077",id:"1091500",sz:"72 GB",api:"DX12",v:"FEX",st:"verified",g:"✓",ev:"runs/1091500-…/run.json",lr:"09-06",rt:"FEX",fps:"175",tags:[]},
+ {n:"Half-Life 2",id:"220",sz:"6.4 GB",api:"DX9",v:"FEX",st:"verified",g:"✓",ev:"human-observed · Proton 10",lr:"09-05",rt:"FEX",fps:"—",tags:["human"]},
+ {n:"Portal 2",id:"620",sz:"8.1 GB",api:"DX9",v:"FEX",st:"reported",g:"⇱",ev:"community report",lr:"—",rt:"—",fps:"—",tags:["human","unattributable"]},
+ {n:"No Man's Sky",id:"275850",sz:"18 GB",api:"Vulkan",v:"undiagnosed",st:"broken",g:"✕",ev:"cause retracted",lr:"09-04",rt:"FEX",fps:"—",tags:[]},
+ {n:"Elden Ring",id:"1245620",sz:"60 GB",api:"DX12",v:"undiagnosed",st:"broken",g:"✕",ev:"cause retracted",lr:"09-04",rt:"FEX",fps:"—",tags:[]},
+ {n:"NBA 2K27",id:"3472040",sz:"102 GB",api:"DX12",v:"not attempted",st:"unverified",g:"○",ev:"never run",lr:"—",rt:"—",fps:"—",tags:["untested"]},
+ {n:"Halo Infinite",id:"1240440",sz:"48 GB",api:"DX12",v:"undiagnosed",st:"unverified",g:"○",ev:"never run",lr:"—",rt:"—",fps:"—",tags:["untested"]},
+];
+const tb=document.getElementById('lib');
+function draw(f){
+  tb.innerHTML='';
+  TITLES.filter(t=>f==='all'||t.tags.includes(f)).forEach(t=>{
+    const tr=document.createElement('tr');
+    if(t.tags.includes('untested'))tr.className='untested';
+    tr.tabIndex=0;
+    tr.innerHTML=`<td><div class="thumb">${t.n.slice(0,2).toUpperCase()}</div></td>
+      <td><span class="gname">${t.n}</span></td><td class="mono muted">${t.id}</td>
+      <td class="mono muted">${t.sz}</td><td>${t.api}</td><td class="muted">${t.v}</td>
+      <td><span class="chip ${t.st}"><span class="g">${t.g}</span>${t.st.split(' ')[0]}</span>
+          <div class="ev" style="margin-top:2px">${t.ev}</div></td>
+      <td class="mono muted">${t.lr}</td>
+      <td class="rt ${t.rt==='unknown'||t.rt==='—'?'unknown':''}">${t.rt}</td>
+      <td class="mono" style="text-align:right">${t.fps==='—'?'<span class="noart">—</span>':t.fps}</td>`;
+    const go=()=>show('title');
+    tr.onclick=go; tr.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
+    tb.appendChild(tr);
+  });
+}
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id==='s-'+id));
+  document.querySelectorAll('.rail button').forEach(b=>
+    b.hasAttribute('data-nav')&&(b.dataset.nav===id?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')));
+  document.querySelector('main').scrollTop=0;
+}
+document.querySelectorAll('.rail button[data-nav]').forEach(b=>b.onclick=()=>show(b.dataset.nav));
+document.querySelectorAll('.filt').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.filt').forEach(x=>x.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true'); draw(b.dataset.filter);
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+  b.setAttribute('aria-selected','true');
+});
+const g=document.getElementById('btn-grey'), d=document.getElementById('btn-deut');
+g.onclick=()=>{const on=document.body.classList.toggle('grey');g.setAttribute('aria-pressed',on)};
+d.onclick=()=>{const on=document.body.classList.toggle('deut');d.setAttribute('aria-pressed',on)};
+draw('all');
+</script>

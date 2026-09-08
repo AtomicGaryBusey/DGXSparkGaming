@@ -803,9 +803,31 @@ communication, even if you're a partner or sponsored by NVIDIA."* Building on El
 NVIDIA published for third parties — and using no marks is the defensible reading, but adopting
 NVIDIA's actual design system for an app aimed at NVIDIA hardware owners is the trade-dress half
 of implied endorsement, and a non-affiliation line in About addresses the name only. That is a
-lawyer's question, not a designer's. **Name: ship as "Spark Game Launcher."** Renaming AGB's
-product inside an architecture document is not the architect's call; the trademark note belongs
-in front of him, and the decision is his.
+lawyer's question, not a designer's. **Name: ship as "Spark Game Launcher." DECIDED by AGB, 2026-09-08.** The reasoning, recorded
+because it is the defence if it is ever needed: the name is crisp and accurate, and contains **no**
+NVIDIA trademark — no "DGX", "RTX", "NVIDIA", "CUDA", "GeForce", "Grace" or "Blackwell". "Spark"
+is used descriptively of the class of machine targeted.
+
+**And the visual identity was changed to match the argument rather than merely assert it
+(AGB, 2026-09-08).** Trade dress is the harder half of this question, so the app now leads with
+the **DGX Spark chassis gold** and adds **arcade neon** — blue, purple, pink — to read squarely as
+a *gamer app*, not an NVIDIA app. **NVIDIA green is removed entirely: zero occurrences.** That is
+the single highest-leverage change available and it costs nothing functionally, because green was
+only ever the action colour and gold now carries that role.
+
+Discipline preserved through the change: an arcade palette is loud, and this UI's entire purpose is
+that an unverified claim must not look exciting. So **every hue has exactly one job** — gold =
+action and identity; neon blue = navigation and focus; neon purple = agent authorship (provenance,
+never status); neon pink = REGRESSED; red = BROKEN; and verified / unverified / retracted stay
+**neutral, carried by shape**. No status can borrow the energy of the action colour.
+
+Backed by disclaimers in **both** places, because one nobody opens is not a disclaimer: an About
+screen in the app, and `NOTICE` plus a README banner in the repository, each stating the project is
+unofficial, not-for-profit, uses no NVIDIA marks or brand colours, and will address any vendor
+concern promptly. Mockup: `docs/mockup/launcher-mockup.html`.
+
+This remains a lawyer's question if the project ever grows a commercial dimension; the steps above
+are what a careful non-lawyer can do, and they are substantive rather than cosmetic.
 
 ### 6.2 Palette (resolved hex, committed once)
 

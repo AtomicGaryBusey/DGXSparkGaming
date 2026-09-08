@@ -1,0 +1,48 @@
+Spark Game Launcher / DGXSparkGaming
+====================================
+
+UNOFFICIAL, NOT-FOR-PROFIT, FAN-MADE. NOT AFFILIATED WITH NVIDIA.
+-----------------------------------------------------------------
+
+This project and the Spark Game Launcher are an unofficial, not-for-profit fan
+work. They are not affiliated with, endorsed by, sponsored by, approved by, or
+connected to NVIDIA Corporation, HP Inc., Valve Corporation, Canonical Ltd., or
+any hardware or software vendor named anywhere in this repository.
+
+No money is made from this project. It is free and open source, published for
+the benefit of people who own this hardware.
+
+Trademarks
+----------
+"NVIDIA", "DGX", "DGX Spark", "RTX", "GeForce", "CUDA", "Grace", "Blackwell" and
+"GB10" are trademarks or registered trademarks of NVIDIA Corporation. "ZGX" and
+"HP" are trademarks of HP Inc. "Steam", "Proton" and "Valve" are trademarks of
+Valve Corporation. "Ubuntu" is a trademark of Canonical Ltd. All other marks
+belong to their respective owners.
+
+These names are used here solely to identify the hardware and software this
+project runs on and reports results for. That is nominative use: naming a thing
+in order to talk truthfully about it. No claim of ownership, endorsement, or
+association is made or implied.
+
+Naming and visual identity
+--------------------------
+The application is called **Spark Game Launcher**. The name deliberately
+contains no NVIDIA trademark -- no "DGX", "RTX", "NVIDIA", "CUDA", "GeForce" or
+"Blackwell" -- and the word "Spark" is used descriptively, of the class of
+machine the software targets.
+
+The application deliberately does NOT imitate NVIDIA's visual identity:
+
+  * It uses none of NVIDIA's logos, wordmarks, icons or product imagery.
+  * It uses NO NVIDIA green. The colour appears nowhere in the application.
+  * Its palette is gold plus arcade neon (blue, purple, pink), chosen to read as
+    a gaming utility rather than as a vendor product.
+
+This is a deliberate design decision, recorded because it is the point:
+NVIDIA's brand-usage guidance asks third parties not to mimic NVIDIA's branding
+and visual style. This project follows that, in substance rather than in a
+footnote.
+
+If NVIDIA, HP, Valve or Canonical would like anything here changed or removed,
+open an issue -- it will be addressed promptly and in good faith.

@@ -1,5 +1,12 @@
 # DGX Spark Steam Gaming Setup
 
+> **Unofficial, not-for-profit fan project — not affiliated with NVIDIA.**
+> This is an independent compatibility log and toolset for hardware its authors own. It is not
+> affiliated with, endorsed by, or connected to NVIDIA Corporation, HP Inc., Valve Corporation or
+> Canonical Ltd. No money is made from it. NVIDIA, DGX, DGX Spark, RTX, GeForce, CUDA, Grace and
+> Blackwell are trademarks of NVIDIA Corporation, used here only to identify the hardware and
+> software being tested. Full notice: [`NOTICE`](NOTICE).
+
 > **Tooling:** every script in `tools/` is documented in **[`tools/README.md`](tools/README.md)** — organised by what you are trying to do, with the specific mistake each one exists to prevent.
 >
 > **Open questions:** **[`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md)** — what is settled, what is open (ranked, each with its next concrete step), what has been ruled out, and every correction this log has published. Start there if you are picking the work up.
