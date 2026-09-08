@@ -1,0 +1,142 @@
+log file 'qconsole.log' opened on Tue Sep 08 04:42:44 2026
+
+Unknown command '0'
+2661 strings read from strings/english001.lang
+----- Initializing Sound System ------
+sound system initialized.
+--------------------------------------
+----- R_InitOpenGL -----
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+...calling CDS: ok
+...created window @ 0,0 (2560x1440)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 1 selected
+...creating GL context: succeeded
+...making context current: succeeded
+
+------- Input Initialization -------
+Initializing DirectInput...
+mouse: DirectInput initialized.
+keyboard: DirectInput initialized.
+------------------------------------
+...initializing OpenAL
+...calling LoadLibrary( 'openal32.dll' ): failed
+...initializing OpenAL
+...calling LoadLibrary( 'openal32.dll' ): failed
+sound: STEREO
+...using GL_ARB_multitexture
+...using GL_ARB_texture_env_combine
+...using GL_ARB_texture_cube_map
+...using GL_ARB_texture_env_dot3
+...using GL_ARB_texture_env_add
+...using GL_ARB_texture_non_power_of_two
+...using GL_ARB_texture_compression
+...using GL_EXT_texture_compression_s3tc
+...using GL_EXT_texture_filter_anisotropic
+   maxTextureAnisotropy: 16.000000
+...using GL_1.4_texture_lod_bias
+X..GL_EXT_shared_texture_palette not found
+...using GL_EXT_texture3D
+...using GL_EXT_stencil_wrap
+...using GL_NV_register_combiners
+...using GL_EXT_stencil_two_side
+X..GL_ATI_fragment_shader not found
+X..GL_ATI_text_fragment_shader not found
+...using GL_ARB_vertex_buffer_object
+...using GL_ARB_vertex_program
+...using GL_ARB_fragment_program
+...using EXT_depth_bounds_test
+---------- R_NV20_Init ----------
+---------------------------------
+----------- R200_Init -----------
+Not available.
+---------- R_ARB2_Init ----------
+Available.
+---------------------------------
+----- R_ReloadARBPrograms -----
+glprogs/test.vfp
+glprogs/test.vfp
+glprogs/interaction.vfp
+glprogs/interaction.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/ambientLight.vfp
+glprogs/ambientLight.vfp
+glprogs/shadow.vp
+glprogs/R200_interaction.vp
+glprogs/nv20_bumpAndLight.vp
+glprogs/nv20_diffuseColor.vp
+glprogs/nv20_specularColor.vp
+glprogs/nv20_diffuseAndSpecularColor.vp
+glprogs/environment.vfp
+glprogs/environment.vfp
+glprogs/arbVP_glasswarp.txt: File not found
+glprogs/arbFP_glasswarp.txt: File not found
+glprogs/interactionUpdate.vfp
+glprogs/interactionUpdate.vfp
+glprogs/interactionCubeMaps.vfp
+glprogs/interactionCubeMaps.vfp
+glprogs/interactionNormBump.vfp
+glprogs/interactionNormBump.vfp
+glprogs/interactionNormBumpH.vfp
+glprogs/interactionNormBumpH.vfp
+glprogs/interactionAll.vfp
+glprogs/interactionAll.vfp
+-------------------------------
+using ARB_vertex_buffer_object memory
+using ARB2 renderSystem
+found DLL in pak file: Z:\home\aharmon\.local\share\Steam\steamapps\common\Prey 2006\base\game03.pk4/gamex86.dll
+copy gamex86.dll to Z:\home\aharmon\.local\share\Steam\steamapps\common\Prey 2006\base\gamex86.dll
+game using MMX & SSE & SSE2 & SSE3 for SIMD processing
+enabled Flush-To-Zero mode
+--------- Initializing Game ----------
+gamename: basePrey-1
+gamedate: Sep 20 2007
+Initializing event system
+...1028 event definitions
+Initializing class hierarchy
+...366 classes, 1065008 bytes for event callbacks
+Initializing scripts
+Compiled 'interpolateShaderParm': 1474.4 ms
+---------- Compile stats ----------
+
+Memory usage:
+     Strings: 58, 6800 bytes
+  Statements: 92650, 1853000 bytes
+   Functions: 2987, 352692 bytes
+   Variables: 411160 bytes
+    Mem used: 3782048 bytes
+ Static data: 3617736 bytes
+   Allocated: 5129676 bytes
+ Thread size: 7080 bytes
+
+...11 aas types
+game initialized.
+--------------------------------------
+-------- Initializing Session --------
+Couldn't read ../base/preykey.
+session initialized
+--------------------------------------
+--- Common Initialization Complete ---
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutting down sound hardware
+idRenderSystem::Shutdown()
+Shutting down OpenGL subsystem
+...wglMakeCurrent( NULL, NULL ): success
+...deleting GL context: success
+...releasing DC: success
+...destroying window
+...resetting display
+...shutting down QGL
+...unloading OpenGL DLL
+------------ Game Shutdown -----------
+--------- Game Map Shutdown ----------
+--------------------------------------
+Shutdown event system
+--------------------------------------

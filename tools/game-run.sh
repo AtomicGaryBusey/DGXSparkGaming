@@ -42,6 +42,8 @@
 # Usage:
 #   tools/game-run.sh <appid> [-- extra game args]
 #     PROTON=proton_11        compat tool to expect (warn if different)
+#     WORKDIR=<dir>           launch cwd (default: the game dir). Prey needs the
+#                             mod dir, because it reads ../base/preykey.
 #     RUNTIME=auto|fex|box64  which JIT to run under. ALWAYS recorded in run.json;
 #                             `auto` is Box64 here, because binfmt says so.
 #     LAUNCH_OPTION=          pick a non-default launch entry (e.g. option1), or
@@ -244,9 +246,18 @@ case "$RUNTIME" in
   *) die "RUNTIME must be auto, fex or box64" ;;
 esac
 
+# WORKDIR overrides the launch directory. Needed because some engines resolve
+# data paths RELATIVE TO THE CWD and Steam's own choice is not always the game
+# root: Prey (2006) reads its CD key from "../base/preykey", which only resolves
+# if the cwd is the mod directory. With cwd=<game>/ it looks in common/base/ and
+# reports "Couldn't read ../base/preykey" even though the file is right there.
+LAUNCHDIR="${WORKDIR:-$GAMEDIR}"
+[ -d "$LAUNCHDIR" ] || die "WORKDIR=$LAUNCHDIR does not exist"
+[ "$LAUNCHDIR" != "$GAMEDIR" ] && note "cwd override: $LAUNCHDIR"
+
 if [ "${DRY_RUN:-0}" = 1 ]; then
   echo "== dry run: pre-flight only, nothing launched =="
-  note "cwd:  $GAMEDIR"
+  note "cwd:  ${LAUNCHDIR:-$GAMEDIR}"
   note "env:  ${ENVS[*]}"
   note "argv: $*"
   rmdir "$RUNDIR" 2>/dev/null
@@ -262,7 +273,7 @@ if ! systemctl --user is-active "$SCOPE.scope" >/dev/null 2>&1; then
 fi
 
 echo "== launching in cgroup scope '$SCOPE' =="
-( cd "$GAMEDIR" 2>/dev/null || cd "$HOME"
+( cd "$LAUNCHDIR" 2>/dev/null || cd "$HOME"
   systemd-run --user --scope --unit="$SCOPE" --quiet -- \
     env "${ENVS[@]}" "$@" >"$RUNDIR/launch.log" 2>&1 ) &
 LAUNCH=$!

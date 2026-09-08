@@ -1,0 +1,18 @@
+# Prey 2006 under the PATCHED box64, 400s run, 2026-09-08 — IT LAUNCHES.
+# Extract of the milestones; full log alongside as prey-LAUNCHED-patched-box64.log
+
+16:Initializing OpenGL driver
+18:...PIXELFORMAT 1 selected
+19:...creating GL context: succeeded
+121:-------- Initializing Session --------
+122:Couldn't read ../base/preykey.
+125:--- Common Initialization Complete ---
+
+# Compare: the SAME title under FEX never gets a context —
+#   ...PIXELFORMAT 1 selected / ...SetPixelFormat failed / Unable to initialize OpenGL
+
+# The CD-key line is a PATH problem, not a licensing one. The file exists:
+-rw-rw-r-- 1 aharmon aharmon 119 Sep  8 06:42 /home/aharmon/.local/share/Steam/steamapps/common/Prey 2006/base/preykey
+#   engine wants ../base/preykey; with cwd=<game>/ that resolves to common/base/ (absent)
+#   with cwd=<game>/base/ it resolves to <game>/base/preykey (present)
+#   -> tools/game-run.sh gained WORKDIR= for exactly this

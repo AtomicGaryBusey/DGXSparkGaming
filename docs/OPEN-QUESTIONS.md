@@ -13,6 +13,7 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 
 | Finding | Evidence | Confidence |
 |---|---|---|
+| **Prey (2006) LAUNCHES under Box64 with the four-symbol fix** — GL context created, session initialised, full engine init; only a CD-key *path* issue remains | `evidence/2026-09-08-steamclient-init-box64/prey-launch-milestones.txt` | high |
 | **Quake 4 (id Tech 4) is playable under Box64** — menu, `game/airdefense1` loads, weapons work | `evidence/runs/2210-20260907-223229/`, human-confirmed | high |
 | **The same title under FEX fails at `SetPixelFormat`** — no GL context, x87 assertion never fires | `evidence/runs/2210-20260907-225230/` | high |
 | **Box64 writes the FSAVE tag word stack-relative, not physical** (`0xffc0` vs `0x03ff`); FEX is correct | `tools/isa-probe.sh`, reproducible in a bare 32-bit ELF | high |
@@ -100,6 +101,9 @@ has *no* `legacykey*` keys and statically imports `steam_api.dll`. Until it is r
 `.bind` calls `LoadLibrary`, and with what path string.
 
 ### 3. Which id Tech 4 titles work under Box64?
+**Two for two so far.** Quake 4 plays; Prey now launches and initialises fully with the box32
+fix in place. Note the fix is NOT in the packaged box64 — `/usr/local/bin/box64` was reverted to
+stock after testing, so reproducing Prey needs the swap again until it lands upstream.
 Quake 4 does. DOOM 3, RoE, Prey, BFG, Phobos, Wolfenstein 2009, Riddick, Brink and the two
 dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untested.
 
