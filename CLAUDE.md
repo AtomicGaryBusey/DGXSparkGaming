@@ -100,6 +100,13 @@ failure it prevents — because that rationale is the point of this repo. Curren
   RootFS and run under both JITs. Seconds, no game, no GPU, no install. Two probes so far and both
   found a real bug (Box64 tag word; FEX CPUID DE/PSE). **Add a probe before installing a 100 GB
   game to test a CPU-semantics hypothesis.**
+- **`tools/pick-runtime.py <exe> [--gamedir DIR]`** — reads a title's import tables *and* its
+  binaries' strings (the Quake lineage `LoadLibrary`s its renderer, so an import scan alone calls
+  Daikatana "no OpenGL") and says which JIT can actually run it. Prints `VERDICT=box64|fex|either`.
+  `game-run.sh` calls it and warns on the one known-impossible combination, 32-bit GL under FEX.
+  **It makes no performance claim** — FEX and Box64 have never been benchmarked against each other
+  here. `ddraw.dll` is deliberately not treated as a 3D renderer: counting it sent Quake 4 and Prey,
+  which are OpenGL-only, to FEX.
 - **`tools/idtech4-prep.sh`** — arms any id Tech 4 title with the diagnostic config that answered
   the Quake 4 question on its first run (`logFile 2` flushes per write; `1` buffers and the crash
   eats the lines you need) plus a real resolution. Detects the mod dir from the `.pk4` files.
@@ -448,7 +455,7 @@ run the tool, then act.**
 | write ANY freestanding probe | **put constants in `.bss`, never `.data`** | A `.data` section triggers an FEX bug that runs the instruction before an `a3` store twice. A fuzzer with `.data` "proved" FEX computes `0x3800 >> 11 = 0` and every finding it produced was that bug |
 | test a CPU-semantics hypothesis | **`tools/isa-probe.sh`** | A 40-line probe answers in seconds what a game install answers in 45 minutes and 36 GB — and its expected value comes from the SDM, not from whichever runtime ran first |
 | claim "FEX does X" | **`tools/run-both.sh --which`** | binfmt registers **only Box64** for x86 ELF. Run a binary by path and you measured Box64. Steam is FEX-hosted, so its games are FEX; almost nothing else you type is |
-| run any 32-bit OpenGL title | **`RUNTIME=box64 tools/game-run.sh <appid>`** | FEX cannot set ANY pixel format for 32-bit Wine programs (0/320 measured). Every id Tech 4 title is 32-bit GL, so FEX is not a choice for them — Box64 is |
+| wonder which JIT a title needs | **`tools/pick-runtime.py <exe>`** — `game-run.sh` runs it automatically | The rule is the RENDER API, not the word size. "Box64 for 32-bit" is wrong: Half-Life 2 is 32-bit and maxed at 5120x1440 on FEX via DXVK. What FEX cannot do is 32-bit **OpenGL** (0/320 pixel formats) |
 | test any id Tech 4 title | **`tools/idtech4-prep.sh <appid>`** | The engine prints its whole x87 environment one line before dying, and this log went months without turning the log on |
 | blame a game's launcher | **`tools/make-launcher-shim.sh`** | The engine usually works: Far Cry's Dunia renders fine when the exe is started directly, and Cyberpunk needed a 10 KB shim after ~10 failed hand-offs |
 | edit a guard hook | **`.claude/hooks/test-guards.sh`** | 20 cases, every one a real command or a real false positive. Rule 3 once blocked an `echo` that merely CONTAINED `-applaunch` |

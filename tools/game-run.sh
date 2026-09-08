@@ -214,7 +214,41 @@ fi
 #   auto  (default) whatever binfmt does -- which is Box64 here. Recorded, not assumed.
 #   fex             wrap the chain in FEXBash so every child stays inside FEX
 #   box64           same as auto, stated explicitly
+# Which JIT CAN run this title, read from the binary rather than remembered.
+#
+# FEX sets 0 of 320 pixel formats for any 32-bit Windows program under Wine
+# (tools/probes/wgl/wgl-formatsweep32.c), so a 32-bit OpenGL title cannot get a
+# GL context under FEX at all. The tempting shorthand -- "Box64 for 32-bit, FEX
+# for 64-bit" -- is wrong: Half-Life 2 is 32-bit and runs maxed at 5120x1440
+# under FEX because DX9 goes through DXVK to Vulkan. The axis is the render API.
+# tools/pick-runtime.py reads the import tables (and, because the Quake lineage
+# LoadLibrary's its renderer, the binaries' strings) and says which it is.
+RENDER_VERDICT=""
+if [ -n "${EXE:-}" ] && [ -f "$GAMEDIR/$EXE" ]; then
+  RENDER_VERDICT=$(python3 "$(dirname "$0")/pick-runtime.py" "$GAMEDIR/$EXE" \
+                     --gamedir "$GAMEDIR" --quiet 2>/dev/null | sed -n 's/^VERDICT=//p')
+  case "$RENDER_VERDICT" in
+    box64) note "render path: 32-bit OpenGL — only Box64 can create a GL context here" ;;
+    either) note "render path: 32-bit with both GL and D3D backends — force the D3D one on FEX" ;;
+  esac
+fi
+
 RUNTIME="${RUNTIME:-auto}"
+
+# The one combination that is known-impossible. Warn loudly rather than refuse:
+# reproducing a failure on purpose is legitimate here, and a tool that blocks it
+# would just get bypassed. But it must never happen by accident again.
+if [ "$RENDER_VERDICT" = box64 ]; then
+  if [ "$RUNTIME" = fex ]; then
+    warn "RUNTIME=fex on a 32-bit OpenGL title. This CANNOT work — SetPixelFormat"
+    warn "  fails for all 320 formats under FEX. Expect 'SetPixelFormat failed'."
+    warn "  Use RUNTIME=box64 unless you are deliberately reproducing that."
+  elif [ "${LAUNCH_VIA:-}" = steam ]; then
+    warn "LAUNCH_VIA=steam on a 32-bit OpenGL title. Steam's exe is /usr/bin/FEX,"
+    warn "  so Steam will hand this to FEX and it will fail at SetPixelFormat."
+    warn "  Launch it directly (the default) so binfmt gives it Box64."
+  fi
+fi
 case "$RUNTIME" in
   fex)
     command -v FEXBash >/dev/null 2>&1 || die "RUNTIME=fex but FEXBash is not installed"
@@ -439,6 +473,7 @@ cleanup() {
   "appid": "$APPID",
   "name": "$NAME",
   "runtime_requested": "${RUNTIME:-auto}",
+  "render_verdict": "${RENDER_VERDICT:-unknown}",
   "runtime_actual": "${ACTUAL_JIT:-unknown}",
   "proton": "${USED:-${COMPAT:-unknown}}",
   "runtime_container": "${RT_DIR:-none}",

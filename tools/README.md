@@ -159,3 +159,30 @@ makes a result claim without naming an artifact. Escape hatch: append
 
 Run `.claude/hooks/test-guards.sh` after editing any hook: 20 cases, every one a real
 command this project runs or a real false positive that actually happened.
+
+### `pick-runtime.py` — which JIT can run this title?
+
+```
+tools/pick-runtime.py <path-to-exe> [--gamedir DIR] [--quiet]
+```
+
+Answers the question this repo kept answering from memory, and getting wrong. The intuitive rule
+— *Box64 for 32-bit, FEX for 64-bit* — is **false**: Half-Life 2 is 32-bit and runs smooth and
+maxed at 5120x1440 under FEX, because DX9 goes through DXVK to Vulkan. What FEX cannot do is
+**32-bit OpenGL**: it sets 0 of 320 pixel formats for any 32-bit Wine program, so no GL context is
+possible (`tools/probes/wgl/wgl-formatsweep32.c`). The axis is the render API.
+
+Two detection details, both learned by testing against titles whose answer we already knew:
+
+- It scans **strings as well as import tables**. Quake-lineage engines call
+  `LoadLibrary("opengl32.dll")` from inside `ref_gl.dll`, so nothing imports GL statically and an
+  import-only scan reported Daikatana as "no OpenGL" — exactly backwards.
+- It does **not** count `ddraw.dll` as a 3D renderer. Quake 4 and Prey both import DirectDraw for
+  2D/video while being OpenGL-only; counting it routed two titles we know fail under FEX to FEX.
+
+`game-run.sh` runs it on every launch, records the verdict in `run.json`, and warns when you ask
+for the impossible combination. It warns rather than refuses — reproducing a known failure on
+purpose is legitimate, and a tool that blocks it just gets bypassed.
+
+**It says nothing about speed.** No FEX-vs-Box64 benchmark has ever been run here; every runtime
+claim in this log is functional. For a performance statement use `tools/bench-ab.sh`.
