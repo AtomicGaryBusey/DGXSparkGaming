@@ -13,7 +13,51 @@ Every DGX Spark is the same machine. Vendors differ; the silicon does not.
 | CPU | 20 ARM64 cores — 10 × Cortex-X925 + 10 × Cortex-A725. **No 32-bit ARM support at all** |
 | Memory | **128 GB unified** (LPDDR5X), coherent between CPU and GPU (`free -g` shows ~121 GiB) |
 | OS | Linux only. **DGX OS**, an Ubuntu base image from the NVIDIA/Canonical partnership — a single vendor for the image |
-| Varies | storage capacity, chassis, badge |
+| Memory bandwidth | fixed — a property of the soldered LPDDR5X configuration, not a purchasable option |
+| Networking | AGB: identical across vendors. **One observation does not fit — see below.** |
+| Varies | **storage capacity only**, plus case and branding |
+
+Verified on this unit (HP ZGX Nano G1n, 2026-09-08):
+
+```
+nvidia-smi         NVIDIA GB10, driver 580.173.02
+lscpu              aarch64; 10 x Cortex-X925 + 10 x Cortex-A725 = 20 cores
+lsmem              127.9G total online, 1 NUMA node   (free -g says 121 GiB: kernel reserve)
+lsblk              nvme0n1  931.5G  (the 1 TB unit — this is the ONLY real variable)
+dmi product_family DGX Spark        dmi sys_vendor  HP
+```
+
+Cosmetic vendor differences are real but superficial — AGB's NVIDIA-branded units have no
+chassis power LED; HP added one to the front of the ZGX. Nice, and irrelevant to any result.
+
+### Open discrepancy: networking on this unit
+
+**This HP ZGX Nano G1n presents no Mellanox/ConnectX device on PCI at all.** The full `lspci` is
+one NVMe controller, a Realtek `10ec:8127` Ethernet controller, a MediaTek MT7925 Wi-Fi part, the
+GPU, and NVIDIA PCI bridges. Nothing from vendor `15b3`, and `/sys/class/infiniband` does not
+exist.
+
+Yet DGX OS has the whole Mellanox stack **loaded** — `mlx5_core`, `mlx5_ib`, `mlxfw`, `ib_core`,
+`ib_uverbs`, `rdma_cm` — which is what you would expect from an image built for a platform that
+normally carries a ConnectX NIC.
+
+Three readings, and this unit cannot distinguish them:
+
+1. The HP "Nano" variant genuinely omits the ConnectX/QSFP networking.
+2. It is present but disabled in firmware, so it never enumerates.
+3. It is attached by some path `lspci` does not show.
+
+If (1), then **networking is a second vendor variable**, not an invariant, and this document
+should say so. AGB has NVIDIA-branded units; one command on one of them settles it:
+
+```bash
+lspci -nn | grep -i '15b3\|mellanox\|connectx' ; ls /sys/class/infiniband
+```
+
+Recorded rather than resolved, because asserting "networking is identical across vendors" while
+sitting in front of a machine that appears to contradict it is exactly the kind of unchecked
+claim this repo exists to avoid. It has **no bearing on any gaming result** — it is flagged for
+accuracy, not because it changes a conclusion.
 
 Verified on this unit: `nvidia-smi` reports `NVIDIA GB10`, driver 580.173.02; `lscpu` reports the
 20-core X925/A725 split; `free -g` reports 121 GiB.
