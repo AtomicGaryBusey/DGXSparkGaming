@@ -90,6 +90,26 @@ Box64 warnings|^\[BOX
 SIGS
   fi
 
+  # --- the launcher chain itself -------------------------------------------
+  # launch.log holds pressure-vessel and proton's own stderr. It was not read at
+  # all until 2026-09-07, when a Python traceback in it turned out to be the real
+  # reason two "identical" runtime results were both meaningless.
+  local l="$RD/launch.log"
+  if [ -s "$l" ]; then
+    printf '  %-12s %s bytes\n' "launch.log" "$(wc -c < "$l")"
+    while IFS='|' read -r label pat; do
+      n=$(grep -ci -- "$pat" "$l" 2>/dev/null); n=${n//[!0-9]/}
+      [ "${n:-0}" -gt 0 ] && printf '     %-34s %s\n' "$label" "$n"
+    done <<'SIGS'
+proton crashed (python traceback)|Traceback (most recent call last)
+missing compatdata / pfx.lock|pfx.lock
+prefix lock contention|prefix_lock
+pressure-vessel internal error|pressure-vessel-wrap.*Internal error
+steam already running (forwarded)|Steam is already running
+SIGS
+    grep -m1 -E '^[A-Za-z]*Error:' "$l" 2>/dev/null | sed 's/^/     launcher error: /'
+  fi
+
   # --- did instrumentation produce anything? --------------------------------
   [ -s "$RD/gpu.csv" ] && {
     local tot nz

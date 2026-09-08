@@ -178,6 +178,17 @@ else
   note "exe: $EXE${LAUNCH_OPTION:+  (launch option: $LAUNCH_OPTION)}"
   [ -f "$GAMEDIR/$EXE" ] || warn "$GAMEDIR/$EXE does not exist — launch will probably fail"
 
+  # Proton creates pfx/ inside STEAM_COMPAT_DATA_PATH but NOT the directory
+  # itself -- Steam normally does that. Launching directly, a title that has
+  # never been run through Steam has no compatdata dir, and Proton dies with a
+  # Python traceback ending in
+  #   FileNotFoundError: .../compatdata/<appid>/pfx.lock
+  # which reads like a lock-contention bug and is not one. Prey and Phobos both
+  # hit it on 2026-09-07; the A/B tool duly reported "both runtimes behaved the
+  # SAME", which was true and had nothing to do with either JIT.
+  CDP="$STEAM/steamapps/compatdata/$APPID"
+  [ -d "$CDP" ] || { mkdir -p "$CDP" && note "created compatdata/$APPID (first direct launch)"; }
+
   # Proton needs these; SteamAppId/SteamGameId are what the Steam API keys off.
   ENVS+=("STEAM_COMPAT_DATA_PATH=$STEAM/steamapps/compatdata/$APPID"
          "STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM"
