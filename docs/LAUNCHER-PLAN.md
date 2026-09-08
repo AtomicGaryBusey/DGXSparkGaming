@@ -114,7 +114,9 @@ directory bundle satisfies LGPLv3's relink right trivially and `--onefile` does 
 Ship `LICENSE` (MIT), `LICENSE.LGPLv3`, and a written offer for Qt's corresponding source.
 
 **Hard floor, and it has zero headroom.** The wheel tag is `manylinux_2_39_aarch64`; this box is
-glibc 2.39 exactly (MEASURED). The platform red team established that the set of PySide6
+glibc 2.39 exactly (MEASURED, re-confirmed 2026-09-08 — `ldd --version` reports 2.39, and the
+only aarch64 wheel published for 6.11.2 is `manylinux_2_39_aarch64`, so the match is exact with
+nothing to spare). The platform red team established that the set of PySide6
 versions with a `win_arm64` wheel (≥6.9.0) and the set with a `manylinux_2_31` aarch64 wheel
 (≤6.8.0.2) are **disjoint** — so on a DGX OS 6 / Ubuntu 22.04 unit the installer cannot work at
 all without sudo or a Qt source build. `setup-launcher.sh` must assert `glibc >= 2.39` up front
@@ -124,8 +126,22 @@ and fail naming DGX OS 7 / Ubuntu 24.04, not emit an opaque pip resolution error
 ### 2.5 Windows packaging — **deliberately not built, with a rot alarm**
 
 `docs/SPARK-PLATFORM.md` is explicit: confirm the toolkit and DB *can* run there at selection
-time, then stop paying. That check passes (a `win_arm64` wheel is published — INFERRED from the
-toolkit survey's PyPI query and the platform red team's download; I did not re-query PyPI).
+time, then stop paying. That check passes, and it is now **VERIFIED, not inferred** (2026-09-08, re-queried against
+`https://pypi.org/pypi/PySide6-Essentials/json`). PySide6-Essentials **6.11.2** publishes exactly
+five wheel platforms:
+
+```
+macosx_13_0_universal2, manylinux_2_34_x86_64, manylinux_2_39_aarch64, win_amd64, win_arm64
+```
+
+so both the platform we ship on (`manylinux_2_39_aarch64`) and the platform we may one day port to
+(`win_arm64`) are present in the same pinned release. `PySide6` (the full package) has the same five.
+
+**What this does and does not establish.** It establishes that a wheel *exists* and can be
+downloaded. It says nothing about whether Qt Quick renders correctly on GB10-under-Windows, which
+RHI backend it selects, or whether the NVIDIA Windows driver serves it — none of which can be
+known without the hardware. See §9. The distinction matters because "the wheel exists" is exactly
+the kind of availability fact that gets quietly upgraded into "it works on Windows."
 
 What we add is one CI job that is honest about what it proves:
 

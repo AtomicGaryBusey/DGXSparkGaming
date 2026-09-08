@@ -1,0 +1,35 @@
+PySide6 wheel platform availability
+queried: 2026-09-08T13:03:21
+source : https://pypi.org/pypi/<pkg>/json
+why    : the launcher plan's stack rests on a Linux aarch64 wheel existing,
+         and its Windows-port story on a win_arm64 wheel. The plan marked the
+         second INFERRED. This is the artifact behind upgrading it to VERIFIED.
+caveat : proves a wheel EXISTS and is downloadable. Says NOTHING about whether
+         Qt Quick renders on GB10-under-Windows or which RHI backend it picks.
+
+=== PySide6-Essentials 6.11.2 ===
+    pyside6_essentials-6.11.2-cp310-abi3-macosx_13_0_universal2.whl
+    pyside6_essentials-6.11.2-cp310-abi3-manylinux_2_34_x86_64.whl
+    pyside6_essentials-6.11.2-cp310-abi3-manylinux_2_39_aarch64.whl
+    pyside6_essentials-6.11.2-cp310-abi3-win_amd64.whl
+    pyside6_essentials-6.11.2-cp310-abi3-win_arm64.whl
+
+=== PySide6 6.11.2 ===
+    pyside6-6.11.2-cp310-abi3-macosx_13_0_universal2.whl
+    pyside6-6.11.2-cp310-abi3-manylinux_2_34_x86_64.whl
+    pyside6-6.11.2-cp310-abi3-manylinux_2_39_aarch64.whl
+    pyside6-6.11.2-cp310-abi3-win_amd64.whl
+    pyside6-6.11.2-cp310-abi3-win_arm64.whl
+
+=== shiboken6 6.11.2 ===
+    shiboken6-6.11.2-cp310-abi3-macosx_13_0_universal2.whl
+    shiboken6-6.11.2-cp310-abi3-manylinux_2_34_x86_64.whl
+    shiboken6-6.11.2-cp310-abi3-manylinux_2_39_aarch64.whl
+    shiboken6-6.11.2-cp310-abi3-win_amd64.whl
+    shiboken6-6.11.2-cp310-abi3-win_arm64.whl
+
+=== this machine ===
+    python3 : 3.12.3
+    sqlite3 : 3.45.1
+    glibc   : 2.39
+    -> manylinux_2_39_aarch64 requires glibc >= 2.39; this box is EXACTLY 2.39, no margin.
