@@ -308,3 +308,59 @@ for *any* x86 implementation — including Prism, on day one).
 no GPU and no install, and it would immediately say whether Prism shares any of the x87/CPUID
 defects found here. Until then, do not write anything in this repo that implies the translator
 findings apply to RTX Spark. See `docs/SPARK-PLATFORM.md`.
+
+### id Tech 4 fullscreen at a wide native mode: ChangeDisplaySettings ACCESS-VIOLATES — CONFIRMED
+
+Measured 2026-09-08, Prey (3970), Box64, Proton Experimental, 5120x1440 display.
+
+Setting `r_customWidth 5120 / r_customHeight 1440 / r_fullscreen 1` makes the engine call
+`ChangeDisplaySettings`, which fails:
+
+```
+...calling CDS: failed, unknown error -1073741819      <- 0xC0000005, access violation
+...trying next higher resolution:
+```
+
+and the engine then spins forever in that fallback loop. **The mode is valid** — `xrandr` lists
+`5120x1440` — so it is the CDS *call* that faults, not the mode. At 2560x1440 the same call
+succeeds, which is why every earlier run worked.
+
+Windowed avoids the call entirely but produces a **5128x1474** decorated window (borders + title
+bar), *larger* than the 5120x1440 screen, which the window manager reports as unresponsive.
+
+`tools/idtech4-prep.sh` now picks the largest mode id Tech 4 can express (4:3 / 16:9 / 16:10) that
+*fits* the display, rather than the native one. `NATIVE=1` forces native and is expected to hang —
+kept for retesting after a Wine or Box64 update.
+
+*Not yet investigated:* whether this is a Wine bug, a Box64 bug, or a driver limit. `run-both.sh`
+cannot answer it — FEX cannot run 32-bit OpenGL at all.
+
+### Prey blocks in the Steam API handshake before engine init — INTERMITTENT, open
+
+Observed twice on 2026-09-08. `prey.exe` starts, burns ~3.5 s of CPU, then parks on
+`futex_do_wait` with **one thread**; a live id Tech 4 process has 10+. No `qconsole.log` is ever
+created, so it never reached `autoexec.cfg`. Every Wine service around it is healthy
+(`services.exe`, `winedevice.exe`, `rpcss.exe`, `explorer.exe`, `xalia.exe`), and Proton's
+`steam.exe` stub sits in `futex_wait_multiple`.
+
+Intermittent: a run 20 minutes earlier reached `--- Common Initialization Complete ---` with the
+same binary and prefix. Launching from the Steam UI has always worked.
+
+Likely related to pending work on `NO_STEAM_API` (bypassing the legacy Steam DRM path). **Not
+root-caused, and deliberately not attributed to any of the geometry changes made that evening.**
+
+### The mouse anomaly is STILL UNTESTED — and how four launches failed to test it
+
+The 2026-09-08 session set out to test the "window narrower than display breaks pointer
+confinement" hypothesis. It never did. Four launches, four unrelated failures: CDS access
+violation (fullscreen native), oversized 5128x1474 window (windowed native), Steam handshake hang
+(borderless native), Steam handshake hang again (**windowed 1920x1080** — a benign config, which
+is what proves the last two were not geometry at all).
+
+**The lesson is the point.** The hypothesis came from a single log line — `created window @ 0,0
+(2560x1440)` — and was never measured. `tools/mousefeel.sh` was built *for this exact question*
+days earlier and was not run, twice after explicitly saying it would be the next step.
+
+*Next step, and it is not negotiable:* `tools/mousefeel.sh` on the restored working config, before
+any further geometry change. It reads DirectInput in the game's exact mode against Win32 raw input
+over the same movement; the DI/RAW ratio says whether the input path is at fault at all.

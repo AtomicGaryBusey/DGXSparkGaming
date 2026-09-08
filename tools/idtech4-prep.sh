@@ -48,7 +48,41 @@ detect_res() {
   [ -n "$r" ] || r=$(xdpyinfo 2>/dev/null | awk '/dimensions:/{print $2; exit}')
   printf '%s' "$r"
 }
+# CHOOSING A RESOLUTION IS NOT AS SIMPLE AS "USE THE DISPLAY'S".
+#
+# Measured 2026-09-08 on a 5120x1440 display: setting r_customWidth/Height to the
+# native mode with r_fullscreen 1 makes the engine call ChangeDisplaySettings,
+# which dies with
+#     ...calling CDS: failed, unknown error -1073741819      (0xC0000005)
+# and the engine then spins forever in "...trying next higher resolution:".
+# The MODE is valid -- xrandr lists 5120x1440 -- so it is the CDS call itself
+# that access-violates on this stack. Windowed avoids the call but produces a
+# 5128x1474 decorated window, LARGER than the screen.
+#
+# So this tool no longer just detects and applies. It picks the largest mode
+# id Tech 4 can actually express (the engine knows only 4:3, 16:9 and 16:10)
+# that FITS inside the display, and prints the native option as an override
+# rather than choosing it for you. NATIVE=1 forces the detected mode.
+largest_fitting_169() {   # echo "W H" for the biggest 16:9 that fits in $1 x $2
+  awk -v dw="$1" -v dh="$2" 'BEGIN{
+    split("3840 2160 2560 1440 1920 1080 1600 900 1366 768 1280 720", a, " ");
+    for (i=1; i<length(a); i+=2) if (a[i] <= dw && a[i+1] <= dh) { print a[i], a[i+1]; exit }
+    print 1280, 720 }'
+}
+
 DETECTED=$(detect_res)
+if [ -z "${WIDTH:-}${HEIGHT:-}" ] && [ -n "$DETECTED" ] && [ "${NATIVE:-0}" != 1 ]; then
+  _dw=${DETECTED%x*}; _dh=${DETECTED#*x}
+  set -- $(largest_fitting_169 "$_dw" "$_dh")
+  WIDTH="$1"; HEIGHT="$2"
+  if [ "${WIDTH}x${HEIGHT}" != "$DETECTED" ]; then
+    CDS_NOTE="  note: display is $DETECTED but this sets ${WIDTH}x${HEIGHT}, the largest 16:9
+        mode id Tech 4 can express that fits. Fullscreen at $DETECTED makes the
+        engine's ChangeDisplaySettings call access-violate and hang (2026-09-08).
+        NATIVE=1 overrides, and is expected to hang -- it is there for retesting
+        after a Wine or Box64 update, not for playing."
+  fi
+fi
 if [ -n "${WIDTH:-}${HEIGHT:-}" ]; then
   W="${WIDTH:-${DETECTED%x*}}"; H="${HEIGHT:-${DETECTED#*x}}"
   RES_SRC="explicit override"
@@ -136,11 +170,15 @@ echo "  mod dir : $BASE"
 echo "  config  : $CFG"
 echo "  log will be: $BASE/qconsole.log   (flushed per line)"
 echo "  resolution : ${W}x${H} fullscreen   ($RES_SRC; aspect $ASPECT)"
+[ -n "${CDS_NOTE:-}" ] && printf '%s\n' "$CDS_NOTE"
 [ -n "$ASPECT_NOTE" ] && printf '%s\n' "$ASPECT_NOTE"
 if [ -n "$DETECTED" ] && [ "${W}x${H}" != "$DETECTED" ]; then
-  echo "  !! window ${W}x${H} does NOT match the display $DETECTED."
-  echo "     Wine will not treat it as fullscreen, so the pointer is not confined"
-  echo "     the way an exclusive-mode DirectInput game expects. Expect mouse trouble."
+  echo "  note: window ${W}x${H} does not match the display $DETECTED."
+  echo "     Wine judges 'fullscreen' by comparing window rect to monitor rect, so it"
+  echo "     will not treat this as fullscreen. That was HYPOTHESISED as the cause of"
+  echo "     the id Tech 4 mouse anomaly and is UNVERIFIED -- four launches on"
+  echo "     2026-09-08 failed for unrelated reasons and never tested it. Do not"
+  echo "     repeat that: measure with tools/mousefeel.sh before changing geometry."
 fi
 echo
 echo "next:  tools/game-run.sh $APPID"
