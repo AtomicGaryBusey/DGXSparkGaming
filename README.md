@@ -2078,6 +2078,49 @@ Games installed but not yet launched/tested. Grouped by expected compatibility b
 
 **Priority flags:** Games marked with :star: are high-priority — they test specific engine/API hypotheses or are particularly interesting showcase titles.
 
+**Installed 2026-09-07 — 21 titles, engine and bitness verified on disk:**
+
+*Batch A — 32-bit x86 through FEX.* Daikatana is currently the log's ONLY 32-bit data point, so
+these either harden that result or break it. Run **Narvas first as the 32-bit DXVK health check**:
+if it fails, the sitting's problem is the 32-bit path itself and every later result is uninterpretable.
+
+| Game | API | Notes |
+|------|-----|-------|
+| :star: HROT | OpenGL | Custom Object Pascal/Delphi engine, **32-bit x86**. **Disassembly of `HROT.exe` measured here: 24,234 x87 ops vs 1,818 scalar-SSE (93% x87), and 24 live `fldcw` control-word writes.** The sharpest available probe of whether x87 under FEX is sound — i.e. whether the id Tech 4 failure really is id Tech 4's own assertion. (A research pass claimed "zero SSE"; that was **wrong** — disassembly refuted it. The conclusion survives, the evidence was overstated.) |
+| :star: Sentience: The Android's Tale | ? | **32-bit x86**. Suspected Chromium/Electron — if so, this is 32-bit Chromium + V8 JIT *inside* FEX's JIT, which nothing here has tested, and it attacks this log's oldest open wound (Steam's own CEF under FEX). |
+| :star: Buddy Simulator 1984 | DX11 | Unity, **32-bit x86**. Every prior Unity pass here is IL2CPP (AOT). This is the **Mono JIT** — runtime codegen and self-modifying-code invalidation on FEX's 32-bit path. |
+| Narvas | DX11 | GameMaker, **32-bit x86**. The batch's health check, and it fills the GameMaker gap. |
+
+*Batch B — native Linux x86-64: ELF → FEX with NO Wine/Proton/DXVK in the diagram.* Both were
+installed as their **native** depots (verified: no `.exe` present). These directly price this log's
+standing rule *"force Proton over native ports"* — a rule currently resting on a single data point,
+Feral's Vulkan renderer in Shadow of the Tomb Raider at ~1 FPS. Neither of these is a Feral Vulkan port.
+
+| Game | API | Notes |
+|------|-----|-------|
+| :star: Retrocycles | OpenGL | **Armagetron Advanced** (`org.armagetronad.*`). Native `usr/bin/Retrocycles` ELF x86-64, **not stripped, with debug_info** — which makes it the easiest thing here to debug if it misbehaves. Launched via a bash wrapper. |
+| :star: Return to Dark Castle | ? | Native Unity **IL2CPP** (`GameAssembly.so` + `UnityPlayer.so`), ELF x86-64. Confirm the render API from `boot.config`/Player.log rather than assuming. |
+
+*Batch C — engine families and API switches.*
+
+| Game | API | Notes |
+|------|-----|-------|
+| :star: Heroes of Hammerwatch II | OpenGL | Custom engine + FMOD, x86-64. Reported bgfx/GL 3.2-core class — the first **modern-feature-level** GL title here; every prior GL pass is pre-GL3 fixed-function. Verify the GL version from the engine's own init line. |
+| :star: Hawthorn Playtest | DX12/DX11 | Unreal, x86-64, 5.1 GB. If it ships both SM6 and SM5 shaders it is a controlled VKD3D-vs-DXVK A/B on one binary. Try `VKD3D_DISABLE_EXTENSIONS=VK_EXT_descriptor_buffer` before blaming the descriptor-buffer gap. |
+| :star: Overlooting | OpenGL/Vulkan | Godot 4, x86-64. Godot silently falls back D3D12 → Vulkan → GL, so **read the startup driver line; do not infer the API.** |
+| :star: Horse Magnifier | DX12? | Godot 4, x86-64. Same caveat — on-disk markers disagree, so the startup line is the result. |
+| Sledding Game | DX12/DX11 | Unity IL2CPP, x86-64. The demo's DX11 pass is already logged; the retail build's added D3D12 Agility SDK is the only delta. |
+| Pile Up! | DX11 | Unity, x86-64. Worth a slot **only** if the four-way `-force-d3d11/-force-d3d12/-force-vulkan/-force-glcore` harness is actually run — that prices DXVK vs VKD3D vs raw Vulkan with CPU work held constant. |
+| LivingBattle | DX11 | Unity **Mono**, x86-64. The only CPU-bound Mono title installed, so the only place a JIT-under-JIT cost could show up as a frametime rather than a shrug. |
+| King in the Mountain Playtest | Vulkan? | Godot 4, x86-64. Playtest licences expire — check it still launches before planning around it. |
+| Big Walk | DX11/DX12 | Unity 6 IL2CPP, x86-64. **Online co-op — may need a second player**, which makes it a poor solo test. |
+
+*Batch D — expected routine passes. Low information value; controls only.* Dicefolk (Unity IL2CPP —
+the AOT baseline for LivingBattle's Mono frametimes), Mini Settlers (Unity, DX11-only), Yet Another
+Zombie Defense HD (Unity; **its UNET matchmaking is dead upstream, so an online failure is not a
+Spark result**), Dokimon (GameMaker), Just Move Fall Dungeon Endless Abyss (Unity), Farm RPG
+(needs a live server and an account).
+
 **DX11 — Expected to Work (DXVK sweet spot):**
 
 | Game | API | Notes |
@@ -2219,7 +2262,7 @@ These test the id Tech 4 FPU crash pattern (DOOM 3, BFG, Prey all crash on x87 F
 
 | Game | Engine | Notes |
 |------|--------|-------|
-| :star: Quake 4 | id Tech 4 | **Critical test.** Same engine as DOOM 3 which crashes on x87 FPU. Will it crash too? |
+| :star: Quake 4 | id Tech 4 | **Critical test — INSTALLED 2026-09-07, staged and ready.** Same engine as DOOM 3, which dies on the x87 assertion. **The engine prints the answer and this log has never read it:** `Quake4.exe` (PE32/Intel 80386) carries `idCommon::Frame: the FPU stack is not empty at the end of the frame`, `TAGS = %08x` and `num values on stack = %d` — all three verified present by `strings`. The tag word and stack depth are printed one line before the FatalError. `q4base/autoexec.cfg` is written with `logFile 2` (log **and flush every write** — `1` buffers and the crash eats the very lines we need), `logFileName qconsole.log`, `com_showFPS 1`. Read the **low 16 bits of TAGS together with the stack-depth integer**; either alone is ambiguous. `TAGS & 0xFFFF != 0xFFFF` = a genuine unbalanced x87 push (FEX is reporting truth). `== 0xFFFF` = the check-time and dump-time `fnstenv` disagree, which is a bigger translator bug. It playing at all would falsify "all id Tech 4 is broken here". |
 | :star: RAGE | id Tech 5 (OpenGL) | **Critical test.** Bridges broken id Tech 4 and working id Tech 6. Does id Tech 5 still have x87 FPU checks? |
 | :star: The Chronicles of Riddick: Assault on Dark Athena | Modified id Tech 4 (Starbreeze) | Third-party id Tech 4 variant. Tests if the FPU issue is in shared engine code or id-specific. |
 | :star: DEATHLOOP | Void Engine (id Tech variant) | Arkane's id Tech fork. Tests whether Arkane's branch has FPU issues. Vulkan renderer. |
