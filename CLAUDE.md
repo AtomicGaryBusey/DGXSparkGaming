@@ -362,6 +362,15 @@ elsewhere. Those are logistics, not evidence.
   `notes/box64-bug-3-ntcreatefile-collision.md`. Under `+seh` this shows up as hundreds of
   handled faults — **noise you can ignore when triaging a crash**, which is exactly the mistake
   it caused: they were logged as a "shared input-path bug" behind the id Tech 4 mouse anomaly.
+- **FEX duplicates the instruction before a `mov %eax, moffs32` store (32-bit, `.data` present)** —
+  found 2026-09-08. In a **32-bit** binary whose writable segment is file-backed (i.e. it has a
+  `.data` section), the value-producing instruction before an `a3` store executes **twice**:
+  `0x3800 >> 11` yields `0`, `inc` yields 2, `imul $3` multiplies by 9. Box64 is correct, x86-64
+  is correct, and the same code with **`.bss` only** is correct. Idempotent ops (`and`, `or`) hide
+  it. **Consequence for this repo: never give a freestanding probe a `.data` section** — put
+  constants in `.bss` and write them at runtime. The existing `isa-probe` probes were safe only by
+  accident. Regression gate: `tools/isa-probe/a3store.32.S`. Write-up:
+  `notes/upstream/fex-issue-1-a3-store-duplicates-preceding-op.md`.
 - **RTX Remix dual-process IPC** — HL2 RTX, any Remix title: 32-bit↔64-bit shared-memory
   bridge breaks under translation.
 - **Wave64-only AMD shaders** — Black Myth: Wukong requires `WaveSize(64)`; NVIDIA is
@@ -419,6 +428,7 @@ run the tool, then act.**
 | finish any test run | **`tools/run-report.sh`** | The failure signatures here are a known finite list; checking them from memory produced a different subset every time |
 | ask "is it FEX or Box64?" | **`tools/ab-runtime.sh <appid>`** | The two JITs give OPPOSITE results on id Tech 4 — Box64 plays Quake 4, FEX cannot create a GL context |
 | **cite a log line as a root cause** | **`tools/signature-check.sh '<line>'`** | The single most expensive recurring error here. "descriptor_buffer" survived months because nobody grepped a WORKING game; Cyberpunk and Daikatana both emit it and both run fine |
+| write ANY freestanding probe | **put constants in `.bss`, never `.data`** | A `.data` section triggers an FEX bug that runs the instruction before an `a3` store twice. A fuzzer with `.data` "proved" FEX computes `0x3800 >> 11 = 0` and every finding it produced was that bug |
 | test a CPU-semantics hypothesis | **`tools/isa-probe.sh`** | A 40-line probe answers in seconds what a game install answers in 45 minutes and 36 GB — and its expected value comes from the SDM, not from whichever runtime ran first |
 | claim "FEX does X" | **`tools/run-both.sh --which`** | binfmt registers **only Box64** for x86 ELF. Run a binary by path and you measured Box64. Steam is FEX-hosted, so its games are FEX; almost nothing else you type is |
 | test any id Tech 4 title | **`tools/idtech4-prep.sh <appid>`** | The engine prints its whole x87 environment one line before dying, and this log went months without turning the log on |

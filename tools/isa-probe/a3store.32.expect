@@ -1,0 +1,10 @@
+# Plain arithmetic — no corner of the spec is involved, which is what makes a
+# failure here so serious. All four are stored immediately after being computed.
+# ADD1/INC1/SHR1 go out through the EAX-only `a3` (MOV moffs32, EAX) encoding.
+ADD1  0x3801
+INC1  0x1
+SHR1  0x7
+# EDX1 is the CONTROL: identical arithmetic, stored via the ordinary `89 /r`
+# form. If ADD1 is wrong while EDX1 is right, the fault is in the store
+# encoding's handling, not in the ALU.
+EDX1  0x3801

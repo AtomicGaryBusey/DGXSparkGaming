@@ -12,6 +12,7 @@ decide — these are drafts held ready, not a queue that drains itself.
 | `box64-issue-1-box32-libc-wrappers.md` | ptitSeb/box64 | ready, fix verified (1 → 0 access violations) |
 | `box64-issue-2-fsave-tagword.md` | ptitSeb/box64 | ready, fix verified against SDM-derived expectations |
 | `box64-issue-3-ntcreatefile-collision.md` | ptitSeb/box64 | ready, 100% reproducible, no fix proposed |
+| `fex-issue-1-a3-store-duplicates-preceding-op.md` | FEX-Emu/FEX | ready, minimal repro, regression-gated by `isa-probe.sh` |
 
 Two conventions worth keeping, both learned here the hard way:
 
