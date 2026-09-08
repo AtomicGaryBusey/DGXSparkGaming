@@ -82,6 +82,24 @@ What is expected to transfer, in rough order of confidence:
 What almost certainly does **not** transfer: anything naming FEX, Box64, Proton, DXVK, VKD3D,
 Wine, or `binfmt_misc`.
 
+## Target priority for the launcher (AGB, 2026-09-08)
+
+**The DGX Spark is the primary and only committed target.** RTX Spark is a *nice-to-have* —
+same core platform, and NVIDIA bills it as "game ready", so it is worth not painting into a
+corner, but it is not worth paying for upfront.
+
+The practical rule that follows: **do not buy portability with abstraction you cannot yet
+test.** A platform-abstraction layer written speculatively against hardware nobody has, for an
+emulator (Prism) whose behaviour is unmeasured, is the kind of design that ages badly and slows
+the thing that actually matters today. Instead:
+
+- Pick a toolkit and a database that *can* run on Windows/ARM64, and confirm that at selection
+  time. That is a one-off check, not an ongoing tax.
+- Keep the seams honest and cheap: host-class as a data-model dimension (it costs one column),
+  and platform-specific logic behind ordinary function boundaries rather than a framework.
+- Ship the DGX Spark experience first and completely. A launcher that is excellent on the
+  platform that exists beats one that is mediocre on two, one of which is hypothetical.
+
 ## Consequences for the Spark Game Launcher
 
 - **Host profile must be a first-class dimension of the data model.** On DGX Spark it collapses
