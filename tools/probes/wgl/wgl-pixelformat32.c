@@ -37,6 +37,7 @@
 #include <windows.h>
 #include <GL/gl.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static void step(const char *what, int ok) {
     DWORD e = GetLastError();
@@ -130,6 +131,14 @@ int main(void) {
     if (w2) DestroyWindow(w2);
 
     printf("--------------------------------------------------------------\n");
+    /* Hold the process open so its /proc/<pid>/maps can be inspected — the
+     * question "is FEX's 32-bit GL thunk actually loaded?" is answered by what
+     * is mapped, not by what the config file says. Off unless asked for. */
+    if (getenv("WGLPROBE_SLEEP")) {
+        printf("  sleeping %s ms for maps inspection\n", getenv("WGLPROBE_SLEEP"));
+        fflush(stdout);
+        Sleep((DWORD)atoi(getenv("WGLPROBE_SLEEP")));
+    }
     printf("id Tech 4 logs \"PIXELFORMAT 1 selected\" then \"SetPixelFormat failed\",\n");
     printf("so the last line above is the one that matters.\n");
     return 0;

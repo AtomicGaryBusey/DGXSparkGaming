@@ -14,6 +14,7 @@ decide — these are drafts held ready, not a queue that drains itself.
 | `box64-issue-3-ntcreatefile-collision.md` | ptitSeb/box64 | ready, 100% reproducible, no fix proposed |
 | `fex-issue-1-a3-store-duplicates-preceding-op.md` | FEX-Emu/FEX | ready, minimal repro, regression-gated by `isa-probe.sh` |
 | `box64-issue-4-fincstp-tag-rotation.md` | ptitSeb/box64 | ready, freestanding repro, gated by `isa-probe.sh` |
+| `fex-issue-2-wgl-32bit-setpixelformat.md` | FEX-Emu/FEX | ready, 0/320 vs 320/320 measurement, no game needed |
 
 Two conventions worth keeping, both learned here the hard way:
 

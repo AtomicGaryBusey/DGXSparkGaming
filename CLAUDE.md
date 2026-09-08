@@ -319,6 +319,15 @@ elsewhere. Those are logistics, not evidence.
   these opcodes and `Sys_FPU_StackIsEmpty()` reads the tag word and nothing else — a plausible
   mechanism for the fatal error, **not yet proven to be it**. Gate: `tools/isa-probe/x87top.32.S`.
   Write-up: `notes/upstream/box64-issue-4-fincstp-tag-rotation.md`.
+- **FEX cannot set ANY pixel format for 32-bit Wine programs** — measured 2026-09-08.
+  `SetPixelFormat` fails on **0/320** formats under FEX-32 with `GetLastError()==0`, while the same
+  source built 64-bit gets 320/320 under FEX and the 32-bit build gets 320/320 under Box64. So
+  **every 32-bit OpenGL title is FEX-unrunnable** — which is the entire id Tech 4 family — and
+  there is no format-selection workaround. Diverges inside winex11's `x11drv_surface_create` at the
+  GLX drawable creation. Ruled out: missing 32-bit thunk (it IS loaded, with real NVIDIA GLX),
+  missing `glXCreateWindow` export, format choice, and new WoW64 (every 32-bit PE segfaults under
+  it on FEX). Probes: `tools/probes/wgl/`. Write-up:
+  `notes/upstream/fex-issue-2-wgl-32bit-setpixelformat.md`.
 - **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006), Quake 4. Matrix:
   id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅ (Daikatana runs excellently, so this is not general x87 breakage).
   **Measured 2026-09-07 via Quake 4, which prints its whole x87 environment one line before dying:**
