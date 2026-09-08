@@ -46,3 +46,41 @@ footnote.
 
 If NVIDIA, HP, Valve or Canonical would like anything here changed or removed,
 open an issue -- it will be addressed promptly and in good faith.
+
+Why this project exists
+-----------------------
+Everything here depends on NVIDIA's product ecosystem. There is no version of
+this work that does not: the hardware, the driver, the CUDA and Vulkan stacks,
+and the DGX OS image are all NVIDIA's or built in partnership with NVIDIA. That
+dependency is stated plainly rather than glossed over, because it is the honest
+description of the relationship.
+
+The DGX Spark is a fixed, ubiquitous platform sold as an AI developer machine.
+It also happens to be a capable piece of gaming hardware that almost nobody has
+characterised for that purpose. This project exists so that a person who owns
+one can find out what actually runs on it, and why -- without repeating a week
+of somebody else's dead ends.
+
+How that dependency is honoured
+-------------------------------
+1. NVIDIA's intellectual property is respected. No logos, wordmarks, product
+   imagery or brand colours are used. Trademarks are used nominatively, to name
+   the things being tested, and never in this project's own name or identity.
+
+2. What this is and why it exists is described in writing, in the open, here and
+   in the README -- so nobody has to infer intent from behaviour.
+
+3. Findings are reported accurately, and that includes unflattering ones.
+   Respect is not silence. When something in the stack is broken, this project
+   writes a minimal reproducer, checks it against a working control, and files
+   it upstream. The bug reports in notes/upstream/ are the most useful thing
+   this project can offer the ecosystem it depends on, and they are offered in
+   that spirit: specific, evidence-backed, and free of editorialising about
+   whose fault it is.
+
+4. Claims are held to evidence. Overstating what this hardware can do would be a
+   disservice to NVIDIA and to the reader; so would understating it. Several
+   published conclusions here have been retracted when the evidence did not
+   hold, and those retractions are left visible in the log on purpose.
+
+5. No endorsement is claimed or implied, and none has been sought or given.

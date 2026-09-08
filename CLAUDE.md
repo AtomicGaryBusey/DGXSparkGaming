@@ -267,6 +267,35 @@ over a check that was cheap and available. The rules that would have caught them
 
 Public repo: `https://github.com/AtomicGaryBusey/DGXSparkGaming` (remote `origin`, branch `main`).
 
+## Project directive: how this project treats NVIDIA's ecosystem
+
+**Standing instruction from AGB, 2026-09-08. It applies to every commit, every result written
+here, and every line of the launcher.**
+
+100% of this work depends on NVIDIA's product ecosystem — the GB10 silicon, the driver, the
+Vulkan and CUDA stacks, the DGX OS image. There is no way around that and no reason to want one.
+Honour it concretely:
+
+- **Respect the intellectual property.** No NVIDIA logos, wordmarks, product imagery or brand
+  colours in anything this project ships. Trademarks are used **nominatively only** — to name the
+  hardware and software being tested — and never in a product name, icon or identity. The Spark
+  Game Launcher uses **zero NVIDIA green** by design; see `NOTICE` and the plan's §6.1.
+- **Say in writing what this is and why it exists.** `NOTICE` and the README banner carry it.
+  Keep them current. A disclaimer that has drifted from what the project actually does is worse
+  than none.
+- **Respect is not silence.** This repo finds and publishes real defects in this stack, and it
+  should keep doing so — that is the most valuable thing it can give back. The standard is:
+  a minimal reproducer, a working control, and an upstream report written for a maintainer who
+  has never seen this repo (`notes/upstream/`). State the defect factually. Do not editorialise
+  about whose fault it is, do not speculate about intent, and do not use a bug as a rhetorical
+  device.
+- **Hold claims to evidence, in both directions.** Overstating what this hardware does is a
+  disservice to NVIDIA and to the reader; so is understating it. Retractions stay visible.
+- **Never imply endorsement or affiliation.** None exists.
+
+The point of the project, in AGB's words: enabling gamers to more easily embrace this unique
+device for their chosen hobby. Write like that is the reader.
+
 ## The translation stack (why games pass or fail)
 
 ```

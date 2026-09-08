@@ -7,6 +7,18 @@
 > Blackwell are trademarks of NVIDIA Corporation, used here only to identify the hardware and
 > software being tested. Full notice: [`NOTICE`](NOTICE).
 
+### Why this exists
+
+The DGX Spark is sold as an AI developer machine. It is also a fixed, ubiquitous, and genuinely
+capable piece of gaming hardware that almost nobody has characterised for that purpose — every
+unit, from every vendor, is the same GB10 with 128 GB of unified memory, so a result measured on
+one applies to all of them.
+
+This log exists so that someone who owns one can find out **what actually runs, and why**, without
+repeating a week of somebody else's dead ends. Everything here depends on NVIDIA's ecosystem, and
+that dependency is honoured by respecting their IP, saying plainly what this is, and reporting
+defects upstream with reproducers rather than complaining about them here. See [`NOTICE`](NOTICE).
+
 > **Tooling:** every script in `tools/` is documented in **[`tools/README.md`](tools/README.md)** — organised by what you are trying to do, with the specific mistake each one exists to prevent.
 >
 > **Open questions:** **[`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md)** — what is settled, what is open (ranked, each with its next concrete step), what has been ruled out, and every correction this log has published. Start there if you are picking the work up.
