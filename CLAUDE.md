@@ -178,6 +178,12 @@ over a check that was cheap and available. The rules that would have caught them
 4. **Secondary reporting of a changelog is not evidence.** "Valve fixed the CEF crash" came from
    three tech sites and was true — and still wrong here, because the fix was validated on native
    x86-64, not x86-64 CEF under FEX. Testing it took five minutes and broke the user's Steam.
+5b. **Control every log-line-as-evidence against a title that WORKS.** On 2026-09-07 an ultracode
+   sweep found that this repo's most-cited Vulkan failure signature was emitted by Cyberpunk 2077
+   and Daikatana — both of which run fine. Nobody had ever grepped a working game's log for it. If
+   a line is offered as the cause of a crash, grep a working title for that same line **first**;
+   it costs one command and it invalidated three AAA diagnoses here.
+
 5. **Count the SPECIFIC counter, not the generic hook it rides on.** On 2026-09-07 this log
    published "3,983 evaluates, DLSS 5 NR running every frame" — committed and pushed. Wrong:
    `NVSDK_NGX_D3D12_EvaluateFeature` is the *generic* NGX evaluate hook and those calls were the
@@ -234,8 +240,15 @@ elsewhere. Those are logistics, not evidence.
 
 ## Recurring failure signatures (cite these when diagnosing)
 
-- **`vkGetPhysicalDeviceDescriptorSizeEXT` unthunked** — `VK_EXT_descriptor_buffer` gap in
-  FEX. Crashes at/just after launch. Seen in No Man's Sky, Halo Infinite, Elden Ring.
+- ~~**`vkGetPhysicalDeviceDescriptorSizeEXT` unthunked**~~ — **RETRACTED 2026-09-07. This was not a
+  failure signature at all.** The line is emitted by games that WORK: Cyberpunk 2077 16x, Daikatana
+  4x (`grep -c DescriptorSizeEXT ~/steam-*.log`). The driver *does* expose `VK_EXT_descriptor_buffer`
+  (`vulkaninfo | grep descriptor_buffer` -> revision 1), and the function is not part of that
+  extension anyway — it is absent from Vulkan headers at v282 entirely. FEX prints the line
+  unconditionally on any function-table miss, and `nullptr` is the correct answer for an extension
+  nobody implements. **No Man's Sky, Halo Infinite and Elden Ring are UNDIAGNOSED** — do not
+  substitute a new guess. Same error class as "3,983 evaluates": a real log line read as evidence
+  for something it does not measure, never controlled against a working title.
 - **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006), Quake 4. Matrix:
   id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅ (Daikatana runs excellently, so this is not general x87 breakage).
   **Measured 2026-09-07 via Quake 4, which prints its whole x87 environment one line before dying:**

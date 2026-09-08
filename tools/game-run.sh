@@ -42,6 +42,8 @@
 # Usage:
 #   tools/game-run.sh <appid> [-- extra game args]
 #     PROTON=proton_11        compat tool to expect (warn if different)
+#     LAUNCH_OPTION=          pick a non-default launch entry (e.g. option1), or
+#                             `dialog` to get Steam's chooser. See tools/appinfo.py.
 #     SECONDS_MAX=0           auto-stop after N seconds (0 = run until you quit)
 #     APPEAR_TIMEOUT=300      how long to wait for the game to show up (Proton prefix
 #                             upgrades and cold shader caches can take minutes)
@@ -119,9 +121,22 @@ fi
 TELE=$!
 
 echo "== launching in cgroup scope '$SCOPE' =="
+# LAUNCH_OPTION selects a NON-default launch entry (see tools/appinfo.py: a title
+# can ship several, e.g. NBA 2K27's "NBA 2K27 without EAC (offline only)" = option1).
+# `steam -applaunch` always takes the default, so that needs the steam:// form --
+# which must still happen INSIDE the scope, or there is no atomic teardown. Doing it
+# by hand from a shell would also slip guard-bash.sh, which only matches -applaunch.
+# NOTE: option selection via steam://launch/<appid>/<option> is UNVERIFIED; Valve
+# documents only steam://launch/<appid>/dialog, which needs a human click. If the
+# default starts anyway, use LAUNCH_OPTION=dialog and pick from the chooser.
+if [ -n "${LAUNCH_OPTION:-}" ]; then
+  note "launch option: $LAUNCH_OPTION (unverified selector — check which exe actually starts)"
+  set -- "$STEAM/ubuntu12_32/steam" "steam://launch/$APPID/$LAUNCH_OPTION"
+else
+  set -- "$STEAM/ubuntu12_32/steam" -applaunch "$APPID" "$@"
+fi
 systemd-run --user --scope --unit="$SCOPE" --quiet -- \
-  env "${ENVS[@]}" \
-  "$STEAM/ubuntu12_32/steam" -applaunch "$APPID" "$@" >"$RUNDIR/launch.log" 2>&1 &
+  env "${ENVS[@]}" "$@" >"$RUNDIR/launch.log" 2>&1 &
 LAUNCH=$!
 
 # Everything belonging to this game, however it was started. The cgroup scope is

@@ -1893,7 +1893,7 @@ Games run through a multi-layer translation stack: Game → Proton/Wine → DXVK
 
 - If a game crashes at startup, try adding `-force d3d11` or `-dx11` to launch options (game-specific flag) to avoid DX12/Vulkan native paths.
 - Use **Proton 11.0 x86-64**, not Experimental and not the ARM64 build.
-- The `vkGetPhysicalDeviceDescriptorSizeEXT` error in Steam logs is the telltale sign of a FEX thunk gap — the game requires unthunked Vulkan extensions.
+- ~~The `vkGetPhysicalDeviceDescriptorSizeEXT` error in Steam logs is the telltale sign of a FEX thunk gap.~~ **FALSE — refuted 2026-09-07.** Working games emit it (Cyberpunk 16x, Daikatana 4x). It is loader probing, not a fault. See the correction under Known Issues.
 - Pressure-vessel Vulkan layer warnings (`nvidia_layers.json not in overrides`) are harmless — they fire on both working and broken games.
 - Steam's own GPU topology shows `llvmpipe` — this is normal on ARM64 (the Steam UI runs under FEX). Games inside Proton see the real GPU via DXVK+NVAPI.
 
@@ -2031,21 +2031,49 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **S.T.A.L.K.E.R. 2** | Unreal Engine 5, atmospheric visuals. |
 | **SILENT HILL 2 Remake** | Unreal Engine 5, atmospheric horror. |
 
+> ### :warning: CORRECTION (2026-09-07): the `vkGetPhysicalDeviceDescriptorSizeEXT` signature was wrong
+>
+> This log spent months attributing No Man's Sky, Halo Infinite and Elden Ring to a
+> `VK_EXT_descriptor_buffer` thunk gap in FEX, on the strength of one log line:
+> `vkGetInstanceProcAddr: Unknown Vulkan function ...: vkGetPhysicalDeviceDescriptorSizeEXT`.
+> **Every clause of that diagnosis is false.** Verified on this box:
+>
+> | Check | Command | Result |
+> |---|---|---|
+> | The line appears in a game that **works** | `grep -c DescriptorSizeEXT ~/steam-1091500.log` | **16** — Cyberpunk 2077, which runs fine |
+> | And in one that works **excellently** | `grep -c DescriptorSizeEXT ~/steam-242980.log` | **4** — Daikatana |
+> | The driver *does* expose the blamed extension | `vulkaninfo \| grep descriptor_buffer` | `VK_EXT_descriptor_buffer : extension revision 1` |
+> | The function is not even part of it | `grep -c vkGetPhysicalDeviceDescriptorSizeEXT vulkan_core.h` (v282) | **0** — it belongs to a *later* extension the driver does not expose |
+>
+> The message is the Vulkan loader probing every function name it knows; `nullptr` is the
+> **correct** answer for an extension nobody implements, and FEX prints the line unconditionally
+> on any table miss. It is benign, and it is emitted by working games.
+>
+> **No Man's Sky, Halo Infinite and Elden Ring therefore have no diagnosis at all.** Do not
+> substitute a fresh guess. The next step is vkd3d-proton's own documented recipe — set
+> `PROTON_LOG=1 VKD3D_CONFIG=vk_debug VKD3D_DEBUG=warn VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation`
+> in the Steam launch options (they must go there: `game-run.sh` uses `steam -applaunch`, an IPC
+> handoff, so exporting them in the calling shell never reaches the game) and read the real error.
+>
+> This is the same failure as the "3,983 evaluates" error: a real log line, read as evidence for
+> something it does not measure, **never once controlled against a working title**. One `grep`
+> against Cyberpunk's log would have caught it at any point.
+
 ### Known Issues
 
 | Game | Issue |
 |------|-------|
 | **Black Myth: Wukong** | DX12-only (UE5). Crashes ~50s in during level load. Root cause: game ships AMD-optimized compute shaders that hard-require `WaveSize(64)` (AMD wavefront width) with no Wave32 fallback. NVIDIA GPUs (including GB10) only support Wave32 (subgroup size 32). VKD3D-Proton correctly rejects the pipeline: `Required WaveSize range [64, 64], but supported range is [32, 32]`. Not an ARM/FEX issue — would fail on any NVIDIA GPU via VKD3D-Proton. Descriptor_buffer thunk gap (original diagnosis) was a red herring. Needs Game Science to add Wave32 shader permutations, or a VKD3D-Proton workaround to emulate Wave64 on Wave32 hardware. |
-| **Elden Ring** | DX12-only. Same `VK_EXT_descriptor_buffer` crash as Halo Infinite — identical EasyAntiCheat loading screen followed by crash. |
+| **Elden Ring** | DX12-only. EasyAntiCheat loading screen, then crash. **Root cause UNKNOWN** — the previous `VK_EXT_descriptor_buffer` attribution was refuted 2026-09-07 (see correction above). Undiagnosed. |
 | **Half-Life 2 RTX** | RTX Remix bridge incompatible with ARM64 translation. **FEX-Emu:** access violation (0xc0000005) in NvRemixBridge.exe during `CreateDevice`. **Box64:** gets further — device creates successfully and draw calls flow, but deadlocks on Present semaphore (cross-process sync failure between 32-bit client and 64-bit server). Root cause: RTX Remix's dual-process shared-memory IPC architecture breaks under x86→ARM64 translation. Regular Half-Life 2 works fine. |
-| **Halo Infinite** | DX12-only. Crashes at launch — `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. Same `VK_EXT_descriptor_buffer` gap as NMS and Wukong. Fails on both Proton 10.0 and Proton Experimental. |
-| **No Man's Sky** | Crashes ~16 seconds into launch, never renders a frame. `vkGetPhysicalDeviceDescriptorSizeEXT` unthunked in FEX. `-force d3d11` launch option does not help — game still probes Vulkan extensions and crashes. Tested on Proton 10.0 and Experimental. |
-| **NBA 2K27** | DX12. Never reaches the game — EasyAntiCheat fails at launch with `Launcher finished with: 210, 'Unexpected error. (#1)'`. **Not the usual "dev never enabled Linux EAC" wall:** the bootstrapper correctly reports `System name: 'linux64'`, fetches the Linux EAC module from Epic's CDN (HTTP 200, 9,622,837 bytes), then dies 32 s into `Starting Wine module mapping, Wine version: 11.0`. The `.so` is downloaded at runtime, so it never appears in the game directory. Exact cause unattributed — anti-tamper detecting FEX's JIT is the most likely of several candidates, and since rewriting every instruction is what FEX does and detecting rewritten code is what EAC does, treat this as **probably permanent**. Owned here solely as the only legal source of `nvngx_dlssnr.dll`; the DLSS 5 work does not need the game to run. |
+| **Halo Infinite** | DX12-only. Crashes at launch on both Proton 10.0 and Experimental. **Root cause UNKNOWN** — the `vkGetPhysicalDeviceDescriptorSizeEXT` attribution was refuted 2026-09-07 (see correction above); that line is emitted by working games. Undiagnosed. |
+| **No Man's Sky** | Crashes ~16 s into launch, never renders a frame. `-force d3d11` does not help. Tested on Proton 10.0 and Experimental. **Root cause UNKNOWN** — the `vkGetPhysicalDeviceDescriptorSizeEXT` attribution was refuted 2026-09-07 (see correction above). Best next step: `PROTON_LOG=1 VKD3D_CONFIG=vk_debug VKD3D_DEBUG=warn VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` in the launch options. |
+| **NBA 2K27** | DX12. Never reaches the game — EasyAntiCheat fails at launch with `Launcher finished with: 210, 'Unexpected error. (#1)'`. **Not the usual "dev never enabled Linux EAC" wall:** the bootstrapper correctly reports `System name: 'linux64'`, fetches the Linux EAC module from Epic's CDN (HTTP 200, 9,622,837 bytes), then dies 32 s into `Starting Wine module mapping, Wine version: 11.0`. The `.so` is downloaded at runtime, so it never appears in the game directory. Exact cause unattributed — anti-tamper detecting FEX's JIT is the most likely of several candidates, and since rewriting every instruction is what FEX does and detecting rewritten code is what EAC does, treat this as **probably permanent**. Owned here solely as the only legal source of `nvngx_dlssnr.dll`; the DLSS 5 work does not need the game to run. **NEW 2026-09-07 — an untried, publisher-supplied route.** `tools/appinfo.py` shows the title ships **three** launch entries, and entry `[3]` is `NBA2K27.exe`, `type option1`, described by 2K themselves as *"NBA 2K27 without EAC (offline only)"*. The 107 GB is already on disk and this has never been attempted. `tools/game-run.sh` now takes `LAUNCH_OPTION=` for exactly this: `LAUNCH_OPTION=option1 tools/game-run.sh 4356430`. **Caveat:** selecting a launch entry via `steam://launch/<appid>/option1` is undocumented and may be ignored in favour of the default — check which `.exe` actually starts, and fall back to `LAUNCH_OPTION=dialog` for Steam's chooser. Either way this moves the entry off "probably permanent" and onto a named, testable stage. |
 | **The Legend of Khiimori Demo** | .NET 9 WPF application (system check tool, not a game). Hangs indefinitely on launch — WPF/PresentationCore initialization never completes. Wine's WPF support is fundamentally incomplete; not a FEX-specific issue. |
 | **Final Doom** | Launches but doesn't load into gameplay — hangs at title screen. Multiple launch options available but not yet iterated through. |
 | **Far Cry 3 / Blood Dragon / 4 / 5 / Primal / New Dawn / 6** | Ubisoft Connect launcher crashes with unrecoverable error. Tested on Proton 10.0 and Experimental, online and offline mode. FC3 and Blood Dragon confirmed; remaining titles expected identical. Direct-launching Blood Dragon's `fc3_blooddragon_d3d11.exe` bypasses the launcher and the DX11 renderer works — game runs, but forced online server check blocks gameplay progression, resolution defaults wrong, and audio loops during Bink sequences. The game engine (Dunia) is compatible; Ubisoft Connect is the blocker. |
 | **Far Cry** | DX9 (CryEngine 1, 2004). Launches but nearly unplayable. ~10 minute map load times. Menus smooth, HUD renders, audio and movement work, but 3D playfield is entirely black — no world geometry or textures visible. Same engine family as Crysis (which was choppy but at least rendered). |
-| **Burnout Paradise: The Ultimate Box** | DX9. Refuses to launch — error dialog: "This machine does not support the SSE2 Command Set." Game's CPUID check doesn't detect SSE2 under FEX translation, even though FEX fully supports SSE2 emulation. |
+| **Burnout Paradise: The Ultimate Box** | DX9. Refuses to launch — error dialog: "This machine does not support the SSE2 Command Set." **Corrected 2026-09-07:** FEX *does* advertise SSE2 — `FEXBash -c 'grep ^flags /proc/cpuinfo'` lists `sse2`, so "doesn't detect SSE2" is not the mechanism. It does **not** advertise `de` or `pse` (CPUID leaf 1 EDX bits 2 and 3), a plausible candidate for a check that tests more than the SSE2 bit — **unverified**, and the game is not currently installed. |
 | **DOOM 3** | 32-bit x86 OpenGL (id Tech 4). Launches, initializes OpenGL (ARB2 renderer), loads to menu, crashes on map load. x87 FPU stack corruption — NaN/INF values, engine's FPU state check fails: `the FPU stack is not empty at the end of the frame`. 32-bit binary goes through BOX32 mode. |
 | **DOOM 3 BFG Edition** | 64-bit OpenGL (id Tech 4 remaster). Same FPU stack check crash as DOOM 3 — engine validates x87 state every frame. FPU values are clean (all zeros) but engine still bails. GLSL `gl_FragColor` deprecation warnings are cosmetic, not the cause. id Tech 4's aggressive FPU validation is incompatible with FEX's x87 translation. id Tech 6+ (DOOM 2016, Eternal, Q2 RTX) all work fine — newer engines dropped x87 checks. |
 | **Prey (2006)** | OpenGL (id Tech 4 variant, Human Head). Same x87 FPU stack crash as DOOM 3 and BFG Edition. All id Tech 4 games are broken on the Spark due to FPU state validation. **Bounded 2026-09-07:** Daikatana (**id Tech 2**, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own per-frame FPU assertion, **not** a general x87-under-FEX problem. Engine matrix: id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅. |
@@ -2142,7 +2170,7 @@ Evidence: `~/dgx-gaming-work/evidence/2026-09-07-quake4-x87/`.
 
 ### Compatibility Test Plan
 
-These games are selected to validate the hypothesis that DX11 games (via DXVK) work reliably on the ARM64/FEX stack, while native Vulkan and DX12 games crash due to unthunked `VK_EXT_descriptor_buffer` extensions. Doom Eternal (native Vulkan, confirmed working) suggests the issue is extension-specific, not all native Vulkan.
+These games are selected to validate the hypothesis that DX11 games (via DXVK) work reliably on the ARM64/FEX stack, while native Vulkan and DX12 games are less reliable. **Note (2026-09-07):** the `VK_EXT_descriptor_buffer` mechanism this plan was originally built on has been refuted — the driver exposes that extension and working games emit the supposed error line. The plan's *shape* still holds; its stated cause does not. Doom Eternal (native Vulkan, confirmed working) suggests the issue is extension-specific, not all native Vulkan.
 
 | # | Game | Graphics API | What It Tests | Expected | Result |
 |---|------|-------------|---------------|----------|--------|
