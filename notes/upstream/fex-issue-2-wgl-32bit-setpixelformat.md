@@ -61,10 +61,29 @@ success trace is the GLX drawable creation (`glXCreateWindow`). Wine returns FAL
   `glXEnumerateVideoCaptureDevicesNV`, `glXGetTransparentIndexSUN`, `glXGetVideoInfoNV`,
   `glXSendPbufferToVideoNV` — none reachable from this path.
 - **A specific pixel format.** All 320 fail.
+- **FEX's own GL-thunk workaround.** FEX ships `AppConfig/steamwebhelper.json` containing
+  `"ThunksDB": {"GL": 0}` — *"Bypasses libGL's glX and instead sends GLX requests directly via
+  xcb"* — for what looks like the same class of problem. Applying the same to `wine` **does not
+  help**: still 0/320. The config demonstrably took effect (`libGL-guest.so` no longer appears in
+  the process's `/proc/<pid>/maps`), and the 64-bit case still reached NVIDIA 4.6.0 through the
+  xcb path, so 32-bit fails both *with* the libGL thunk and *without* it. Worth noting: with the
+  thunk off the failing 32-bit process maps **no GL library at all**, even though the RootFS
+  carries a full i386 NVIDIA stack (`libGLX_nvidia.so.580.173.02`, `libnvidia-glcore.so`, matching
+  the host driver).
 - **New WoW64 as a workaround.** With `WINEARCH=wow64` (which would route GL through the 64-bit
   thunk that works), **every** 32-bit PE segfaults immediately under FEX — including a pure Win32
   one that touches no GL — while a 64-bit PE in the same prefix runs fine. That looks like a
   separate FEX limitation and is why no workaround is offered here.
+
+## Relationship to FEX-Emu/FEX#4645
+
+This is almost certainly an instance of the open mega-issue
+[#4645, "32-Bit X11 OpenGL thunking incompatibilities"](https://github.com/FEX-Emu/FEX/issues/4645),
+which catalogues ~30 broken 32-bit GL titles. That issue collects per-game pass/fail on i3wm and
+offers no reproducer or workaround. What is added here is a **game-free, deterministic measurement
+of the Wine-side symptom** (0/320 vs 320/320), the exact winex11 trace line where it diverges, and
+four eliminated hypotheses — on Xwayland/GNOME rather than i3, which that issue flags as
+potentially significant.
 
 ## Impact
 
