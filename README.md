@@ -2049,9 +2049,96 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **DOOM 3** | 32-bit x86 OpenGL (id Tech 4). Launches, initializes OpenGL (ARB2 renderer), loads to menu, crashes on map load. x87 FPU stack corruption — NaN/INF values, engine's FPU state check fails: `the FPU stack is not empty at the end of the frame`. 32-bit binary goes through BOX32 mode. |
 | **DOOM 3 BFG Edition** | 64-bit OpenGL (id Tech 4 remaster). Same FPU stack check crash as DOOM 3 — engine validates x87 state every frame. FPU values are clean (all zeros) but engine still bails. GLSL `gl_FragColor` deprecation warnings are cosmetic, not the cause. id Tech 4's aggressive FPU validation is incompatible with FEX's x87 translation. id Tech 6+ (DOOM 2016, Eternal, Q2 RTX) all work fine — newer engines dropped x87 checks. |
 | **Prey (2006)** | OpenGL (id Tech 4 variant, Human Head). Same x87 FPU stack crash as DOOM 3 and BFG Edition. All id Tech 4 games are broken on the Spark due to FPU state validation. **Bounded 2026-09-07:** Daikatana (**id Tech 2**, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own per-frame FPU assertion, **not** a general x87-under-FEX problem. Engine matrix: id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅. |
+| **Quake 4** | OpenGL ARB2 (id Tech 4). Tested 2026-09-07, Proton Experimental, appid **2210**. Dies on the **first frame** — before the main menu, not at map load — with `idCommon::Frame: the FPU stack is not empty at the end of the frame`. Unlike DOOM 3 it prints its state first: `CTRL=0000013f STAT=00000100 TAGS=0000ffc0`, all four IP/DP fields zero, `num values on stack = 0`, `Top of stack pointer = 0`. `Sys_FPU_StackIsEmpty()` reads **only** the tag word (`fnstenv; mov eax,[eax+8]; xor eax,-1; and eax,0xFFFF; jz empty`), and `0xffc0 ^ 0xffff = 0x3f`, so it fatals. The image is self-inconsistent: `0xffc0` marks R0/R1/R2 in use, but three pushes onto an empty stack give TOP=5 / `0x03ff`. `CTRL=0x013f` is also impossible — its precision-control field is the **reserved** encoding `01`; `finit` gives `0x037f`. See the measurement section below: FEX is NOT fabricating the tag word, and the root cause is **not yet identified**. |
 | **Dark Souls: Prepare to Die Edition** | DX9 via DXVK. Crashes at launch — GStreamer deadlock in Wine's media pipeline during intro video playback. Log shows `Trying to join task from its thread would deadlock`. The infamously bad PC port uses Windows Media Foundation for videos, which Wine handles via GStreamer — the threading model breaks under FEX translation. |
 | **Dark Souls III** | DX11 via DXVK. Launches and renders the intro cutscene, but crashes to desktop at the cutscene-to-gameplay transition every time. Crash occurs whether skipping or watching the cutscene, and with movie files removed entirely. No crash dump or Vulkan extension error — silent exit. Surprising given Sekiro (same studio, same API) works flawlessly. |
 | **Red Dead Redemption 2** | Requires Proton Experimental (Proton 10.0 can't launch Rockstar Launcher). Gets to main menu on Vulkan renderer, but crashes with `EXCEPTION_FLT_INVALID_OPERATION` (0xc0000090) during world load — FPU translation issue under FEX. DX12 mode fails to get past the launcher. Freezes when changing graphics settings. Neither renderer is viable. |
+
+#### The id Tech 4 x87 failure, measured (2026-09-07)
+
+Quake 4 was installed specifically to read the diagnostic id Tech 4 prints one line before it
+dies, which this log had never done. It worked. What followed killed three of this session's own
+hypotheses, so the negative results are recorded alongside the positive ones.
+
+**What Quake 4 reported** (`tools/game-run.sh 2210`, Proton Experimental, host `/usr/bin/FEX`):
+
+```
+CTRL = 0000013f   STAT = 00000100   TAGS = 0000ffc0
+INOF = INSE = OPOF = OPSE = 00000000
+num values on stack = 0      Top of stack pointer = 0
+Fatal Error: idCommon::Frame: the FPU stack is not empty at the end of the frame
+```
+
+**Hypothesis 1 — "FEX fabricates the tag word." REFUTED.** Three freestanding probes were written
+in x86 assembly (`tools/fex-tests/x87-tagword64.S`, `x87-tagword32.S`,
+`x87-fxsave-roundtrip32.S`) and built with the x86 binutils inside FEX's own RootFS, so no game,
+Wine, GPU or compiler is in the picture. Correct answers are fixed by the Intel SDM, not by
+opinion. FEX passes all of them:
+
+| Probe | Expected | FEX |
+|---|---|---|
+| 64-bit `fnstenv`, empty / 3 pushes / push-pop | `ffff` / `03ff` TOP=5 / `ffff` | all correct |
+| 32-bit `fnstenv` (Quake 4's actual mode) | same | all correct |
+| 32-bit `FXSAVE` -> `FXRSTOR` -> `fnstenv` | abridged `e0` -> full `03ff` | correct |
+
+That last row matters most: `FXSAVE` stores an abridged 8-bit tag and `FNSTENV` a full 16-bit one,
+and rebuilding the second from the first is the classic place this breaks. FEX gets it right.
+
+**Hypothesis 2 — "Wine's 32<->64-bit CONTEXT conversion corrupts it." PARTLY CONFIRMED, and it is
+not what kills Quake 4.** A 32-bit Windows PE (`tools/fex-tests/x87-wine-context32.c`, built with
+the new `MINGW_ARCH=i686` mode of `setup-mingw.sh`) was run under Proton's own Wine:
+
+| Scenario | Correct | FEX | Box32 |
+|---|---|---|---|
+| empty, no Win32 call | `ffff` TOP=0 | OK | OK |
+| 3 pushes, no Win32 call | `03ff` TOP=5 | OK | **`ffc0`** |
+| 3 pushes + `Sleep()` | `03ff` TOP=5 | OK | `ffc0` |
+| **empty** + `Sleep()` | `ffff` TOP=0 | OK | OK |
+| 3 pushes + `OutputDebugStringA` | `03ff` TOP=5 | OK | — |
+| 3 pushes + VEH `CONTINUE_EXECUTION` | `03ff` TOP=5 | **CW=`0000`, all wiped** | TW=`0000`, all 8 Valid |
+
+Two real and separate translator bugs, worth reporting upstream:
+
+- **Box32 emits the FSAVE tag word in stack-relative order instead of physical order.** Three
+  pushes leave physical R5/R6/R7 occupied at TOP=5 (`0x03ff`); Box32 reports them at slots 0/1/2
+  (`0xffc0`). No Win32 call is needed. That `0xffc0` is *numerically identical* to what Quake 4
+  saw, and re-indexing `0x03ff` stack-relative reproduces it exactly.
+- **FEX zeroes the entire x87 control/status/tag state when a vectored handler returns
+  `EXCEPTION_CONTINUE_EXECUTION`.** `CW=0x0000` cannot occur on real hardware; `finit` gives
+  `0x037f`. Quake 4's impossible `CW=0x013f` is the same *class* of corruption.
+
+Because the two JITs give **different** wrong answers to the identical Wine operation, this cannot
+be Wine's C code alone — the translator's context save/restore is implicated. (Two implementations
+failing *identically* would have meant the test was wrong; that rule is why both were run.)
+
+**Hypothesis 3 — "the 828 `OutputDebugString` exceptions are the trigger." REFUTED.** A
+`WINEDEBUG=+seh` trace of Quake 4 shows 828 `DBG_PRINTEXCEPTION_C` dispatches on one thread during
+startup, which looked decisive. But the probe handles that exact call correctly under FEX, with
+and without values on the stack — and a `+seh` trace of the probe confirms the exceptions really
+were dispatched, so the scenario measured what it claimed to.
+
+**Where this actually stands: the root cause is NOT identified.** The reproducible FEX bug needs
+`AddVectoredExceptionHandler`, and `Quake4.exe` does not import it (it imports `GetThreadContext`,
+`RtlUnwind`, `RaiseException`, `SetUnhandledExceptionFilter` — checked, not assumed). The Box32
+tag-word bug has the right shape but Quake 4 ran under FEX, not Box32. So: two genuine bugs found,
+neither yet shown to be *the* one.
+
+**The open question, and the cheapest test of it.** The engine's own decoder says `num values on
+stack = 0` and `TOP=0`; only the tag word disagrees. If the x87 stack is genuinely empty and merely
+mis-tagged, then patching out the assertion is a complete fix. If three values really are stranded
+each frame, a patched build will produce NaN geometry within seconds. One binary patch answers it,
+and the failure mode is unmistakable either way. Not yet attempted.
+
+**Method correction, and it is bigger than this test.** `binfmt_misc` on this box registers
+**only Box64** for x86 ELF — FEX is not registered at all. Anything launched from a shell by path
+runs under **Box64**; only `FEXBash`/`FEXInterpreter`, or a child of a process already inside FEX,
+runs under FEX. Steam's `exe` is `/usr/bin/FEX`, so Steam and its games are genuinely FEX-hosted.
+But any result in this log gathered by invoking an x86 binary directly from a shell was measuring
+**Box64 while being recorded as FEX**. The `[BOX32]` banner in stderr is the only tell, and it was
+nearly missed here.
+
+Evidence: `~/dgx-gaming-work/evidence/2026-09-07-quake4-x87/`.
+
 
 ### Compatibility Test Plan
 
@@ -2262,7 +2349,7 @@ These test the id Tech 4 FPU crash pattern (DOOM 3, BFG, Prey all crash on x87 F
 
 | Game | Engine | Notes |
 |------|--------|-------|
-| :star: Quake 4 | id Tech 4 | **Critical test — INSTALLED 2026-09-07, staged and ready.** Same engine as DOOM 3, which dies on the x87 assertion. **The engine prints the answer and this log has never read it:** `Quake4.exe` (PE32/Intel 80386) carries `idCommon::Frame: the FPU stack is not empty at the end of the frame`, `TAGS = %08x` and `num values on stack = %d` — all three verified present by `strings`. The tag word and stack depth are printed one line before the FatalError. `q4base/autoexec.cfg` is written with `logFile 2` (log **and flush every write** — `1` buffers and the crash eats the very lines we need), `logFileName qconsole.log`, `com_showFPS 1`. Read the **low 16 bits of TAGS together with the stack-depth integer**; either alone is ambiguous. `TAGS & 0xFFFF != 0xFFFF` = a genuine unbalanced x87 push (FEX is reporting truth). `== 0xFFFF` = the check-time and dump-time `fnstenv` disagree, which is a bigger translator bug. It playing at all would falsify "all id Tech 4 is broken here". |
+| Quake 4 | id Tech 4 | **TESTED 2026-09-07 — moved to Known Issues.** Dies on frame 1. The staged `autoexec.cfg` diagnostic worked exactly as intended: the engine printed its whole x87 environment one line before the FatalError. |
 | :star: RAGE | id Tech 5 (OpenGL) | **Critical test.** Bridges broken id Tech 4 and working id Tech 6. Does id Tech 5 still have x87 FPU checks? |
 | :star: The Chronicles of Riddick: Assault on Dark Athena | Modified id Tech 4 (Starbreeze) | Third-party id Tech 4 variant. Tests if the FPU issue is in shared engine code or id-specific. |
 | :star: DEATHLOOP | Void Engine (id Tech variant) | Arkane's id Tech fork. Tests whether Arkane's branch has FPU issues. Vulkan renderer. |

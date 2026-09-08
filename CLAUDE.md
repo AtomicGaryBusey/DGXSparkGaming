@@ -23,6 +23,13 @@ failure it prevents — because that rationale is the point of this repo. Curren
   metadata. **Use this before installing anything to test a graphics hypothesis.** Guessing from
   memory once cost 36 GB and 45 minutes.
 - **`tools/setup-mingw.sh`** — mingw-w64 from Ubuntu's archive into a local prefix. No sudo.
+  `MINGW_ARCH=i686` for 32-bit, which the x87 work needs (every id Tech 4 game is 32-bit).
+- **`tools/fex-tests/x87-*.S` + `x87-wine-context32.c`** — x87 tag-word fidelity probes, written
+  for the id Tech 4 investigation. The `.S` files are freestanding (built with the x86 binutils
+  *inside* FEX's RootFS, so no game, Wine, GPU or compiler is in the picture) and their correct
+  answers come from the Intel SDM, not from opinion. The `.c` one is a 32-bit PE that runs the
+  same checks across Win32 calls and exceptions. Run every one under **both** FEX and Box64 —
+  they found two different genuine bugs, one per runtime.
 - **`tools/fex-inject-tests.sh`** + **`tools/fex-tests/*.c`** — do Windows-side injection primitives
   survive FEX? (Answered 2026-09-06: inline hooking ✅, forwarder loading ✅, full ReShade D3D12
   injection ✅.) Sources are deliberately **ours**, not a third party's prebuilt binaries.
@@ -139,6 +146,20 @@ process, and the **next launch then silently does nothing** — `rm ~/.steam/ste
 `steam steam://…` is *not* a cheap call: it re-runs the whole `steam.sh` bootstrap under FEX (~60 s,
 with zenity dialogs flashing over the user's screen). Warn the user before firing several.
 
+### Which runtime are you ACTUALLY measuring? (2026-09-07)
+
+`binfmt_misc` here registers **only Box64** for x86 ELF — FEX is not registered at all. So:
+
+- launched from a shell **by path** → **Box64/Box32**
+- launched via `FEXBash` / `FEXInterpreter`, or spawned by a process already inside FEX → **FEX**
+- Steam's `exe` is `/usr/bin/FEX`, so **Steam and every game it launches are FEX-hosted**
+
+This means any result gathered by running an x86 binary straight from the agent shell measured
+**Box64 while being written up as FEX**. The only tell is a `[BOX32]`/`[BOX64]` banner on stderr,
+and it was nearly missed on 2026-09-07 — a 32-bit PE test was about to be attributed to FEX when
+the banner gave it away. **Check `readlink /proc/<pid>/exe` before naming a runtime.**
+Running a test under BOTH remains the rule; now you can be sure which is which.
+
 ### Verifying claims (2026-09-06 — this is where the real mistakes were)
 
 Five wrong conclusions were published in one session. Every one came from trusting an inference
@@ -215,10 +236,24 @@ elsewhere. Those are logistics, not evidence.
 
 - **`vkGetPhysicalDeviceDescriptorSizeEXT` unthunked** — `VK_EXT_descriptor_buffer` gap in
   FEX. Crashes at/just after launch. Seen in No Man's Sky, Halo Infinite, Elden Ring.
-- **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006) crash on map load
-  ("FPU stack is not empty"). All id Tech 4 broken under FEX. **id Tech 2, 3 and 6+ are fine** —
-  Daikatana (id Tech 2, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own
-  per-frame assertion, NOT a general x87-under-FEX problem. Matrix: 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅.
+- **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006), Quake 4. Matrix:
+  id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅ (Daikatana runs excellently, so this is not general x87 breakage).
+  **Measured 2026-09-07 via Quake 4, which prints its whole x87 environment one line before dying:**
+  `CTRL=0000013f STAT=00000100 TAGS=0000ffc0`, all IP/DP fields 0, `num values on stack = 0`, `TOP=0`.
+  `Sys_FPU_StackIsEmpty()` reads ONLY the tag word, and `0xffc0 ^ 0xffff != 0`, so it fatals.
+  The image is self-inconsistent (`0xffc0` = R0/R1/R2 in use, but 3 pushes give TOP=5 / `0x03ff`)
+  and `CTRL=0x013f` is impossible — precision-control `01` is a *reserved* encoding.
+  **Three hypotheses were tested and killed**, so do not re-tread them: FEX does NOT fabricate the
+  tag word (`tools/fex-tests/x87-tagword{32,64}.S` and `x87-fxsave-roundtrip32.S` all pass); Wine's
+  CONTEXT conversion is not reached by this game (`Quake4.exe` does not import
+  `AddVectoredExceptionHandler` or `SetThreadContext`); and the 828 `OutputDebugString` exceptions
+  in a `+seh` trace are handled correctly. **Root cause is still OPEN.** Two real translator bugs
+  were found on the way: Box32 emits the FSAVE tag word stack-relative instead of physical
+  (`0xffc0` for `0x03ff`), and FEX zeroes the whole x87 state when a VEH returns
+  `EXCEPTION_CONTINUE_EXECUTION` (`CW=0x0000`, impossible on hardware). Both are upstream-filable.
+  **Cheapest open test:** the engine's own decoder says the stack is empty and only the tag word
+  disagrees — so binary-patch out the assertion. If the stack is merely mis-tagged the game just
+  works; if three values really are stranded per frame it produces NaN geometry within seconds.
 - **Rockstar/FPU float exceptions** — RDR2 hits `EXCEPTION_FLT_INVALID_OPERATION` on world
   load. Watch whether other Rockstar/RAGE titles share it.
 - **Ubisoft Connect launcher** — crashes outright; blocks all Far Cry titles even though the

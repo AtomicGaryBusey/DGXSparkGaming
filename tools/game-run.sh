@@ -20,6 +20,15 @@
 #       wrong/absent compat tool, missing Proton runtime, cold shader cache,
 #       and a busy machine.
 #
+#   FOURTH + FIFTH BUGS, fixed 2026-09-07 (found by the Quake 4 run): game_pids()
+#   matched `shadercache/<appid>`, which is Steam's OWN pre-launch shader work, not
+#   the game. Quake 4 therefore reported "game is up (20 pids)" and then "game exited
+#   on its own" at 19:56:18 -- the exact second Steam finally created the game process.
+#   The match is now compatdata / AppId= / the install dir, gated on a thread count so
+#   one-thread wrappers cannot pose as the game. Separately `USED` was only assigned
+#   when a prefix already existed, so every FIRST run of a title died in teardown with
+#   "line 146: USED: unbound variable".
+#
 #   THIRD BUG, fixed 2026-09-07: this script used to wait on the cgroup scope
 #   (`while systemctl --user is-active ...`). That is wrong whenever Steam is
 #   ALREADY RUNNING, which is the normal case: `steam -applaunch` merely forwards a
@@ -65,6 +74,7 @@ note "game: $NAME ($APPID)"
 
 # compat tool actually in use (from the prefix Proton wrote, not from config.vdf)
 CI="$STEAM/steamapps/compatdata/$APPID/config_info"
+USED=""   # must exist even with no prefix: cleanup() reads it under `set -u`
 if [ -f "$CI" ]; then
   USED=$(sed -n '2p' "$CI" | sed 's|.*/common/||; s|/files/.*||')
   note "proton (from prefix): ${USED:-unknown}"
@@ -130,10 +140,19 @@ game_pids() {
     [ -r "$d/cmdline" ] || continue
     cl=$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null) || continue
     case "$cl" in
-      *"compatdata/$APPID"*|*"shadercache/$APPID"*|*"AppId=$APPID"*) pids="$pids $pid";;
+      *"compatdata/$APPID"*|*"AppId=$APPID"*) pids="$pids $pid";;
       *) [ -n "$instdir" ] && case "$cl" in *"common/$instdir/"*) pids="$pids $pid";; esac;;
     esac
   done
+  # Thread-count gate, the same trick watch-run.sh uses: a real game has many
+  # threads, while Steam's launch wrappers and reaper have one or two. Without
+  # this a 1-thread helper reads as "the game is up".
+  local out="" t
+  for pid in $pids; do
+    t=$(awk '/^Threads:/{print $2}' "/proc/$pid/status" 2>/dev/null)
+    [ "${t:-0}" -ge "${MIN_GAME_THREADS:-4}" ] && out="$out $pid"
+  done
+  pids="$out"
   echo $pids
 }
 
