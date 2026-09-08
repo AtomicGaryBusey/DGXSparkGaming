@@ -13,7 +13,7 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 
 | Finding | Evidence | Confidence |
 |---|---|---|
-| **Prey (2006) LAUNCHES under Box64 with the four-symbol fix** — GL context created, session initialised, full engine init; only a CD-key *path* issue remains | `evidence/2026-09-08-steamclient-init-box64/prey-launch-milestones.txt` | high |
+| **Prey (2006) is PLAYABLE under Box64** — past the intro cutscene into gameplay, human-confirmed. Needs the four-symbol box32 fix plus one Steam-UI launch to provision the CD key | `evidence/2026-09-08-steamclient-init-box64/`, user-confirmed 2026-09-08 | high |
 | **Quake 4 (id Tech 4) is playable under Box64** — menu, `game/airdefense1` loads, weapons work | `evidence/runs/2210-20260907-223229/`, human-confirmed | high |
 | **The same title under FEX fails at `SetPixelFormat`** — no GL context, x87 assertion never fires | `evidence/runs/2210-20260907-225230/` | high |
 | **Box64 writes the FSAVE tag word stack-relative, not physical.** Fixed by a rotate in `fpu_savenv`; verified `0xffc0`->`0x03ff`, 3- and 7-push cases, no regression on empty. **It does NOT explain the id Tech 4 crashes** — both games report `TOP=0`, where the rotation is a no-op | `evidence/2026-09-08-box64-x87-tagword/` | high for the bug; the id Tech 4 link was RETRACTED |
@@ -112,7 +112,22 @@ dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untes
 (`PE32+ x86-64`) and is therefore the sole test of whether any of this is 32-bit-specific —
 DOOM 3 BFG was assumed to be 64-bit and is not.
 
-### 4. Quake 4's 104 recurring access violations
+### 4. The shared input-path fault — mouse misbehaves in BOTH playable id Tech 4 titles
+Same fault address in both, so one bug rather than two:
+
+| game | faults | address | reads |
+|---|---|---|---|
+| Prey | 92 | `ntdll.so+0x71f0` | `0x7c` (null+0x7c) |
+| Quake 4 | 41 | `ntdll.so+0x71f0` | `0x7c` |
+
+Both also show `hid.dll` loaded 3x / unloaded 1x and DirectInput initialising. Register context
+at the fault: `info[0]=0` (a read), `eax=c0000035` (`STATUS_OBJECT_NAME_COLLISION`, a returned
+status), `edi=4`. Wine converts it to `c0000005` and returns to the PE side at `7bf1d620`.
+
+*Next step:* a small 32-bit PE that initialises DirectInput and enumerates devices, run under
+both JITs via `tools/run-both.sh --wine` — the same shape of probe that localised
+`SetPixelFormat` in ~130 lines. Cheaper than a game launch and it would say whether this is
+Box64-specific or a Wine 32-bit HID bug.
 `ntdll.so + 0x71f0`, faulting address `0x7c` (null + 0x7c), on one thread, starting at input
 init after repeated `hid.dll` load/unload, recurring for the whole session. Correlates with the
 user reporting mouse movement confined to a narrow region.
