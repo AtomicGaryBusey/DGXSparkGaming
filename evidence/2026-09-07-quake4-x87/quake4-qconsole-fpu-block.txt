@@ -1,0 +1,39 @@
+Extracted from q4base/qconsole.log, Steam launch of appid 2210 via tools/game-run.sh,
+Proton - Experimental, hosted by /usr/bin/FEX. Crash occurred on the FIRST frame,
+immediately after "------ Common Initialization Complete -------" and "guid set to".
+
+FPU State:
+num values on stack = 0
+ST0 = 0.0000000000e+000
+ST1 = 0.0000000000e+000
+ST2 = 0.0000000000e+000
+ST3 = 0.0000000000e+000
+ST4 = 0.0000000000e+000
+ST5 = 0.0000000000e+000
+ST6 = 0.0000000000e+000
+ST7 = 0.0000000000e+000
+CTRL = 0000013f
+STAT = 00000100
+TAGS = 0000ffc0
+INOF = 00000000
+INSE = 00000000
+OPOF = 00000000
+OPSE = 00000000
+
+Control Word:
+  Invalid operation              = true
+  Denormalized operand           = true
+  Divide-by-zero                 = true
+  Numeric overflow               = true
+  Numeric underflow              = true
+  Inexact result (precision)     = true
+  Infinity control               = false
+  Precision control              = Reserved      <-- PC=01 is a RESERVED encoding
+  Rounding control               = Round to nearest
+Status Word:
+  Stack fault                    = false
+  Error summary status           = false
+  FPU busy                       = false
+  Condition code                 = 1000
+  Top of stack pointer           = 0
+Fatal Error: idCommon::Frame: the FPU stack is not empty at the end of the frame

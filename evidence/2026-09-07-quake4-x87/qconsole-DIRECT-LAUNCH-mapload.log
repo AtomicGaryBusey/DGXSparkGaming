@@ -1,0 +1,278 @@
+log file 'qconsole.log' opened on Mon Sep 07 19:02:01 2026
+
+execing autoexec.cfg
+Unknown command '0'
+-------- Initializing Sound System ----------
+sound system initialized.
+---------------------------------------------
+--------------- R_InitOpenGL ----------------
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+setting to: 640 480
+...calling CDS: ok
+...created window @ 0,0 (640x480)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 1 selected
+...creating GL context: succeeded
+...making context current: succeeded
+
+------------ Input Initialization -----------
+Initializing DirectInput...
+mouse: DirectInput initialized.
+keyboard: DirectInput initialized.
+---------------------------------------------
+...initializing QAL
+...calling LoadLibrary( 'OpenAL32.dll' ): failed
+sound: STEREO
+...using GL_ARB_multitexture
+...using GL_ARB_texture_env_combine
+...using GL_ARB_texture_cube_map
+...using GL_ARB_texture_env_dot3
+...using GL_ARB_texture_env_add
+...using GL_ARB_texture_non_power_of_two
+...using GL_NV_blend_square
+...using GL_ARB_texture_compression
+...using GL_EXT_texture_compression_s3tc
+...using GL_EXT_texture_filter_anisotropic
+   maxTextureAnisotropy: 16.000000
+...using GL_1.4_texture_lod_bias
+X..GL_EXT_shared_texture_palette not found
+...using GL_EXT_draw_range_elements
+...using GL_EXT_blend_minmax
+...using GL_NV_float_buffer
+...using GL_EXT_texture3D
+...using GL_EXT_stencil_wrap
+...using GL_NV_register_combiners
+...using NV_vertex_program
+...using NV_fragment_program
+...using GL_EXT_stencil_two_side
+X..GL_ATI_fragment_shader not found
+X..GL_ATI_text_fragment_shader not found
+...using GL_ARB_vertex_buffer_object
+...using GL_ARB_vertex_program
+...using GL_ARB_fragment_program
+...using GL_ARB_shader_objects
+...using GL_ARB_fragment_shader
+...using GL_ARB_vertex_shader
+...using GL_ARB_shading_language_100
+...using EXT_depth_bounds_test
+---------------- R_NV20_Init ----------------
+---------------------------------------------
+----------------- R200_Init -----------------
+Not available.
+---------------- R_ARB2_Init ----------------
+Available.
+---------------------------------------------
+------------ R_ReloadARBPrograms ------------
+glprogs/test.vfp
+glprogs/test.vfp
+glprogs/interaction.vfp
+glprogs/interaction.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/ambientLight.vfp
+glprogs/ambientLight.vfp
+glprogs/SimpleInteraction.vfp
+glprogs/SimpleInteraction.vfp
+glprogs/md5rInteraction4.vp
+glprogs/md5rInteraction1.vp
+glprogs/md5rInteraction.vp
+glprogs/md5rSimple4.vp
+glprogs/md5rSimple1.vp
+glprogs/md5rSimple.vp
+glprogs/md5rStdTex4.vp
+glprogs/md5rStdTex1.vp
+glprogs/md5rStdTex.vp
+glprogs/md5rSkyBox4.vp
+glprogs/md5rSkyBox1.vp
+glprogs/md5rSkyBox.vp
+glprogs/md5rEnvNormal4.vp
+glprogs/md5rEnvNormal1.vp
+glprogs/md5rEnvNormal.vp
+glprogs/md5rEnvReflect4.vp
+glprogs/md5rEnvReflect1.vp
+glprogs/md5rEnvReflect.vp
+glprogs/md5rEnvBump4.vp
+glprogs/md5rEnvBump1.vp
+glprogs/md5rEnvBump.vp
+glprogs/md5rShadow4.vp
+glprogs/md5rShadow1.vp
+glprogs/md5rShadow.vp
+glprogs/md5rBasicFog4.vp
+glprogs/md5rBasicFog1.vp
+glprogs/md5rBasicFog.vp
+glprogs/shadow.vp
+glprogs/R200_interaction.vp
+glprogs/nv20_bumpAndLight.vp
+glprogs/nv20_diffuseColor.vp
+glprogs/nv20_specularColor.vp
+glprogs/nv20_diffuseAndSpecularColor.vp
+glprogs/environment.vfp
+glprogs/environment.vfp
+glprogs/arbVP_glasswarp.txt
+glprogs/arbFP_glasswarp.txt
+---------------------------------------------
+using ARB_vertex_buffer_object memory
+using ARB2 renderSystem
+reloading textures/common/debuggraph.
+reloading makeIntensity( gfx/lights/squarelight1a).
+reloading gfx/lights/squarelight1.
+reloading gfx/lights/round.
+reloading gfx/guis/mainmenu/splash.
+reloading gfx/guis/soundmeter/audiobg.
+reloading gfx/guis/white.
+reloading gfx/guis/guicursor_arrow.
+reloading gfx/guis/guicursor_hand.
+reloading gfx/guis/scrollbarh.
+reloading gfx/guis/scrollbarv.
+reloading gfx/guis/scrollbar_thumb.
+reloading gfx/guis/scrollbar_right.
+reloading gfx/guis/scrollbar_left.
+reloading gfx/guis/scrollbar_up.
+reloading gfx/guis/scrollbar_down.
+reloading video/atvi_logo.
+reloading fonts/english/bigchars.
+found DLL in pak file: Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/game300.pk4/gamex86.dll
+copy gamex86.dll to Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/gamex86.dll
+game using MMX & SSE & SSE2 & SSE3 for SIMD processing
+enabled Flush-To-Zero mode
+------------- Initializing Game -------------
+gamename: baseQUAKE4-1
+gamedate: Oct 20 2010
+190ms to load 644k of entityDef
+40ms to load 177k of articulatedFigure
+Initializing event system
+...531 event definitions
+Initializing class hierarchy
+...247 classes, 299484 bytes for event callbacks
+Initializing scripts
+Compiled 'Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/scripts/main.script': 452.3 ms
+-------------- Compile stats ----------------
+
+Memory usage:
+     Strings: 54, 8464 bytes
+  Statements: 84435, 1688700 bytes
+   Functions: 3361, 380380 bytes
+   Variables: 324172 bytes
+    Mem used: 3532564 bytes
+ Static data: 4948144 bytes
+   Allocated: 6313684 bytes
+ Thread size: 7072 bytes
+
+...5 aas types
+game initialized.
+---------------------------------------------
+Loading viseme file: annosoft
+----------- Initializing Session ------------
+----------------- BSE Init ------------------
+--------- BSE Created Successfully ----------
+session initialized
+---------------------------------------------
+------ Common Initialization Complete -------
+guid set to QbCb0MDP4UQ
+------------ Game Map Shutdown --------------
+---------------------------------------------
+reloading guis/mainmenu.gui.
+reloading guis/restart.gui.
+reloading guis/gameover.gui.
+reloading guis/msg.gui.
+reloading guis/takeNotes2.gui.
+reloading guis/takeNotes.gui.
+reloading guis/takeNotesQA.gui.
+reloading guis/editcvars.gui.
+reloading guis/spawn.gui.
+reloading guis/intro.gui.
+reloading guis/netmenu.gui.
+------------ Map Initialization -------------
+Map: game/airdefense1
+rvStatAllocator:  dump of usage stats
+	16 total bytes handed out in 1 requests
+	begin game:      0;  end game:        1
+	player hit:      0;  player kill:     0
+	player death:    0;
+	damage dealt:    0;  damage taken:    0
+	stat team:       0
+	flag capture:    0;
+	flag drop:       0;  flag return:     0
+rvStatAllocator:  dump of usage stats
+	0 total bytes handed out in 0 requests
+	begin game:      0;  end game:        0
+	player hit:      0;  player kill:     0
+	player death:    0;
+	damage dealt:    0;  damage taken:    0
+	stat team:       0
+	flag capture:    0;
+	flag drop:       0;  flag return:     0
+-------------- Game Map Init ----------------
+collision data:
+   606 models
+ 57187 vertices (1340 KB)
+112706 edges (3962 KB)
+ 46640 polygons (4008 KB)
+183402 polygon edges (716 KB)
+  6161 brushes (288 KB)
+ 36855 brush planes (575 KB)
+ 21126 nodes (577 KB)
+ 97596 polygon refs (762 KB)
+ 22524 brush refs (175 KB)
+ 38181 internal edges
+  4600 sharp edges
+     0 contained polygons removed
+     0 polygons merged
+ 12407 KB total memory used
+305 msec to load collision data.
+map bounds are (46336.0, 31936.0, 13760.0)
+max clip sector is (0.0, 0.0, 0.0)
+    1 KB passage memory used to build PVS
+    3 msec to calculate PVS
+   52 areas
+   96 portals
+    7 areas visible on average
+  416 bytes PVS data
+[Load AAS]
+loading maps/game/airdefense1.aas32
+done loading maps/game/airdefense1.aas32 (size 525484).
+[Load AAS]
+loading maps/game/airdefense1.aas48
+done loading maps/game/airdefense1.aas48 (size 525196).
+[Load AAS]
+loading maps/game/airdefense1.aas96
+[Load AAS]
+loading maps/game/airdefense1.aas250
+[Load AAS]
+loading maps/game/airdefense1.aas128
+Entering doom_main()
+Exiting doom_main()
+Spawning entities
+glprogs/heatHazeWithMask.vfp
+glprogs/md5rheatHazeWithMask.vfp: File not found
+glprogs/heatHazeWithMask.vfp
+...1777 entities spawned, 0 inhibited
+
+------------ Processing events --------------
+---------------------------------------------
+-- idRenderModelManagerLocal::EndLevelLoad --
+   17 models purged from previous level,  1130 models kept.
+---------------------------------------------
+----- idImageManagerLocal::EndLevelLoad -----
+    0 purged from previous
+  235 kept from previous
+ 1635 new loaded
+all images loaded in   4.2 seconds
+    0 deferred loading
+---------------------------------------------
+-------- idSoundCache::EndLevelLoad ---------
+1.03 seconds to expand oggs
+29150k referenced
+    0k purged
+---------------------------------------------
+sound: found efxs/default.efx
+Loaded reverb file 'maps/game/airdefense1.reverb'
+---------------------------------------------
+ 16334 msec to load game/airdefense1
+idRenderWorld::GenerateAllInteractions, msec = 3, staticAllocCount = 0.
+Saved 'Autosave game/airdefense1'

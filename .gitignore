@@ -3,3 +3,4 @@ __pycache__/
 # built test binaries — build them, don't trust committed ones
 tools/fex-tests/*.exe
 tools/fex-tests/*.dll
+.claude/settings.local.json

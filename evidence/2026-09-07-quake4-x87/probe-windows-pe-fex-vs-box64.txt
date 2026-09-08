@@ -1,0 +1,45 @@
+### 32-bit Windows PE under Proton wine, hosted by FEX
+x87 tag word across Wine context conversion (32-bit PE)
+---------------------------------------------------------------------------
+A  empty, no Win32 call                CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+B  3 pushes, no Win32 call             CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+C  3 pushes + Sleep(0)                 CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+D  3 pushes + Sleep(10)                CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+E  EMPTY + Sleep(10)                   CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+G  3 pushes + OutputDebugStringA       CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+H  EMPTY + OutputDebugStringA          CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+F  3 pushes + caught exception         CW=0000 SW=0000 TW=ffff TOP=0 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Empty R1=Empty R2=Empty R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+---------------------------------------------------------------------------
+id Tech 4 verdict: an empty stack across a Win32 call reads TW=ffff -> engine would be happy
+Quake 4 observed CW=013f TAGS=ffc0 TOP=0; anything matching that shape here
+localises the bug to Wine's 32<->64-bit CONTEXT conversion, not to FEX.
+
+### THE SAME EXE under Proton wine, hosted by BOX64/BOX32 (binfmt default)
+[[31mBOX32[0m] Warning, long 4294967295 is not a 32bits value
+[[31mBOX32[0m] Warning, ulong 0x1c165969af is not a 32bits value
+x87 tag word across Wine context conversion (32-bit PE)
+---------------------------------------------------------------------------
+A  empty, no Win32 call                CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+B  3 pushes, no Win32 call             CW=037f SW=2800 TW=ffc0 TOP=5 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Valid R1=Valid R2=Valid R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+C  3 pushes + Sleep(0)                 CW=037f SW=2800 TW=ffc0 TOP=5 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Valid R1=Valid R2=Valid R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+D  3 pushes + Sleep(10)                CW=037f SW=2800 TW=ffc0 TOP=5 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Valid R1=Valid R2=Valid R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+E  EMPTY + Sleep(10)                   CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+G  3 pushes + OutputDebugStringA       CW=037f SW=2800 TW=ffc0 TOP=5 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Valid R1=Valid R2=Valid R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+H  EMPTY + OutputDebugStringA          CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+F  3 pushes + caught exception         CW=037f SW=00ff TW=0000 TOP=0 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Valid R1=Valid R2=Valid R3=Valid R4=Valid R5=Valid R6=Valid R7=Valid
+---------------------------------------------------------------------------
+id Tech 4 verdict: an empty stack across a Win32 call reads TW=ffff -> engine would be happy
+Quake 4 observed CW=013f TAGS=ffc0 TOP=0; anything matching that shape here
+localises the bug to Wine's 32<->64-bit CONTEXT conversion, not to FEX.

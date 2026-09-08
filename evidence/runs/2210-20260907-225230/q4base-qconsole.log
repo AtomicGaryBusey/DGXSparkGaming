@@ -1,0 +1,72 @@
+log file 'qconsole.log' opened on Mon Sep 07 22:52:53 2026
+
+execing autoexec.cfg
+Unknown command '0'
+-------- Initializing Sound System ----------
+sound system initialized.
+---------------------------------------------
+--------------- R_InitOpenGL ----------------
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+Couldn't find proc address for: wglGetExtensionsStringARB
+Couldn't find proc address for: wglSwapIntervalEXT
+Couldn't find proc address for: wglGetPixelFormatAttribivARB
+Couldn't find proc address for: wglGetPixelFormatAttribfvARB
+Couldn't find proc address for: wglChoosePixelFormatARB
+Couldn't find proc address for: wglCreatePbufferARB
+Couldn't find proc address for: wglGetPbufferDCARB
+Couldn't find proc address for: wglReleasePbufferDCARB
+Couldn't find proc address for: wglDestroyPbufferARB
+Couldn't find proc address for: wglQueryPbufferARB
+Couldn't find proc address for: wglBindTexImageARB
+Couldn't find proc address for: wglReleaseTexImageARB
+Couldn't find proc address for: wglSetPbufferAttribARB
+setting to: 2560 1440
+...calling CDS: ok
+...created window @ 0,0 (2560x1440)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 1 selected
+...SetPixelFormat failed
+Shutting down OpenGL subsystem
+...wglMakeCurrent( NULL, NULL ): failed
+...releasing DC: success
+...resetting display
+...shutting down QGL
+...unloading OpenGL DLL
+Initializing OpenGL subsystem
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+Couldn't find proc address for: wglGetExtensionsStringARB
+Couldn't find proc address for: wglSwapIntervalEXT
+Couldn't find proc address for: wglGetPixelFormatAttribivARB
+Couldn't find proc address for: wglGetPixelFormatAttribfvARB
+Couldn't find proc address for: wglChoosePixelFormatARB
+Couldn't find proc address for: wglCreatePbufferARB
+Couldn't find proc address for: wglGetPbufferDCARB
+Couldn't find proc address for: wglReleasePbufferDCARB
+Couldn't find proc address for: wglDestroyPbufferARB
+Couldn't find proc address for: wglQueryPbufferARB
+Couldn't find proc address for: wglBindTexImageARB
+Couldn't find proc address for: wglReleaseTexImageARB
+Couldn't find proc address for: wglSetPbufferAttribARB
+setting to: 640 480
+...calling CDS: ok
+...created window @ 0,0 (640x480)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 1 selected
+...SetPixelFormat failed
+Shutting down OpenGL subsystem
+...wglMakeCurrent( NULL, NULL ): failed
+...releasing DC: success
+...resetting display
+...shutting down QGL
+...unloading OpenGL DLL
+Fatal Error: Unable to initialize OpenGL
+--------------- BSE Shutdown ----------------
+---------------------------------------------
+idRenderSystem::Shutdown()

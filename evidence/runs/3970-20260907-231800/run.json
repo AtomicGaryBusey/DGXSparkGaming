@@ -1,0 +1,15 @@
+{
+  "appid": "3970",
+  "name": "Prey",
+  "runtime_requested": "fex",
+  "runtime_actual": "FEX",
+  "proton": "Proton - Experimental",
+  "runtime_container": "SteamLinuxRuntime_4",
+  "exe": "prey.exe",
+  "launch_option": "default",
+  "launch_via": "proton",
+  "date": "2026-09-07T23:20:38-07:00",
+  "load_at_start": "0.52",
+  "kernel": "6.17.0-1032-nvidia",
+  "note": "runtime_actual is read from /proc/<pid>/exe. If it is unknown, this run cannot be attributed to a JIT."
+}

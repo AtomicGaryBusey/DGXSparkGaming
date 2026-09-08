@@ -1,0 +1,15 @@
+{
+  "appid": "9050",
+  "name": "DOOM 3",
+  "runtime_requested": "fex",
+  "runtime_actual": "FEX",
+  "proton": "Proton - Experimental",
+  "runtime_container": "SteamLinuxRuntime_4",
+  "exe": "Doom3.exe",
+  "launch_option": "default",
+  "launch_via": "proton",
+  "date": "2026-09-07T23:26:14-07:00",
+  "load_at_start": "0.54",
+  "kernel": "6.17.0-1032-nvidia",
+  "note": "runtime_actual is read from /proc/<pid>/exe. If it is unknown, this run cannot be attributed to a JIT."
+}

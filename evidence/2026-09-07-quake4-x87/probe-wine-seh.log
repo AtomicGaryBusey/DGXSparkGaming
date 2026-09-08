@@ -1,0 +1,65 @@
+wineserver: using server-side synchronization.
+002c:trace:seh:install_bpf Installing seccomp filters.
+002c:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+0034:trace:seh:install_bpf Installing seccomp filters.
+0034:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+0040:trace:seh:install_bpf Installing seccomp filters.
+0040:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+0068:trace:seh:install_bpf Installing seccomp filters.
+0068:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+0080:trace:seh:install_bpf Installing seccomp filters.
+0080:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+009c:trace:seh:install_bpf Installing seccomp filters.
+009c:err:seh:install_bpf prctl(PR_SET_SECCOMP, ...): Invalid argument.
+0024:warn:seh:dispatch_exception "x87probe"
+0024:trace:seh:dispatch_exception code=40010006 (DBG_PRINTEXCEPTION_C) flags=0 addr=7BC0B53F
+0024:trace:seh:dispatch_exception  info[0]=00000009
+0024:trace:seh:dispatch_exception  info[1]=0040A0C1
+0024:trace:seh:dispatch_exception eip=7bc0b53f esp=0063fc78 ebp=0063fcd8 eflags=00000203
+0024:trace:seh:dispatch_exception eax=0063fc78 ebx=0040a0c1 ecx=00000000 edx=0063fc8c
+0024:trace:seh:dispatch_exception esi=0063fd14 edi=0063fc90 cs=0030 ds=0000 es=0000 fs=0063 gs=006b ss=0000
+0024:trace:seh:call_seh_handlers calling handler at 7BEB78B0 code=40010006 flags=0
+0024:trace:seh:__regs_RtlUnwind code=40010006 flags=2
+0024:trace:seh:__regs_RtlUnwind eip=7bea0162 esp=0063ee38 ebp=0063ee40 eflags=00000212
+0024:trace:seh:__regs_RtlUnwind eax=00000000 ebx=00000000 ecx=40010006 edx=0063fd18
+0024:trace:seh:__regs_RtlUnwind esi=0063f0c8 edi=0063fd18 cs=0030 ds=0000 es=0000 fs=0063 gs=006b ss=0000
+0024:trace:seh:__regs_RtlUnwind calling handler at 7BF75EB0 code=40010006 flags=2
+0024:trace:seh:__regs_RtlUnwind handler at 7BF75EB0 returned 1
+0024:warn:seh:dispatch_exception "x87probe"
+0024:trace:seh:dispatch_exception code=40010006 (DBG_PRINTEXCEPTION_C) flags=0 addr=7BC0B53F
+0024:trace:seh:dispatch_exception  info[0]=00000009
+0024:trace:seh:dispatch_exception  info[1]=0040A0C1
+0024:trace:seh:dispatch_exception eip=7bc0b53f esp=0063fc78 ebp=0063fcd8 eflags=00000203
+0024:trace:seh:dispatch_exception eax=0063fc78 ebx=0040a0c1 ecx=00000000 edx=0063fc8c
+0024:trace:seh:dispatch_exception esi=0063fd14 edi=0063fc90 cs=0030 ds=0000 es=0000 fs=0063 gs=006b ss=0000
+0024:trace:seh:call_seh_handlers calling handler at 7BEB78B0 code=40010006 flags=0
+0024:trace:seh:__regs_RtlUnwind code=40010006 flags=2
+0024:trace:seh:__regs_RtlUnwind eip=7bea0162 esp=0063ee38 ebp=0063ee40 eflags=00000212
+0024:trace:seh:__regs_RtlUnwind eax=00000000 ebx=00000000 ecx=40010006 edx=0063fd18
+0024:trace:seh:__regs_RtlUnwind esi=0063f0c8 edi=0063fd18 cs=0030 ds=0000 es=0000 fs=0063 gs=006b ss=0000
+0024:trace:seh:__regs_RtlUnwind calling handler at 7BF75EB0 code=40010006 flags=2
+0024:trace:seh:__regs_RtlUnwind handler at 7BF75EB0 returned 1
+0024:warn:seh:dispatch_exception backtrace: --- Exception 0x80000003.
+0024:trace:seh:dispatch_exception code=80000003 (EXCEPTION_BREAKPOINT) flags=0 addr=00401813
+0024:trace:seh:dispatch_exception  info[0]=00000000
+0024:trace:seh:dispatch_exception eip=00401813 esp=0063fec0 ebp=0063fee8 eflags=00000206
+0024:trace:seh:dispatch_exception eax=00352db0 ebx=00352d4c ecx=6662c9db edx=6662c9db
+0024:trace:seh:dispatch_exception esi=003d290c edi=0000002b cs=0030 ds=0000 es=0000 fs=0063 gs=006b ss=0000
+0024:trace:seh:call_vectored_handlers calling handler at 0040151C code=80000003 flags=0
+0024:trace:seh:call_vectored_handlers handler at 0040151C returned ffffffff
+x87 tag word across Wine context conversion (32-bit PE)
+---------------------------------------------------------------------------
+A  empty, no Win32 call                CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+B  3 pushes, no Win32 call             CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+C  3 pushes + Sleep(0)                 CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+D  3 pushes + Sleep(10)                CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+E  EMPTY + Sleep(10)                   CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+G  3 pushes + OutputDebugStringA       CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000  [OK]
+H  EMPTY + OutputDebugStringA          CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000  [OK]
+F  3 pushes + caught exception         CW=0000 SW=0000 TW=ffff TOP=0 FIP=00000000  [MISMATCH]
+                                         expected TW=03ff TOP=5
+                                         tags: R0=Empty R1=Empty R2=Empty R3=Empty R4=Empty R5=Empty R6=Empty R7=Empty
+---------------------------------------------------------------------------
+id Tech 4 verdict: an empty stack across a Win32 call reads TW=ffff -> engine would be happy
+Quake 4 observed CW=013f TAGS=ffc0 TOP=0; anything matching that shape here
+localises the bug to Wine's 32<->64-bit CONTEXT conversion, not to FEX.

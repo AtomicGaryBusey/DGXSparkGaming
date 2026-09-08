@@ -2,6 +2,10 @@
 
 > **Tooling:** every script in `tools/` is documented in **[`tools/README.md`](tools/README.md)** — organised by what you are trying to do, with the specific mistake each one exists to prevent.
 >
+> **Open questions:** **[`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md)** — what is settled, what is open (ranked, each with its next concrete step), what has been ruled out, and every correction this log has published. Start there if you are picking the work up.
+>
+> **Evidence:** **[`evidence/`](evidence/)** — run manifests and engine logs behind the claims, each recording which translator actually executed it. **[`workflows/`](workflows/)** holds the multi-agent research scripts; their outputs are in [`notes/`](notes/).
+>
 > **Diagnostics:** **[`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md)** maps every log, dump and crash artifact this stack produces — per engine, per layer — with the failure signatures we have actually hit and what each one means. Most of it applies to any Proton-on-ARM64 setup, not just a DGX Spark. `tools/find-logs.sh <appid>` prints the live paths for a given title.
 
 ## Status

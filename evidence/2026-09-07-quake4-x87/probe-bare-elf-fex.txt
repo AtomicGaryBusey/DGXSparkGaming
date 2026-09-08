@@ -1,0 +1,23 @@
+### bare 32-bit ELF, x87-tagword32.S, under FEX
+after finit            CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000 FDP=00000000  [OK]
+after 3x fld1          CW=037f SW=2800 TW=03ff TOP=5 FIP=00000000 FDP=00000000  [OK]
+after 3 push + 3 pop   CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000 FDP=00000000  [OK]
+after fld1 + fstp      CW=037f SW=0000 TW=ffff TOP=0 FIP=00000000 FDP=00000000  [OK]
+------------------------------------------------------------------------------
+FIP after a real x87 op: ZERO -- FNSTENV is not recording the x87 instruction pointer
+id Tech 4 test on the *empty* stack: (TW ^ 0xffff) = 0x0000  (engine would be happy)
+
+### bare 32-bit ELF, x87-fxsave-roundtrip32.S, under FEX
+FXSAVE/FXRSTOR round-trip fidelity, 32-bit
+--------------------------------------------------------------------------------
+A empty, through round-trip        CW=037f SW=0000 TW=ffff TOP=0  [OK]
+B 3 pushes, through round-trip     CW=037f SW=2800 TW=03ff TOP=5  [OK]
+C 3 pushes, NO round-trip          CW=037f SW=2800 TW=03ff TOP=5  [OK]
+--------------------------------------------------------------------------------
+D raw FXSAVE header from the 3-push state:
+   FCW=037f FSW=2800 FTW(abridged)=e0  FOP=0000 FIP=00000000
+   abridged tag bits (1=in use): 11100000
+   -> registers in use per FXSAVE: [5, 6, 7]
+   (3 pushes from empty occupy physical R5,R6,R7, so 0b11100000 = 0xe0 is correct)
+--------------------------------------------------------------------------------
+VERDICT: round-trip is FAITHFUL — FEX exonerated again

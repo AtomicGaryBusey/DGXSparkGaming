@@ -1,0 +1,176 @@
+log file 'qconsole.log' opened on Mon Sep 07 22:26:17 2026
+
+execing autoexec.cfg
+Unknown command '0'
+-------- Initializing Sound System ----------
+sound system initialized.
+---------------------------------------------
+--------------- R_InitOpenGL ----------------
+Initializing OpenGL subsystem
+...registered window class
+...registered fake window class
+...initializing QGL
+...calling LoadLibrary( 'opengl32' ): succeeded
+setting to: 2560 1440
+...calling CDS: ok
+...created window @ 0,0 (2560x1440)
+Initializing OpenGL driver
+...getting DC: succeeded
+...PIXELFORMAT 1 selected
+...creating GL context: succeeded
+...making context current: succeeded
+
+------------ Input Initialization -----------
+Initializing DirectInput...
+mouse: DirectInput initialized.
+keyboard: DirectInput initialized.
+---------------------------------------------
+...initializing QAL
+...calling LoadLibrary( 'OpenAL32.dll' ): failed
+sound: STEREO
+...using GL_ARB_multitexture
+...using GL_ARB_texture_env_combine
+...using GL_ARB_texture_cube_map
+...using GL_ARB_texture_env_dot3
+...using GL_ARB_texture_env_add
+...using GL_ARB_texture_non_power_of_two
+...using GL_NV_blend_square
+...using GL_ARB_texture_compression
+...using GL_EXT_texture_compression_s3tc
+...using GL_EXT_texture_filter_anisotropic
+   maxTextureAnisotropy: 16.000000
+...using GL_1.4_texture_lod_bias
+X..GL_EXT_shared_texture_palette not found
+...using GL_EXT_draw_range_elements
+...using GL_EXT_blend_minmax
+...using GL_NV_float_buffer
+...using GL_EXT_texture3D
+...using GL_EXT_stencil_wrap
+...using GL_NV_register_combiners
+...using NV_vertex_program
+...using NV_fragment_program
+...using GL_EXT_stencil_two_side
+X..GL_ATI_fragment_shader not found
+X..GL_ATI_text_fragment_shader not found
+...using GL_ARB_vertex_buffer_object
+...using GL_ARB_vertex_program
+...using GL_ARB_fragment_program
+...using GL_ARB_shader_objects
+...using GL_ARB_fragment_shader
+...using GL_ARB_vertex_shader
+...using GL_ARB_shading_language_100
+...using EXT_depth_bounds_test
+---------------- R_NV20_Init ----------------
+---------------------------------------------
+----------------- R200_Init -----------------
+Not available.
+---------------- R_ARB2_Init ----------------
+Available.
+---------------------------------------------
+------------ R_ReloadARBPrograms ------------
+glprogs/test.vfp
+glprogs/test.vfp
+glprogs/interaction.vfp
+glprogs/interaction.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/bumpyEnvironment.vfp
+glprogs/ambientLight.vfp
+glprogs/ambientLight.vfp
+glprogs/SimpleInteraction.vfp
+glprogs/SimpleInteraction.vfp
+glprogs/md5rInteraction4.vp
+glprogs/md5rInteraction1.vp
+glprogs/md5rInteraction.vp
+glprogs/md5rSimple4.vp
+glprogs/md5rSimple1.vp
+glprogs/md5rSimple.vp
+glprogs/md5rStdTex4.vp
+glprogs/md5rStdTex1.vp
+glprogs/md5rStdTex.vp
+glprogs/md5rSkyBox4.vp
+glprogs/md5rSkyBox1.vp
+glprogs/md5rSkyBox.vp
+glprogs/md5rEnvNormal4.vp
+glprogs/md5rEnvNormal1.vp
+glprogs/md5rEnvNormal.vp
+glprogs/md5rEnvReflect4.vp
+glprogs/md5rEnvReflect1.vp
+glprogs/md5rEnvReflect.vp
+glprogs/md5rEnvBump4.vp
+glprogs/md5rEnvBump1.vp
+glprogs/md5rEnvBump.vp
+glprogs/md5rShadow4.vp
+glprogs/md5rShadow1.vp
+glprogs/md5rShadow.vp
+glprogs/md5rBasicFog4.vp
+glprogs/md5rBasicFog1.vp
+glprogs/md5rBasicFog.vp
+glprogs/shadow.vp
+glprogs/R200_interaction.vp
+glprogs/nv20_bumpAndLight.vp
+glprogs/nv20_diffuseColor.vp
+glprogs/nv20_specularColor.vp
+glprogs/nv20_diffuseAndSpecularColor.vp
+glprogs/environment.vfp
+glprogs/environment.vfp
+glprogs/arbVP_glasswarp.txt
+glprogs/arbFP_glasswarp.txt
+---------------------------------------------
+using ARB_vertex_buffer_object memory
+using ARB2 renderSystem
+reloading textures/common/debuggraph.
+reloading makeIntensity( gfx/lights/squarelight1a).
+reloading gfx/lights/squarelight1.
+reloading gfx/lights/round.
+reloading gfx/guis/mainmenu/splash.
+reloading gfx/guis/soundmeter/audiobg.
+reloading gfx/guis/white.
+reloading gfx/guis/guicursor_arrow.
+reloading gfx/guis/guicursor_hand.
+reloading gfx/guis/scrollbarh.
+reloading gfx/guis/scrollbarv.
+reloading gfx/guis/scrollbar_thumb.
+reloading gfx/guis/scrollbar_right.
+reloading gfx/guis/scrollbar_left.
+reloading gfx/guis/scrollbar_up.
+reloading gfx/guis/scrollbar_down.
+reloading video/atvi_logo.
+reloading fonts/english/bigchars.
+found DLL in pak file: Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/game300.pk4/gamex86.dll
+copy gamex86.dll to Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/gamex86.dll
+game using MMX & SSE & SSE2 & SSE3 for SIMD processing
+enabled Flush-To-Zero mode
+------------- Initializing Game -------------
+gamename: baseQUAKE4-1
+gamedate: Oct 20 2010
+252ms to load 644k of entityDef
+49ms to load 177k of articulatedFigure
+Initializing event system
+...531 event definitions
+Initializing class hierarchy
+...247 classes, 299484 bytes for event callbacks
+Initializing scripts
+Compiled 'Z:/home/aharmon/.local/share/Steam/steamapps/common/Quake 4/q4base/scripts/main.script': 553.6 ms
+-------------- Compile stats ----------------
+
+Memory usage:
+     Strings: 54, 8464 bytes
+  Statements: 84435, 1688700 bytes
+   Functions: 3361, 380380 bytes
+   Variables: 324172 bytes
+    Mem used: 3532564 bytes
+ Static data: 4948144 bytes
+   Allocated: 6313684 bytes
+ Thread size: 7072 bytes
+
+...5 aas types
+game initialized.
+---------------------------------------------
+Loading viseme file: annosoft
+----------- Initializing Session ------------
+----------------- BSE Init ------------------
+--------- BSE Created Successfully ----------
+session initialized
+---------------------------------------------
+------ Common Initialization Complete -------
+guid set to QbCb0MDP4UQ

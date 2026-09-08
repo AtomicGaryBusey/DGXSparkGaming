@@ -1,0 +1,118 @@
+# Open questions, dead ends, and what to do next
+
+The state of the investigation, as of **2026-09-07**. `README.md` records *results*; this
+records *the work* — what is settled, what is open, what has been ruled out, and what the next
+concrete step is for each.
+
+Kept because the alternative is a session's task list, which dies with the session. Two probes
+were rebuilt from scratch on 2026-09-07 because their existence was not written down anywhere.
+
+---
+
+## Settled, with evidence
+
+| Finding | Evidence | Confidence |
+|---|---|---|
+| **Quake 4 (id Tech 4) is playable under Box64** — menu, `game/airdefense1` loads, weapons work | `evidence/runs/2210-20260907-223229/`, human-confirmed | high |
+| **The same title under FEX fails at `SetPixelFormat`** — no GL context, x87 assertion never fires | `evidence/runs/2210-20260907-225230/` | high |
+| **Box64 writes the FSAVE tag word stack-relative, not physical** (`0xffc0` vs `0x03ff`); FEX is correct | `tools/isa-probe.sh`, reproducible in a bare 32-bit ELF | high |
+| **FEX 2607/2608 does not advertise CPUID leaf-1 DE/PSE**; fixed at fexsrc HEAD | `tools/isa-probe.sh` before/after a source build | high |
+| **`vkGetPhysicalDeviceDescriptorSizeEXT` is not a failure signature** — emitted by working games | `tools/signature-check.sh 'DescriptorSizeEXT'` | high |
+| **DOOM 3 and Prey die in `steamclient_init`** under Box64 via the legacy Steam DRM path | `evidence/runs/3970-20260907-231525/` | high |
+| **`game-run.sh` produced no telemetry for its entire life** — env never reached the game, and the distro MangoHud is arm64 | five runs, zero CSVs | high |
+
+---
+
+## Open, ranked by value
+
+### 1. Why does `SetPixelFormat` fail under FEX?
+**This, not x87, is FEX's actual id Tech 4 blocker.** Every title tested under FEX fails after
+`PIXELFORMAT 1 selected`, and all the `wgl*ARB` entry points are missing
+(`Couldn't find proc address for: wglChoosePixelFormatARB`).
+
+*Next step:* a minimal 32-bit PE calling `ChoosePixelFormat`/`SetPixelFormat`/`wglCreateContext`,
+reporting `GetLastError`, run under both JITs via `tools/run-both.sh --wine`. Cheaper than any
+game launch, and it localises the fault to `opengl32`/`winex11` vs the thunk layer.
+
+### 2. Can the legacy Steam DRM path be bypassed?
+DOOM 3 and Prey load Valve's `legacycompat/Steam.dll`, which pulls in the *native*
+`steamclient.dll` instead of Proton's `lsteamclient` shim, and that access-violates inside Wine's
+32-bit unix-call dispatcher.
+
+*Strong hint, not yet controlled:* launching `Doom3.exe` with **no `SteamAppId`** reached OpenGL
+init — far past the fault. *Next step:* `NO_STEAM_API=1` in `game-run.sh`, then A/B it. Costs to
+document: no overlay, achievements, cloud saves or playtime.
+
+*Unexplained:* Prey and Quake 4 both use `legacykeyregistrationmethod=disk`, yet only Prey loads
+the shim. That discriminator is unknown.
+
+### 3. Which id Tech 4 titles work under Box64?
+Quake 4 does. DOOM 3, RoE, Prey, BFG, Phobos, Wolfenstein 2009, Riddick, Brink and the two
+dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untested.
+
+*Next step:* `tools/ab-runtime.sh <appid> 150` per title. **Skin Deep is the only 64-bit member**
+(`PE32+ x86-64`) and is therefore the sole test of whether any of this is 32-bit-specific —
+DOOM 3 BFG was assumed to be 64-bit and is not.
+
+### 4. Quake 4's 104 recurring access violations
+`ntdll.so + 0x71f0`, faulting address `0x7c` (null + 0x7c), on one thread, starting at input
+init after repeated `hid.dll` load/unload, recurring for the whole session. Correlates with the
+user reporting mouse movement confined to a narrow region.
+
+### 5. NBA 2K27 without EAC
+`appinfo.py` shows launch entry `[3]` = `NBA2K27.exe`, type `option1`, *"NBA 2K27 without EAC
+(offline only)"* — publisher-supplied, 107 GB already installed, never attempted.
+*Next step:* `LAUNCH_OPTION=option1 tools/game-run.sh 4356430`.
+
+### 6. No Man's Sky, Halo Infinite, Elden Ring
+**Undiagnosed.** Their previous root cause was retracted and no replacement is offered.
+*Next step:* `PROTON_LOG=1 VKD3D_CONFIG=vk_debug VKD3D_DEBUG=warn
+VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` in the Steam launch options — vkd3d-proton's own
+documented recipe — then read the real error.
+
+---
+
+## Dead ends — do not re-tread
+
+| Idea | Why it is dead |
+|---|---|
+| `vkGetPhysicalDeviceDescriptorSizeEXT` as a root cause | Emitted 16× by Cyberpunk 2077 and 4× by Daikatana, both of which run fine. The driver *does* expose `VK_EXT_descriptor_buffer`. |
+| "FEX fabricates the x87 tag word" | Refuted by three freestanding probes. FEX is correct in 32- and 64-bit, including the `FXSAVE` abridged→full reconstruction. |
+| "Wine's CONTEXT conversion breaks id Tech 4" | `Quake4.exe` imports neither `AddVectoredExceptionHandler` nor `SetThreadContext`. |
+| "The 828 `OutputDebugString` exceptions are the trigger" | The probe handles that exact call correctly; a `+seh` trace confirms the exceptions really dispatched. |
+| Patching out id Tech 4's FPU assertion | The assertion does not fire under either JIT any more. Patching it would achieve nothing. |
+| "Burnout fails because SSE2 isn't advertised" | FEX advertises `sse2`. It does not advertise `de`/`pse`, and upstream FEX PR #5807 reports Burnout reads the **DE** bit. |
+| DOOM 3 BFG as the 64-bit discriminator | It is `PE32 / Intel 80386` — 32-bit. Use Skin Deep. |
+| Cross-testing on another Spark | Identical silicon, driver and OS image; only disk capacity differs. Re-measures the same variables. |
+
+---
+
+## Corrections this project has published
+
+Kept visible on purpose — the wrong version and *why* it was wrong is the most useful content
+here.
+
+1. **"3,983 evaluates, DLSS 5 NR running every frame"** — committed and pushed. The counter was
+   the *generic* NGX evaluate hook carrying the game's own DLSS-SR. The NR-specific line occurred
+   **twice**. Caught by a human toggling the feature and seeing an identical image.
+2. **`descriptor_buffer` as the cause of three AAA crashes** — carried for months, refuted in one
+   `grep` against a working game's log.
+3. **A play session attributed to FEX that was Box64 throughout** — `binfmt` decides, and nothing
+   recorded it. Now every run writes `runtime_actual`.
+4. **DOOM 3 BFG recorded as 64-bit** — it is 32-bit.
+5. **"Burnout's CPUID check doesn't detect SSE2"** — it does; DE/PSE are the missing bits.
+
+The pattern in all five: **a real observation, interpreted without a control.** The mechanisms
+now in place — `signature-check.sh`, `run-both.sh`, `run.json`, the `log-result` skill — exist to
+make each specific mistake structurally hard to repeat.
+
+---
+
+## Infrastructure still owed
+
+- **`NO_STEAM_API=1`** in `game-run.sh` (blocks open question 2).
+- **A `SetPixelFormat` probe** (blocks open question 1).
+- **Frametime numbers for 32-bit/OpenGL titles.** Ubuntu ships no i386 MangoHud, so those titles
+  currently have no CSV path at all — `com_showFPS` plus `tools/watch-run.sh` is the fallback.
+- **The `CONTEXT` block in `workflows/*.js` goes stale.** Refresh from `tools/check-stack.sh`
+  before re-running any of them.

@@ -1,0 +1,15 @@
+{
+  "appid": "2210",
+  "name": "Quake 4",
+  "runtime_requested": "box64",
+  "runtime_actual": "unknown",
+  "proton": "Proton - Experimental",
+  "runtime_container": "SteamLinuxRuntime_4",
+  "exe": "Quake4.exe",
+  "launch_option": "default",
+  "launch_via": "proton",
+  "date": "2026-09-07T22:22:00-07:00",
+  "load_at_start": "1.27",
+  "kernel": "6.17.0-1032-nvidia",
+  "note": "runtime_actual is read from /proc/<pid>/exe. If it is unknown, this run cannot be attributed to a JIT."
+}

@@ -439,6 +439,30 @@ run the tool, then act.**
   `steam://install/<appid>` needs Steam **fully loaded** — URLs sent while the UI still says
   "Loading user data…" are silently dropped.
 
+## Where everything lives (read this before rebuilding something)
+
+| | |
+|---|---|
+| `README.md` | the compatibility log — results, per title |
+| **`docs/OPEN-QUESTIONS.md`** | **what is settled / open / ruled out, each with its next step. Read FIRST when resuming work.** |
+| `docs/DIAGNOSTICS.md` | where every log and dump lives, per engine and per layer |
+| `tools/` | 34 scripts; `tools/README.md` indexes them by what you are trying to do |
+| `tools/probes/` | hand-written probes — **check here before writing a new one** |
+| `tools/isa-probe/` | freestanding SDK-answer probes + runner |
+| `tools/patches/` | GPL-3.0 OptiScaler patches (the rest of the repo is MIT) |
+| `workflows/` | multi-agent research scripts, re-runnable |
+| `notes/` | their outputs, with provenance headers |
+| `evidence/` | run manifests + engine logs behind published claims |
+| `.claude/hooks/` | the guards, plus `test-guards.sh` (20 cases) |
+| `.claude/skills/log-result/` | the six questions to answer before publishing a claim |
+
+Not in git, on the machine: `~/dgx-gaming-work/runs/` (full Proton logs, GPU telemetry),
+`~/dgx-gaming-work/evidence/` (large capture logs), build prefixes (`toolchain/`,
+`mangohud-x86/`, `fex-build/`, `fexsrc/`). `tools/find-logs.sh <appid>` locates them.
+
+**Two probes were rebuilt from scratch on 2026-09-07 because they lived outside the repo and
+nobody knew.** If you are about to write a probe or a helper, grep `tools/` first.
+
 ## Git / committing
 
 Commit only when asked. Match the existing terse, result-oriented message style, e.g.:
