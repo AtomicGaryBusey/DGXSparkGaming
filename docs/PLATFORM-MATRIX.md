@@ -1,0 +1,94 @@
+# Platform matrix — what a result here generalises to
+
+Written 2026-09-08, when the Spark Game Launcher planning made it necessary to state precisely
+which facts are properties of *the platform* and which are properties of *this box*.
+
+## DGX Spark: a fixed platform
+
+Every DGX Spark is the same machine. Vendors differ; the silicon does not.
+
+| | |
+|---|---|
+| SoC | **NVIDIA GB10** Grace-Blackwell, always |
+| CPU | 20 ARM64 cores — 10 × Cortex-X925 + 10 × Cortex-A725. **No 32-bit ARM support at all** |
+| Memory | **128 GB unified** (LPDDR5X), coherent between CPU and GPU (`free -g` shows ~121 GiB) |
+| OS | Linux only. **DGX OS**, an Ubuntu base image from the NVIDIA/Canonical partnership — a single vendor for the image |
+| Varies | storage capacity, chassis, badge |
+
+Verified on this unit: `nvidia-smi` reports `NVIDIA GB10`, driver 580.173.02; `lscpu` reports the
+20-core X925/A725 split; `free -g` reports 121 GiB.
+
+**Vendor-independent identification.** DMI reports the *family* regardless of who built the box:
+
+```
+/sys/devices/virtual/dmi/id/product_family   ->  DGX Spark
+/sys/devices/virtual/dmi/id/sys_vendor       ->  HP
+/sys/devices/virtual/dmi/id/product_name     ->  HP ZGX Nano G1n AI Station
+```
+
+So `product_family` is the key to detect the platform, and `sys_vendor`/`product_name` are
+cosmetic. Anything reading these should key on the family.
+
+### What that buys this log
+
+**A result measured here applies to every DGX Spark, from any vendor.** The usual caveat on a
+compatibility log — "worked on my machine, which is not your machine" — does not apply. The only
+axes that can differ between two DGX Sparks are storage capacity, driver/OS version, and
+installed software. That is a much stronger claim than a normal PC compatibility list can make,
+and it is the reason this repo's results are worth publishing.
+
+It is also why re-running a result on a second unit validates nothing: it re-measures the same
+variables. Additional units are useful for **capacity** (the 1 TB unit is the binding constraint;
+NBA 2K27 alone is 102 GB) and for parking a long run, not for corroboration.
+
+*Provenance:* the fleet-wide uniformity is **AGB's information** (2026-09-08). Public material
+corroborates GB10 + 128 GB unified memory across NVIDIA's channel partners (Acer, ASUS, Dell,
+Gigabyte, HP, Lenovo, MSI) but does not state per-vendor spec identity outright. Treat the core
+spec as solid and the "100% of models" phrasing as AGB's, not as measured here.
+
+## RTX Spark: NOT a fixed platform
+
+The successor is expected to be materially more variable, so nothing above carries over
+automatically.
+
+| | |
+|---|---|
+| Form factor | primarily **laptops**, multiple vendors; desktops planned, including a **Microsoft RTX Dev box** in a DGX-Spark-like desk form |
+| Memory | **varies by model** |
+| CPU | possibly **binned GB10 parts with reduced core counts** sold cheaper alongside certified ones |
+| OS | **Windows** |
+
+*Provenance:* AGB, 2026-09-08, explicitly hedged ("from what I'm able to gather") on the binning.
+Not verified here. Treat as a planning assumption, not a fact.
+
+### What that means for the translation knowledge
+
+**Most of this repo's translator findings are not expected to transfer**, and it would be
+dishonest to imply otherwise. Windows-on-ARM runs x86-64 through Microsoft's **Prism** emulator,
+not FEX-Emu or Box64. So the four Box64 bugs, the FEX 32-bit GLX failure, the x87 tag-word work
+and the `a3`-store bug are all findings about *translators that will not be running there*.
+
+What is expected to transfer, in rough order of confidence:
+
+1. **The method** — evidence discipline, differential testing between runtimes, probes with
+   answers from a specification rather than from whichever runtime ran first.
+2. **Per-title profile structure** — render API, launcher quirks, config files owned by other
+   programs, resolution/window traps, DRM and launcher shims. None of that is translator-specific.
+3. **GPU/driver-layer behaviour** — Blackwell-generation driver quirks, DLSS/NGX, Vulkan
+   extension availability.
+4. **CPU-semantics probes** — `tools/isa-probe/` asks questions whose correct answers come from
+   the Intel SDM. Pointed at Prism they would be a fresh, valid test suite on day one.
+
+What almost certainly does **not** transfer: anything naming FEX, Box64, Proton, DXVK, VKD3D,
+Wine, or `binfmt_misc`.
+
+## Consequences for the Spark Game Launcher
+
+- **Host profile must be a first-class dimension of the data model.** On DGX Spark it collapses
+  to a constant, which is a pleasant special case — not a reason to omit the dimension.
+- A game profile's **runtime/thunk section is host-class-specific** and must be keyed by host
+  class (`dgx-spark-linux`, `rtx-spark-windows`, …), while identity, binary facts and most
+  workarounds are shared.
+- Detect the platform from DMI `product_family`, never from the vendor string.
+- On RTX Spark, **core count and memory become real variables** and a performance result must
+  record them. On DGX Spark they are constants and need recording only for provenance.

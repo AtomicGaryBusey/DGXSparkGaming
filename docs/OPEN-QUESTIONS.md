@@ -292,3 +292,19 @@ trusted. It is also possible the run used a non-GL backend (the game ships `3dfx
 *Next step:* `tools/ab-runtime.sh 242980` — one command, runs it under both and records
 `runtime_actual`. **Until that is done, do not use Daikatana as evidence either way**, and do not
 weaken the 0/320 measurement on the strength of it.
+
+### How much of this repo transfers to the RTX Spark? — OPEN, and the honest answer is "less than it looks"
+
+Raised 2026-09-08 while planning the Spark Game Launcher. Windows-on-ARM runs x86-64 through
+Microsoft's **Prism**, not FEX-Emu or Box64. Every translator finding in this log — the four
+Box64 bugs, FEX's 32-bit GLX failure, the x87 tag-word work, the `a3`-store duplication — is a
+fact about a translator that will not be running on that machine.
+
+Expected to carry: the method, the per-title profile structure, GPU/driver-layer behaviour, and
+`tools/isa-probe/` (whose expected answers come from the Intel SDM, so it is a valid test suite
+for *any* x86 implementation — including Prism, on day one).
+
+*Cheapest experiment when hardware exists:* run `tools/isa-probe/` under Prism. It needs no game,
+no GPU and no install, and it would immediately say whether Prism shares any of the x87/CPUID
+defects found here. Until then, do not write anything in this repo that implies the translator
+findings apply to RTX Spark. See `docs/PLATFORM-MATRIX.md`.

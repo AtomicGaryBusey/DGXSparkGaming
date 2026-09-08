@@ -300,6 +300,14 @@ a version switch empties `shadercache/<appid>/DXVK_state_cache/`, so the first r
 compilation, not the runtime. An earlier revision of this file said "default to Proton 11"
 unqualified; that came from reasoning, not benchmarking. See the README's *Which Proton on ARM64*.
 
+**The DGX Spark is a FIXED platform — every unit from every vendor is GB10 + 128 GB unified,
+Linux-only on DGX OS. So a result measured here applies to every DGX Spark, which is a stronger
+claim than a normal compatibility log can make.** Detect the platform from DMI `product_family`
+(it reads `DGX Spark` even on an HP-badged box), never from the vendor string. The **RTX Spark
+is NOT fixed** — varying RAM, possibly binned GB10 parts, Windows, and Microsoft's **Prism**
+emulator instead of FEX/Box64, so the translator findings here are **not** expected to transfer.
+Full taxonomy and what carries over: **`docs/PLATFORM-MATRIX.md`**.
+
 **Do not propose replicating a result on another Spark.** AGB has several units (this one is an
 HP ZGX Nano G1n, 1 TB; the others are 4 TB DGX Sparks) but the **hardware is identical — only disk
 capacity differs**. Same silicon, same driver, same OS image, so a cross-unit re-run re-measures the
