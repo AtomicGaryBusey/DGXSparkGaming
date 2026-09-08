@@ -170,6 +170,51 @@ PY
 fi
 grep -c 'GO(arc4random, uEv)' "$HDR" | sed 's/^/  arc4random entries: /'
 
+echo "== patch 2: FNSTENV/FSAVE tag-word order (idempotent) =="
+X87="$SRC/src/emu/x87emu_private.c"
+if grep -q 'DGXSparkGaming: tag word is PHYSICAL' "$X87" 2>/dev/null; then
+  note "already applied"
+else
+  python3 - "$X87" <<'PYEOF'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+anchor = "void fpu_savenv(x64emu_t* emu, char* p, int b16)\n{\n    emu->sw.f.F87_TOP = emu->top&7;\n"
+if anchor not in s:
+    print("  !! ANCHOR NOT FOUND — upstream changed fpu_savenv"); sys.exit(1)
+add = anchor + """    // DGXSparkGaming: tag word is PHYSICAL, not stack-relative.
+    // box64 keeps emu->fpu_tags as a shift register indexed by STACK position
+    // (x87emu_private.h: push does fpu_tags<<=2, pop does fpu_tags>>=2), which is
+    // fine internally. But Intel SDM vol.1 8.1.7 defines the FSAVE/FNSTENV tag
+    // word as indexed by PHYSICAL register R0..R7, with TOP saying which physical
+    // register is ST0. Writing fpu_tags out unrotated reports the right NUMBER of
+    // live registers in the wrong SLOTS.
+    // Nothing much reads the tag word, which is why this went unnoticed -- except
+    // id Tech 4, whose Sys_FPU_StackIsEmpty() is
+    //     fnstenv; eax=[env+8]; eax^=0xFFFF; jz empty
+    // i.e. it reads the tag word and NOTHING else. Measured on a DGX Spark:
+    // Prey 2006 reached gameplay then died with TAGS=0xc000 (7 pushes, TOP=1)
+    // where hardware gives 0x0003; Quake 4 died with 0xffc0 (3 pushes, TOP=5)
+    // where hardware gives 0x03ff. Both are exactly this rotation.
+    // Rotating an all-empty 0xffff by any amount is still 0xffff, so a genuinely
+    // empty stack cannot regress.
+    uint16_t phys_tags = emu->fpu_tags;
+    {
+        int rot = (emu->top & 7) * 2;
+        if (rot) phys_tags = (uint16_t)(((uint32_t)phys_tags << rot) | ((uint32_t)phys_tags >> (16 - rot)));
+    }
+"""
+s = s.replace(anchor, add, 1)
+# use the rotated value in both branches
+s = s.replace("        *p16++ = emu->fpu_tags;", "        *p16++ = phys_tags;", 1)
+s = s.replace("        *p32++ = emu->fpu_tags;\n", "        *p32++ = phys_tags;\n", 1)
+open(p, "w").write(s)
+print("  + fpu_savenv now writes the tag word in physical-register order")
+PYEOF
+  [ $? -eq 0 ] || die "tag-word patch failed"
+fi
+grep -c 'phys_tags' "$SRC/src/emu/x87emu_private.c" | sed 's/^/  phys_tags references: /'
+
 echo "== build (log: $PREFIX/build.log) =="
 mkdir -p "$PREFIX/build"
 cmake -S "$SRC" -B "$PREFIX/build" -DARM_DYNAREC=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo \

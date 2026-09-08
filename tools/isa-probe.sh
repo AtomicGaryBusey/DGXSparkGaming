@@ -42,6 +42,7 @@ WORK="$(mktemp -d "${CLAUDE_JOB_DIR:-/tmp}/isaprobe.XXXXXX")"
 command -v FEXBash >/dev/null 2>&1 || { echo "!! FEXBash not found"; exit 2; }
 # FEX_BIN=<prefix>/bin points the RUN step at a locally built FEX while still
 # building the probes with the system FEXBash (which supplies the RootFS).
+[ -n "${BOX64_BIN:-}" ] && echo "  using Box64 build: $BOX64_BIN"
 if [ -n "${FEX_BIN:-}" ]; then
   # A source build installs the interpreter as `FEX`; the packaged one also
   # provides the `FEXInterpreter` alias. Accept either.
@@ -77,8 +78,12 @@ for src in "$DIR"/*.S; do
   # that makes FEX_BIN able to point at a locally BUILT FEX, which is how a
   # source build gets gated on this suite instead of on hope.
   "${FEX_INTERP:-FEXInterpreter}" "$WORK/$base" >"$WORK/$base.fex" 2>/dev/null
-  if command -v box64 >/dev/null 2>&1; then
-    box64 "$WORK/$base" >"$WORK/$base.box64" 2>/dev/null
+  # BOX64_BIN points at a locally built box64, the same way FEX_BIN does for FEX.
+  # Without it a patched build cannot be graded by this suite, because binfmt
+  # always resolves the bare `box64` to /usr/local/bin.
+  BOX64_RUN="${BOX64_BIN:-box64}"
+  if command -v "$BOX64_RUN" >/dev/null 2>&1 || [ -x "$BOX64_RUN" ]; then
+    "$BOX64_RUN" "$WORK/$base" >"$WORK/$base.box64" 2>/dev/null
   else
     : > "$WORK/$base.box64"
   fi

@@ -2189,6 +2189,51 @@ SteamStub decryption simply takes longer than that under translation.
 *no* legacy-DRM keys and it statically imports `steam_api.dll`. Until it is run, treat
 "EP in `.bind` ⇒ loads `Steam.dll`" as scoped to the 2004-2009 id titles.
 
+#### Box64 bug 2: the FSAVE/FNSTENV tag word is written stack-relative (2026-09-08)
+
+**This is the real id Tech 4 x87 failure, and it is not FEX's.** Found by `tools/isa-probe.sh`,
+then caught in two real games, then fixed and verified by the same probe.
+
+`src/emu/x87emu_private.h` keeps `emu->fpu_tags` as a shift register indexed by **stack
+position** — push does `fpu_tags <<= 2`, pop does `>>= 2`. That is fine internally.
+`fpu_savenv()` then writes it straight out, but Intel SDM vol.1 8.1.7 defines the tag word as
+indexed by **physical register** R0–R7, with `TOP` naming which physical register is ST0. So the
+right *number* of live registers is reported in the wrong *slots*.
+
+Almost nothing reads that field, which is why it survived. id Tech 4 reads it and nothing else:
+
+```
+Sys_FPU_StackIsEmpty():  fnstenv ; eax = [env+8] ; eax ^= 0xFFFF ; jz empty
+```
+
+Observed here, both exactly `rol16(fpu_tags, 2*TOP)`:
+
+| Game | got | hardware | state |
+|---|---|---|---|
+| **Prey 2006** — reached gameplay (`Regenerated world`, 2560x1440) then died | `TAGS=0xc000`, `CTRL=0x037f` | `0x0003` | 7 pushes, TOP=1 |
+| **Quake 4** — died on frame 1 | `TAGS=0xffc0` | `0x03ff` | 3 pushes, TOP=5 |
+
+**Fix** — rotate before writing, in `fpu_savenv()`:
+
+```c
+uint16_t phys_tags = emu->fpu_tags;
+int rot = (emu->top & 7) * 2;
+if (rot) phys_tags = (phys_tags << rot) | (phys_tags >> (16 - rot));
+```
+
+An all-empty tag word is `0xffff`, and rotating `0xffff` by any amount is still `0xffff`, so a
+genuinely empty stack cannot regress. Verified by `tools/isa-probe.sh`: `TAG3` goes
+`0xffc0` → `0x03ff` while `TAG0`, `TAGB`, `TOP3` and `CWD0` are unchanged.
+Evidence: [`evidence/2026-09-08-box64-x87-tagword/`](evidence/2026-09-08-box64-x87-tagword/).
+
+**This also retroactively attributes the original Quake 4 crash to Box64** — the one whose
+Proton log was overwritten before its runtime could be read. Its tag word had the right shape,
+but shape is not attribution; Prey's crash, with full provenance and a clean `CTRL=0x037f`,
+is what settled it.
+
+**Two Box64 bugs from this stack, both filable:** the four missing box32 libc wrappers
+(`steamclient_init`) and this. Neither is FEX's, and FEX gets the tag word right.
+
 #### The id Tech 4 x87 failure, measured (2026-09-07)
 
 Quake 4 was installed specifically to read the diagnostic id Tech 4 prints one line before it
