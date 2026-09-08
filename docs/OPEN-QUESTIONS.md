@@ -112,22 +112,36 @@ dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untes
 (`PE32+ x86-64`) and is therefore the sole test of whether any of this is 32-bit-specific —
 DOOM 3 BFG was assumed to be 64-bit and is not.
 
-### 4. The shared input-path fault — mouse misbehaves in BOTH playable id Tech 4 titles
-Same fault address in both, so one bug rather than two:
+### 4. A shared recurring fault — NOT the input path, and probably not the mouse
+**Mislabelled until 2026-09-08.** It was called an "input-path" fault because it first appears
+near DirectInput initialisation and both games have odd mouse behaviour. `tools/probes/dinput/`
+tested that directly and **refuted it**: a 32-bit PE that creates DirectInput 8, enumerates
+`DI8DEVCLASS_ALL` three times, then creates/configures/acquires the mouse and keyboard and reads
+both state and buffered data, returns `DI_OK` at every step and produces **zero** faults.
 
-| game | faults | address | reads |
-|---|---|---|---|
-| Prey | 92 | `ntdll.so+0x71f0` | `0x7c` (null+0x7c) |
-| Quake 4 | 41 | `ntdll.so+0x71f0` | `0x7c` |
+What is actually established:
 
-Both also show `hid.dll` loaded 3x / unloaded 1x and DirectInput initialising. Register context
-at the fault: `info[0]=0` (a read), `eax=c0000035` (`STATUS_OBJECT_NAME_COLLISION`, a returned
-status), `edi=4`. Wine converts it to `c0000005` and returns to the PE side at `7bf1d620`.
+| | |
+|---|---|
+| shared | same address in both games — `ntdll.so+0x71f0`, reading `0x7c` (null+0x7c) |
+| counts | Prey 92, Quake 4 41 |
+| shape | **periodic bursts** of 10–20, separated by 60–80 s — *not* per-frame, so not mouse polling |
+| thread | the game's **main** thread, which does everything, so that narrows nothing |
+| context | `info[0]=0` (a read), `eax=c0000035` (`STATUS_OBJECT_NAME_COLLISION`, a returned status), `edi=4` |
 
-*Next step:* a small 32-bit PE that initialises DirectInput and enumerates devices, run under
-both JITs via `tools/run-both.sh --wine` — the same shape of probe that localised
-`SetPixelFormat` in ~130 lines. Cheaper than a game launch and it would say whether this is
-Box64-specific or a Wine 32-bit HID bug.
+Both games ship **PunkBuster** (`pb/`: Prey 6 files, Quake 4 7 files) and PunkBuster scans
+periodically, which fits the burst cadence. But Prey logs two Authenticode decode failures
+(`CryptDecodeObjectEx` on `1.3.6.1.4.1.311.2.1.4`) and **Quake 4 logs none**, so that specific
+link is not shared and the hypothesis is not established.
+
+**Whether this fault relates to the mouse symptom at all is unknown.** They were correlated only
+by appearing in the same sessions. The mouse behaviour may be an ordinary Wine relative-mouse or
+cursor-clipping issue with no connection to these faults.
+
+*Next step:* stop inferring from adjacency. Either bisect by moving `pb/` aside and re-running
+(cheap, one launch, directly tests the PunkBuster hypothesis), or get a symbolised backtrace for
+`ntdll.so+0x71f0` rather than guessing at the caller.
+
 `ntdll.so + 0x71f0`, faulting address `0x7c` (null + 0x7c), on one thread, starting at input
 init after repeated `hid.dll` load/unload, recurring for the whole session. Correlates with the
 user reporting mouse movement confined to a narrow region.
