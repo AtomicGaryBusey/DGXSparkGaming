@@ -130,6 +130,8 @@ under both JITs because it clobbered its own jump target.
 
 ## 7. Probe sources
 
+- **`tools/probes/wgl/`** — the WGL pixel-format probe that localised FEX's id Tech 4 blocker to
+  `SetPixelFormat` in ~130 lines, with no game involved.
 - **`tools/probes/`** — the hand-written probes (x87 tag word and EMMS/MMX, CPUID, the
   Wine-CRT loader harness, the original Cyberpunk launcher shim). These lived outside version
   control in `~/dgx-gaming-work/` until 2026-09-07, which caused a later session to

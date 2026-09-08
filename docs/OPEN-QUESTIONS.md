@@ -26,7 +26,20 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 
 ## Open, ranked by value
 
-### 1. Why does `SetPixelFormat` fail under FEX?
+### 1. Which winex11 call inside `SetPixelFormat` fails under FEX?
+**Narrowed 2026-09-08.** `tools/probes/wgl/wgl-pixelformat32.c` shows FEX enumerates all 320
+formats and picks format 1 exactly as Box64 does, then `SetPixelFormat` returns FALSE **with
+`GetLastError` unset**, and `wglCreateContext` reports `2000 ERROR_INVALID_PIXEL_FORMAT` as the
+correct consequence. Driver, ICD, format selection and the X11 connection are all ruled out
+because each step succeeds identically. Evidence:
+`evidence/2026-09-08-setpixelformat-fex/`.
+
+*Next step:* `WINEDEBUG=+wgl,+x11drv` under FEX with the same probe — it is seconds, not a game
+launch. **Untested alternative that would change ownership entirely:** whether this also fails
+on native x86-64 Linux with this Proton, which would make it a Wine bug rather than a FEX one.
+No x86-64 Linux box here.
+
+### 1b. Original framing (kept for the record)
 **This, not x87, is FEX's actual id Tech 4 blocker.** Every title tested under FEX fails after
 `PIXELFORMAT 1 selected`, and all the `wgl*ARB` entry points are missing
 (`Couldn't find proc address for: wglChoosePixelFormatARB`).
@@ -119,6 +132,41 @@ here.
 The pattern in all five: **a real observation, interpreted without a control.** The mechanisms
 now in place — `signature-check.sh`, `run-both.sh`, `run.json`, the `log-result` skill — exist to
 make each specific mistake structurally hard to repeat.
+
+---
+
+---
+
+## Deferred re-tests (the README's `TODO:` markers, indexed)
+
+Fourteen `TODO:` markers are scattered through a 2,700-line `README.md`, which means nobody
+sees them. None are stale; they are all genuine deferred work. Indexed here so they compete
+for attention with everything else rather than hiding.
+
+**Most are now cheaper than when they were written**, because `tools/game-run.sh` records
+conditions in `run.json` and `tools/ab-runtime.sh` runs both translators in one command — so a
+"re-test" is one command plus a `tools/run-report.sh`, not a manual session.
+
+| README line | Title | Deferred work |
+|---|---|---|
+| `830` | — | ** check whether |
+| `899` | — | ** re-run pinned to `proton_11` to confirm it |
+| `944` | — | ** re-test properly with ReShade as `dxgi.dll` in a real DX12 title. |
+| `1066` | — | ** re-run it as |
+| `1204` | — | ** once a native ARM64 Steam client exists, redo this head-to-head on one CPU-bound title |
+| `1224` | — | ** repeat on a second title (Esoteric Ebb |
+| `1942` | Crysis 2: Game of the Year | ** Investigate audio issue. |
+| `1944` | Crysis | ** Retest at 5120x1440 ultrawide. |
+| `1946` | Far Cry 2 | ** Retest to find optimal settings balance. |
+| `1959` | Left 4 Dead | ** Retest with lower settings to find optimal balance. |
+| `1970` | PEAK | ** Retest with DX11/DX12 renderer — may be more stable via DXVK/VKD3D. |
+| `1983` | Space Engineers | ** Retest with High preset instead of Photo/Extreme to find stable ceiling. |
+| `2088` | Quake 4 | ** 104 recurring access violations at `ntdll.so + 0x71f0` (faulting address `0x7c`) begin at input init and run the whole session; the user reported m |
+| `2650` | — | Iterate launch options:** |
+
+Highest value of these, because it is a *correctness* question rather than a tuning one:
+line 899 (re-run pinned to `proton_11` and read the compat tool from `config_info` rather than
+trusting intent) and line 1224 (a second title before believing a one-data-point regression).
 
 ---
 

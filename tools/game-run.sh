@@ -219,7 +219,18 @@ case "$RUNTIME" in
     QUOTED=""; for a in "$@"; do QUOTED="$QUOTED $(printf '%q' "$a")"; done
     set -- FEXBash -c "cd $(printf '%q' "$GAMEDIR") &&$QUOTED"
     note "runtime: FEX (forced via FEXBash)" ;;
-  auto|box64)
+  box64)
+    # BOX64_BIN points at a locally built box64 (see tools/build-box64-symfix.sh).
+    # binfmt would otherwise always hand the chain to /usr/local/bin/box64, so a
+    # patched build could never actually be tested against a game.
+    if [ -n "${BOX64_BIN:-}" ]; then
+      [ -x "$BOX64_BIN" ] || die "BOX64_BIN=$BOX64_BIN is not executable"
+      set -- "$BOX64_BIN" "$@"
+      note "runtime: Box64 from $BOX64_BIN (explicit, bypassing binfmt)"
+    else
+      note "runtime: box64 — binfmt hands x86 ELF to Box64"
+    fi ;;
+  auto)
     # box32 and box64 are two binfmt entries pointing at the same interpreter;
     # report the distinct set, not one line per registration.
     _bf=$(for f in /proc/sys/fs/binfmt_misc/*; do

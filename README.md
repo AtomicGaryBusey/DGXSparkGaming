@@ -2113,6 +2113,8 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 > So on this rig **Quake 4 — an id Tech 4 title — is playable**, and the thing that stops it under
 > FEX is not the famous x87 assertion at all (it never fires) but WGL pixel-format selection.
 >
+> **Localised 2026-09-08** with a 130-line probe and no game at all ([`evidence/2026-09-08-setpixelformat-fex/`](evidence/2026-09-08-setpixelformat-fex/)): under FEX the driver enumerates all **320** pixel formats and `ChoosePixelFormat` returns 1 — identical to Box64 — but `SetPixelFormat` returns FALSE **while setting no error code**, and `wglCreateContext` then correctly reports `2000 ERROR_INVALID_PIXEL_FORMAT`. Box64 completes the same sequence and reports a real `GL 4.6.0 NVIDIA 580.173.02` context on `NVIDIA GB10/PCIe`. So it is not the driver, not the ICD, not format selection and not the X11 connection — it is `SetPixelFormat` itself, where winex11 binds a GLX config to the window.
+>
 > **What this does NOT establish.** The original crash that started this whole thread printed
 > `TAGS=0000ffc0`, and `0xffc0` is *Box64's* signature tag-word bug (it writes the FSAVE tag word in
 > stack-relative order where Intel specifies physical — see `tools/isa-probe/`, where FEX gets it

@@ -1,0 +1,43 @@
+# tools/probes/wgl/wgl-pixelformat32.c under both translators
+# Proton - Experimental, prefix compatdata/2210, driver 580.173.02, 2026-09-08
+
+==================== FEX ====================
+WGL pixel-format probe (32-bit)
+--------------------------------------------------------------
+Opening host-side X11 display: 0x7ffff6f9c680 -> 0xff6bf2cd1800
+  RegisterClassA               ok    GetLastError=0 (0x00000000)
+  CreateWindowExA              ok    GetLastError=1400 (0x00000578)
+  GetDC                        ok    GetLastError=0 (0x00000000)
+Opening host-side X11 display: 0x7d49bdc0 -> 0xffdbf000
+  formats available            320
+    format 1 describes as      flags=0x00008025 cColorBits=32 cDepthBits=24 iPixelType=0
+  ChoosePixelFormat ->         1
+  ChoosePixelFormat            ok    GetLastError=0 (0x00000000)
+  SetPixelFormat(chosen)       FAIL  GetLastError=0 (0x00000000)
+  wglCreateContext             FAIL  GetLastError=2000 (0x000007d0)
+  SetPixelFormat(format 1)     FAIL  GetLastError=0 (0x00000000)
+--------------------------------------------------------------
+id Tech 4 logs "PIXELFORMAT 1 selected" then "SetPixelFormat failed",
+so the last line above is the one that matters.
+
+==================== BOX64 ====================
+[[31mBOX32[0m] Warning, long 4294967295 is not a 32bits value
+[[31mBOX32[0m] Warning, ulong 0x1ab802d0ef is not a 32bits value
+WGL pixel-format probe (32-bit)
+--------------------------------------------------------------
+  RegisterClassA               ok    GetLastError=0 (0x00000000)
+  CreateWindowExA              ok    GetLastError=1400 (0x00000578)
+  GetDC                        ok    GetLastError=0 (0x00000000)
+  formats available            320
+    format 1 describes as      flags=0x00008025 cColorBits=32 cDepthBits=24 iPixelType=0
+  ChoosePixelFormat ->         1
+  ChoosePixelFormat            ok    GetLastError=0 (0x00000000)
+  SetPixelFormat(chosen)       ok    GetLastError=0 (0x00000000)
+  wglCreateContext             ok    GetLastError=0 (0x00000000)
+  wglMakeCurrent               ok    GetLastError=0 (0x00000000)
+  GL_VERSION                   4.6.0 NVIDIA 580.173.02
+  GL_RENDERER                  NVIDIA GB10/PCIe
+  SetPixelFormat(format 1)     ok    GetLastError=0 (0x00000000)
+--------------------------------------------------------------
+id Tech 4 logs "PIXELFORMAT 1 selected" then "SetPixelFormat failed",
+so the last line above is the one that matters.
