@@ -55,9 +55,27 @@ game launch, and it localises the fault to `opengl32`/`winex11` vs the thunk lay
 are present in the 64-bit table, and `strtold_l` *is* wrapped — which is why exactly four
 symbols fail.
 
-*Next step:* build box64 from source with the four added, re-run
-`tools/ab-runtime.sh 3970 150`, and confirm the `Symbol ... not found` lines and the AV both
-disappear. Then file it with the reproducer. Affects **any** 32-bit Steam title whose unix-side
+**ATTEMPTED 2026-09-08 — INCONCLUSIVE, and the reason matters.** The patched box64 was built
+(`tools/build-box64-symfix.sh`) and Prey was run against it. The errors and the AV were
+unchanged — but **that run tested nothing**: the game executes inside pressure-vessel, and once
+that container namespace exists every exec goes through `binfmt_misc`, whose interpreter is
+hard-wired to `/usr/local/bin/box64`, the *stock* build. `BOX64_BIN` only affects the first
+process (`reaper`). Recorded here because a run like that looks exactly like a failed fix and
+would be easy to mis-file as a refutation.
+
+Isolating it outside the container fails too: the missing symbols are only fatal under
+`dlopen(RTLD_NOW)`, which is what Wine does and what an ordinary program load does not. Loading
+the container's i386 `libstdc++` directly under either build produces no errors at all.
+
+*Next step, and it needs root:*
+```
+sudo cp /usr/local/bin/box64 /usr/local/bin/box64.stock-backup
+sudo cp ~/dgx-gaming-work/box64-symfix/bin/box64 /usr/local/bin/box64
+tools/ab-runtime.sh 3970 150 && tools/run-report.sh --appid 3970
+# revert: sudo cp /usr/local/bin/box64.stock-backup /usr/local/bin/box64
+```
+PASS = zero `Symbol ... not found` and zero `steamclient_init` AV. FAIL = the chain is wrong and
+the README entry must be corrected in place. Affects **any** 32-bit Steam title whose unix-side
 helper pulls in `libstdc++`, which is a much wider set than id Tech 4.
 
 *Also still worth testing:* the `NO_STEAM_API=1` bypass, as a workaround that needs no Box64

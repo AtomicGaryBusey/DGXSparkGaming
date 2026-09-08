@@ -99,11 +99,26 @@ test_it() {
   # Each wrong version was caught by keeping a known-good control (strtod) in the
   # check. The only honest verdict is the runtime one.
   note "no static check can distinguish box32 from box64 table membership here."
-  note "the ONLY valid test is running the game:"
-  note "  BOX64_BIN=$PREFIX/bin/box64 RUNTIME=box64 tools/game-run.sh 3970"
-  note "  tools/run-report.sh --appid 3970"
-  note "PASS = zero 'Symbol ... not found' and zero 'Access violation in steamclient_init'."
-  note "FAIL = the AV survives; the chain is wrong and README must be corrected in place."
+  echo
+  note "TESTING THIS IS BLOCKED, and the blocker is worth understanding:"
+  note "  The game runs inside pressure-vessel. Once that container namespace"
+  note "  exists, every exec goes through binfmt_misc, whose interpreter is"
+  note "  hard-wired to /usr/local/bin/box64 -- the STOCK build. Passing"
+  note "  BOX64_BIN only affects the first process (reaper); the game itself is"
+  note "  still run by the stock binary. A run done that way tests NOTHING, and"
+  note "  will look exactly like a failed fix."
+  note "  Isolating it outside the container does not work either: the missing"
+  note "  symbols are only fatal under dlopen(RTLD_NOW), which is what Wine does"
+  note "  and what an ordinary program load does not."
+  echo
+  note "The only way to settle it needs root, so it is yours to run:"
+  note "  sudo cp /usr/local/bin/box64 /usr/local/bin/box64.stock-backup"
+  note "  sudo cp $PREFIX/bin/box64 /usr/local/bin/box64"
+  note "  tools/ab-runtime.sh 3970 150 && tools/run-report.sh --appid 3970"
+  note "  # revert:  sudo cp /usr/local/bin/box64.stock-backup /usr/local/bin/box64"
+  note "PASS = zero 'Symbol ... not found' and zero 'steamclient_init' AV."
+  note "FAIL = the AV survives; the chain is wrong and README must be corrected"
+  note "       IN PLACE, not deleted."
 }
 
 [ "${1:-}" = "--test-only" ] && { test_it; exit $?; }

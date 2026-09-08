@@ -2163,6 +2163,14 @@ in one table in Box64 v0.4.4 (`2f130fab1`). It should be filable upstream with t
 above. Any 32-bit Steam title whose unix-side helper pulls in `libstdc++` is affected, which is
 a much larger set than id Tech 4.
 
+**The fix is built but UNVERIFIED.** `tools/build-box64-symfix.sh` adds the four wrappers and
+builds box64 locally, but it cannot be tested without root: the game runs inside
+pressure-vessel, where `binfmt_misc` hard-wires the interpreter to `/usr/local/bin/box64`, so a
+patched build passed via `BOX64_BIN` never actually executes the game. An attempt on 2026-09-08
+showed unchanged errors and would have been easy to mis-read as a refutation — it tested
+nothing. The root-level command that would settle it is in
+[`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md).
+
 **RAGE (9200) is the live test of the scope claim** — 32-bit, `.bind` with EP inside it, but
 *no* legacy-DRM keys and it statically imports `steam_api.dll`. Until it is run, treat
 "EP in `.bind` ⇒ loads `Steam.dll`" as scoped to the 2004-2009 id titles.
