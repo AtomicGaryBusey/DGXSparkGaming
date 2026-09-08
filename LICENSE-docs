@@ -1,0 +1,70 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+SPDX-License-Identifier: CC-BY-4.0
+
+Copyright (c) 2026 Alex Harmon (AtomicGaryBusey)
+
+SCOPE
+
+This license covers the DOCUMENTATION in this repository:
+
+    README.md              the compatibility log itself
+    CLAUDE.md              working notes and conventions
+    docs/                  including docs/DIAGNOSTICS.md
+    notes/
+    tools/README.md
+    tools/isa-probe/README.md
+    and the other Markdown files
+
+The CODE -- everything under `tools/` that is not Markdown, and everything under
+`.claude/hooks/` -- is licensed under the MIT License instead. See LICENSE.
+`tools/patches/` is GPL-3.0; see `tools/patches/README.md`.
+
+YOU ARE FREE TO
+
+  Share  -- copy and redistribute the material in any medium or format
+  Adapt  -- remix, transform, and build upon the material
+
+for any purpose, including commercially, so long as you follow the term below.
+The licensor cannot revoke these freedoms while you comply.
+
+UNDER THE FOLLOWING TERM
+
+  Attribution -- You must give appropriate credit, provide a link to this
+  repository and to the license, and indicate if changes were made. You may do
+  so in any reasonable manner, but not in any way that suggests the licensor
+  endorses you or your use.
+
+  No additional restrictions -- You may not apply legal terms or technological
+  measures that legally restrict others from doing anything the license permits.
+
+A suggested credit line:
+
+    Compatibility data from the DGX Spark Gaming log by AGB (AtomicGaryBusey),
+    https://github.com/AtomicGaryBusey/DGXSparkGaming, CC BY 4.0.
+
+FULL LEGAL TEXT
+
+The complete terms are at
+
+    https://creativecommons.org/licenses/by/4.0/legalcode
+
+and are incorporated here by reference. A plain-language summary is at
+https://creativecommons.org/licenses/by/4.0/ -- that summary is not a substitute
+for the legal text.
+
+NOTES ON SCOPE
+
+Facts are not copyrightable. Nothing here restricts anyone from stating that a
+particular game does or does not run on a particular stack; the license covers
+this specific expression, selection and arrangement of the material.
+
+Quoted log output, error strings and API names reproduced in this repository
+belong to their respective authors and are included as short factual excerpts
+for identification and diagnosis.
+
+WHY CC BY
+
+This log exists because other people published theirs. Attribution-only is the
+lowest barrier that still lets the work be traced back and corrected -- which
+matters, because parts of it have been wrong and were fixed in public.

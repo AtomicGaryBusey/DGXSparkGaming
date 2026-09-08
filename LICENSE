@@ -1,0 +1,46 @@
+MIT License
+
+Copyright (c) 2026 Alex Harmon (AtomicGaryBusey)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+SCOPE
+
+This MIT license covers the CODE in this repository: everything under `tools/`
+(shell scripts, Python, C and assembly sources) and everything under
+`.claude/hooks/`.
+
+The DOCUMENTATION -- `README.md`, `CLAUDE.md`, `docs/`, `notes/`, `tools/README.md`
+and the other Markdown files -- is licensed separately under Creative Commons
+Attribution 4.0 International. See LICENSE-docs.
+
+ONE EXCEPTION, deliberately carved out: `tools/patches/` contains modifications
+to third-party GPL-3.0 source (OptiScaler) and is licensed GPL-3.0, not MIT.
+Nothing in that directory is required by, or linked into, anything else here.
+See `tools/patches/README.md`.
+
+WHY MIT
+
+The probes in `tools/isa-probe/` and `tools/fex-tests/` exist to be handed
+upstream as minimal reproducers for translator bugs. FEX-Emu and Box64 are both
+MIT-licensed, so a maintainer can drop these sources straight into their own test
+suite with no attribution machinery to carry. That mattered more here than the
+patent grant a more elaborate license would add.
