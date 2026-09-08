@@ -16,7 +16,7 @@
     .code32
     .section .bss
     .lcomm  env, 32
-    .lcomm  buf, 48
+    .lcomm  buf, 64
 
     .section .text
     .globl  _start
@@ -46,6 +46,29 @@ _start:
     andl    $7, %eax
     movl    %eax, buf+28
 
+    /* --- SEVEN pushes: Prey's actual state. SDM says TOP=1, R1..R7 valid,
+     *     so the tag word is 0x0003. Added 2026-09-08 because a fix that made
+     *     the THREE-push case correct did not fix Prey, whose dump showed
+     *     TAGS=0xc000 with TOP=0 -- a combination three pushes never produces.
+     *     The probe only covered the path that had already been looked at. */
+    finit
+    fld1
+    fld1
+    fld1
+    fld1
+    fld1
+    fld1
+    fld1
+    fnstenv env
+    movl    $0x37474154, buf+48         /* "TAG7" */
+    movzwl  env+8, %eax
+    movl    %eax, buf+52
+    movl    $0x37504f54, buf+56         /* "TOP7" */
+    movzwl  env+4, %eax
+    shrl    $11, %eax
+    andl    $7, %eax
+    movl    %eax, buf+60
+
     /* --- balanced push/pop: back to empty -------------------------------- */
     finit
     fld1
@@ -61,7 +84,7 @@ _start:
     movl    $4, %eax                    /* write(1, buf, 48) */
     movl    $1, %ebx
     movl    $buf, %ecx
-    movl    $48, %edx
+    movl    $64, %edx
     int     $0x80
     movl    $1, %eax                    /* exit(0) */
     xorl    %ebx, %ebx

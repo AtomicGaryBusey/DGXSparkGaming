@@ -2191,8 +2191,37 @@ SteamStub decryption simply takes longer than that under translation.
 
 #### Box64 bug 2: the FSAVE/FNSTENV tag word is written stack-relative (2026-09-08)
 
-**This is the real id Tech 4 x87 failure, and it is not FEX's.** Found by `tools/isa-probe.sh`,
-then caught in two real games, then fixed and verified by the same probe.
+> ### :warning: CORRECTION (2026-09-08): this bug is real, but it does NOT explain either game
+>
+> The rotation bug below is genuine and the fix is verified — stock Box64 reports `0xffc0` where
+> the SDM requires `0x03ff`, and the patched build reports `0x03ff`. That stands.
+>
+> **What was wrong was claiming it caused the id Tech 4 crashes.** The "exact match" arithmetic
+> computed the tag word for *N* pushes at the `TOP` that *N* pushes implies, matched the observed
+> tag word, and never checked the observed `TOP` — which contradicts it. **Both games report
+> `TOP = 0`**, and at `TOP = 0` the rotation is a no-op:
+>
+> | | TAGS | TOP | after the fix | live registers |
+> |---|---|---|---|---|
+> | Quake 4 | `0xffc0` | **0** | `0xffc0` (unchanged) | 3 |
+> | Prey | `0xc000` | **0** | `0xc000` (unchanged) | 7 |
+>
+> So the corrected tag word is still non-empty and the assertion still fires — which is exactly
+> what happened when Prey was re-run with the fixed binary in place (`md5 89cd9de8…` confirmed on
+> the live process, so the container did *not* bypass the swap).
+>
+> **What this means:** these are **genuine stranded x87 values**, not a mis-rendered field. Three
+> for Quake 4, seven for Prey, with `TOP=0` in both. `tools/probes/x87/leak.c` exercises 16
+> classic translator leak patterns (`FPTAN`, `FSINCOS`, `FPREM`, `FISTP` overflow, 9-push
+> overflow, `FFREE`+`FINCSTP`, …) and **all 16 pass under both runtimes**, so it is not one of
+> those either. The cause is open.
+>
+> A striking numerical coincidence was accepted without checking the one field that would have
+> falsified it. That is the same failure as the `descriptor_buffer` signature and the
+> "3,983 evaluates" counter, and it is why the probe now covers the 7-push case permanently.
+
+**A real Box64 bug, found by `tools/isa-probe.sh` and fixed — but see the correction above for
+what it does and does not explain.**
 
 `src/emu/x87emu_private.h` keeps `emu->fpu_tags` as a shift register indexed by **stack
 position** — push does `fpu_tags <<= 2`, pop does `>>= 2`. That is fine internally.
@@ -2226,10 +2255,9 @@ genuinely empty stack cannot regress. Verified by `tools/isa-probe.sh`: `TAG3` g
 `0xffc0` → `0x03ff` while `TAG0`, `TAGB`, `TOP3` and `CWD0` are unchanged.
 Evidence: [`evidence/2026-09-08-box64-x87-tagword/`](evidence/2026-09-08-box64-x87-tagword/).
 
-**This also retroactively attributes the original Quake 4 crash to Box64** — the one whose
-Proton log was overwritten before its runtime could be read. Its tag word had the right shape,
-but shape is not attribution; Prey's crash, with full provenance and a clean `CTRL=0x037f`,
-is what settled it.
+**Attribution of the original Quake 4 crash remains open.** Its tag word had a shape consistent
+with this bug, but shape is not attribution, and the `TOP=0` reading rules this bug out as the
+cause. That log was overwritten before its runtime could be read, so it stays unattributed.
 
 **Two Box64 bugs from this stack, both filable:** the four missing box32 libc wrappers
 (`steamclient_init`) and this. Neither is FEX's, and FEX gets the tag word right.

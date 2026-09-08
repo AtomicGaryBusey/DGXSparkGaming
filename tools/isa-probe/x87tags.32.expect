@@ -11,3 +11,9 @@ TAGB  0xffff
 # FIP should name the last non-control x87 instruction. Both JITs report 0 here;
 # informational, because almost nothing reads it and no game is known to.
 FIP1  *
+# Seven pushes: TOP=1 with physical R1..R7 in use -> 0x0003.
+# Added after a fix that corrected the 3-push case left Prey still dying with
+# TAGS=0xc000 / TOP=0. If box64 reports TOP=0 here, its top and tag tracking
+# disagree and that is a SEPARATE bug from the write-out order.
+TAG7  0x0003
+TOP7  0x1
