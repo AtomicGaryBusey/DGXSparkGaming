@@ -129,6 +129,12 @@ under both JITs because it clobbered its own jump target.
 
 ## 7. Probe sources
 
+- **`tools/probes/`** — the hand-written probes (x87 tag word and EMMS/MMX, CPUID, the
+  Wine-CRT loader harness, the original Cyberpunk launcher shim). These lived outside version
+  control in `~/dgx-gaming-work/` until 2026-09-07, which caused a later session to
+  **rebuild two of them from scratch** without knowing they existed. See
+  [`probes/README.md`](probes/README.md).
+
 - **`tools/isa-probe/`** — freestanding x86 assembly probes plus `.expect` files quoting the
   Intel SDM. Built with the x86 binutils *inside FEX's RootFS* (the ARM64 host has no x86
   assembler at all — a C version was tried first and silently compiled for aarch64).

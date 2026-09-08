@@ -70,6 +70,11 @@ failure it prevents — because that rationale is the point of this repo. Curren
   **Under FEX the backtraces are unsymbolizable JIT addresses** — the wchan census is the useful part.
 - **`tools/build-dlssnr-addon.sh`** — builds the ReShade NR add-on from source, no sudo. Four
   documented gotchas in its header, each of which cost a build cycle.
+- **`tools/probes/`** — hand-written probes recovered from `~/dgx-gaming-work/` on 2026-09-07:
+  x87 tag word / EMMS / MMX, a real-`cpuid`-instruction probe (which corrected the published
+  Burnout claim and cites upstream FEX PR #5807 on the DE bit), the Wine-CRT loader harness,
+  and the original Cyberpunk launcher shim. **Check here before writing a new probe** — a
+  session rebuilt two of these from scratch because they were not in the repo.
 - **`tools/find-logs.sh <appid>`** — every diagnostic artifact a title can produce, with the
   ones that are ABSENT shown too (no engine log = it never reached its config, a different
   failure from crashing later). The full map, per engine and per layer, is in
