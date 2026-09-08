@@ -1306,26 +1306,16 @@ find $RF/lib/x86_64-linux-gnu $RF/lib/i386-linux-gnu -maxdepth 1 -xtype l   # mu
 
 ## System Info
 
-This testing spans two **GB10 Grace Blackwell** machines. The HP ZGX Nano G1n is a variant of
-the NVIDIA DGX Spark — both are built on the *same* GB10 superchip and ship NVIDIA DGX OS, so
-they are spec-identical at the SoC level (CPU, GPU, memory, AI compute). The differences are in
-storage, networking, display outputs, and chassis. **Every compatibility finding in this
-document transfers between the two**, since the translation stack runs on the identical SoC.
+The DGX Spark is a **fixed hardware platform**: every unit, from every vendor, is the same
+GB10 Grace Blackwell superchip with 128 GB of unified memory at 273 GB/s, running NVIDIA DGX OS.
+Only storage capacity, chassis and branding vary. **So every compatibility finding in this
+document applies to every DGX Spark**, not just to this rig — which is a stronger claim than a
+normal compatibility list can make, and the reason these results are worth publishing.
 
-| Spec | NVIDIA DGX Spark (Founders Edition) | HP ZGX Nano G1n AI Station |
-|------|-------------------------------------|---------------------------|
-| **SoC** | NVIDIA GB10 Grace Blackwell Superchip | NVIDIA GB10 Grace Blackwell Superchip |
-| **CPU** | 20-core Arm: 10× Cortex-X925 + 10× Cortex-A725 (aarch64) | 20-core Arm: 10× Cortex-X925 + 10× Cortex-A725 (aarch64) |
-| **GPU** | NVIDIA GB10 Blackwell — 6,144 CUDA cores, 48 RT cores, Vulkan 1.4 | NVIDIA GB10 Blackwell — 6,144 CUDA cores, 48 RT cores, Vulkan 1.4 |
-| **AI compute** | 1,000 TOPS FP4 (≈1 petaFLOP) | 1,000 TOPS FP4 (≈1 petaFLOP) |
-| **Memory** | 128 GB unified LPDDR5x, 273 GB/s | 128 GB unified LPDDR5x, 273 GB/s |
-| **Storage** | 4 TB NVMe M.2 | **1 TB** NVMe M.2 SSD (this unit; HP also offers 2 TB / 4 TB) |
-| **Wired net** | 10 GbE RJ-45 + ConnectX-7 dual QSFP (200 Gbps) | Realtek RTL8127-CG 10 GbE + ConnectX-7 dual 200GbE QSFP112 |
-| **Wireless** | Wi-Fi 7, Bluetooth 5.3 | Wi-Fi 7 (2×2), Bluetooth 5.4 |
-| **Display / USB-C** | HDMI 2.1 + 4× USB-C (1× 240 W PD, DP alt mode) | HDMI 2.1a (8K@30) + 3× USB-C 3.2 @ 20 Gbps with **DisplayPort 1.4a** alt mode (8K@60) |
-| **OS** | NVIDIA DGX OS (Ubuntu-based) | NVIDIA DGX OS (Ubuntu-based) |
-| **Dimensions** | 150 × 150 × 50.5 mm, 1.2 kg | 150 × 150 × 51 mm |
-| **Peak power** | 240 W (GB10 SoC TDP 140 W) | ~228 W |
+> **Full specifications, the DGX Spark vs HP ZGX Nano G1n comparison matrix, what does and does
+> not carry over to the RTX Spark, and known hardware gotchas live in
+> [`docs/SPARK-PLATFORM.md`](docs/SPARK-PLATFORM.md).** That file is the single source of truth
+> for hardware facts; this section deliberately does not repeat them.
 
 > **Gaming-relevant difference — now tested (2026-09-05):** the ZGX Nano exposes **DisplayPort
 > 1.4a** over USB-C alt mode, whereas the DGX Spark's only video-out used here was HDMI 2.1a. This

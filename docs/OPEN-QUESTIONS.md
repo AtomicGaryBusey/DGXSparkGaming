@@ -307,4 +307,4 @@ for *any* x86 implementation — including Prism, on day one).
 *Cheapest experiment when hardware exists:* run `tools/isa-probe/` under Prism. It needs no game,
 no GPU and no install, and it would immediately say whether Prism shares any of the x87/CPUID
 defects found here. Until then, do not write anything in this repo that implies the translator
-findings apply to RTX Spark. See `docs/PLATFORM-MATRIX.md`.
+findings apply to RTX Spark. See `docs/SPARK-PLATFORM.md`.

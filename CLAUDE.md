@@ -306,7 +306,7 @@ claim than a normal compatibility log can make.** Detect the platform from DMI `
 (it reads `DGX Spark` even on an HP-badged box), never from the vendor string. The **RTX Spark
 is NOT fixed** — varying RAM, possibly binned GB10 parts, Windows, and Microsoft's **Prism**
 emulator instead of FEX/Box64, so the translator findings here are **not** expected to transfer.
-Full taxonomy and what carries over: **`docs/PLATFORM-MATRIX.md`**. **Do not investigate the ZGX's "missing" Mellanox NIC** — the ConnectX-7 IS present, merely inactive and invisible to `lspci`/`/sys/class/infiniband`. README.md's spec matrix has said so since `8d0480c`. Two agents have now burned time rediscovering this because they probed instead of reading the README.
+**All hardware facts — full specs, the two-machine matrix, what carries to RTX Spark, and the gotchas (including the ConnectX-7 that is present but never enumerates) — live in `docs/SPARK-PLATFORM.md`. Read it before asserting or doubting anything about the hardware.**
 
 **Do not propose replicating a result on another Spark.** AGB has several units (this one is an
 HP ZGX Nano G1n, 1 TB; the others are 4 TB DGX Sparks) but the **hardware is identical — only disk
@@ -459,6 +459,7 @@ run the tool, then act.**
 | go looking for a log | **`tools/find-logs.sh <appid>`** | id Tech 4 writes `qconsole.log` beside the `.pk4` files and nobody knew for months; a Proton traceback sat unread in `launch.log` for an hour |
 | finish any test run | **`tools/run-report.sh`** | The failure signatures here are a known finite list; checking them from memory produced a different subset every time |
 | ask "is it FEX or Box64?" | **`tools/ab-runtime.sh <appid>`** | The two JITs give OPPOSITE results on id Tech 4 — Box64 plays Quake 4, FEX cannot create a GL context |
+| state ANY hardware fact, or doubt one | **read `docs/SPARK-PLATFORM.md` first** | On 2026-09-08 an agent ran `lspci`, saw no Mellanox, and wrote up a contradiction of AGB's account — while the ConnectX-7 was listed in the repo's own spec table the whole time. A probe that disagrees with the log is usually an incomplete probe |
 | **cite a log line as a root cause** | **`tools/signature-check.sh '<line>'`** | The single most expensive recurring error here. "descriptor_buffer" survived months because nobody grepped a WORKING game; Cyberpunk and Daikatana both emit it and both run fine |
 | write ANY freestanding probe | **put constants in `.bss`, never `.data`** | A `.data` section triggers an FEX bug that runs the instruction before an `a3` store twice. A fuzzer with `.data` "proved" FEX computes `0x3800 >> 11 = 0` and every finding it produced was that bug |
 | test a CPU-semantics hypothesis | **`tools/isa-probe.sh`** | A 40-line probe answers in seconds what a game install answers in 45 minutes and 36 GB — and its expected value comes from the SDM, not from whichever runtime ran first |
@@ -496,6 +497,7 @@ run the tool, then act.**
 | | |
 |---|---|
 | `README.md` | the compatibility log — results, per title |
+| **`docs/SPARK-PLATFORM.md`** | **the hardware. Single source of truth for specs — CPU/GPU/memory/networking, the DGX Spark vs ZGX matrix, what carries to RTX Spark, and the hardware gotchas. Never restate a hardware fact elsewhere; link here.** |
 | **`docs/OPEN-QUESTIONS.md`** | **what is settled / open / ruled out, each with its next step. Read FIRST when resuming work.** |
 | `docs/DIAGNOSTICS.md` | where every log and dump lives, per engine and per layer |
 | `tools/` | 29 scripts; `tools/README.md` indexes them by what you are trying to do |
