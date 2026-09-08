@@ -306,7 +306,7 @@ claim than a normal compatibility log can make.** Detect the platform from DMI `
 (it reads `DGX Spark` even on an HP-badged box), never from the vendor string. The **RTX Spark
 is NOT fixed** — varying RAM, possibly binned GB10 parts, Windows, and Microsoft's **Prism**
 emulator instead of FEX/Box64, so the translator findings here are **not** expected to transfer.
-Full taxonomy and what carries over: **`docs/PLATFORM-MATRIX.md`**. **Do not investigate the ZGX's missing Mellanox NIC** — it is present but inactive and invisible to `lspci`/`/sys/class/infiniband`; two agents have now burned time rediscovering that.
+Full taxonomy and what carries over: **`docs/PLATFORM-MATRIX.md`**. **Do not investigate the ZGX's "missing" Mellanox NIC** — the ConnectX-7 IS present, merely inactive and invisible to `lspci`/`/sys/class/infiniband`. README.md's spec matrix has said so since `8d0480c`. Two agents have now burned time rediscovering this because they probed instead of reading the README.
 
 **Do not propose replicating a result on another Spark.** AGB has several units (this one is an
 HP ZGX Nano G1n, 1 TB; the others are 4 TB DGX Sparks) but the **hardware is identical — only disk
