@@ -256,6 +256,63 @@ been demonstrated. The contract must ship before the benchmarking UI, not after.
 
 ## 4. Game profile data model
 
+### 4.0a SCALE — the library is ~5,000 titles, and that changes what the product is
+
+**AGB, 2026-09-08:** Steam **2,999 games + 1,980 DLC**, GOG **2,039 games**, itch.io **hundreds
+(no count available)**. Call it **~5,000 games and ~7,000 entities**.
+
+Two hard limits follow, and they are arithmetic rather than opinion:
+
+- **Time.** At 30 minutes a title, 5,000 titles is **2,500 hours**. At 10 minutes it is 833. A
+  per-title testing programme does not terminate.
+- **Disk.** 52 installed titles occupy **303 GB** — a 5.8 GB mean — so ~5,000 titles is on the
+  order of **29 TB** against a **931 GB** disk. **At most 1–3% of the library can be installed at
+  any moment, permanently.** Install churn is the dominant cost of every test, not the test.
+
+**Therefore the launcher is not a ledger of tested games.** A ledger over a library this size is
+mostly empty forever, and its emptiness is not informative. The product is **coverage of
+equivalence classes**, and it rests on something this project already discovered by accident:
+
+> **The valuable findings here are already cluster-level, not title-level.** "id Tech 4 fails x87
+> stack validation" covers DOOM 3, DOOM 3 BFG, Quake 4 and Prey from two tested titles. "FEX sets
+> 0/320 pixel formats for 32-bit Wine programs" covers *every* 32-bit OpenGL title at once — that
+> is thousands of GOG and itch.io games from one 200-line probe. The engine/API matrix in
+> `CLAUDE.md` is a cluster table wearing prose.
+
+A measured demonstration on the installed library: bucketing the 52 installed titles by
+(engine × render API × word size) yields **13 rough clusters**. *Honest caveat:* that pass detected
+render API from top-level DLL names only and returned `unknown` for most titles, so 13 is a crude
+lower bound on cluster **quality**, not a measurement. With proper detection (import tables plus
+strings, as `tools/pick-runtime.py` does) the classes get sharper — but the ratio is the point:
+**52 titles → ~13 classes.** Extrapolating a compression ratio from 52 titles to 5,000 would be
+exactly the kind of unfounded claim this project retracts, so it is not extrapolated here. What is
+claimed is only this: the number of distinct classes grows far more slowly than the number of
+titles, and the existing findings already behave that way.
+
+**Consequences for the data model — these are not optional.**
+
+1. **`cluster` is a first-class, derived entity.** Never hand-typed. Recomputed from binary facts,
+   so a better extractor re-clusters the library without anyone editing rows.
+2. **`claim.scope` is `title` | `cluster`.** A cluster claim cites the runs that established it and
+   the titles it is asserted over. This is how one probe legitimately covers thousands of games —
+   and how it stays falsifiable, because a single contradicting title invalidates the scope rather
+   than being quietly filed as an exception.
+3. **Prediction is a first-class output, and it is not a claim.** For an *uninstalled* title the
+   launcher states the expected outcome from binary facts plus the cluster's evidence — clearly
+   labelled `predicted`, never `verified`, and never counted as coverage. `pick-runtime.py` is
+   already this, for one dimension.
+4. **Triage is the headline screen, not the library list.** "You own 5,038 titles in ~N classes;
+   you have evidence for M; here are the highest-value untested classes, and the **smallest owned
+   title** in each." `tools/pick-test-game.sh` — which picks the smallest owned game matching a
+   render API — was written for exactly this and prefigured the whole design.
+5. **Install state is tracked independently of test state.** `tested then uninstalled` is the
+   normal, permanent condition of ~98% of the library, not an edge case.
+6. **DLC (1,980) attaches to a source, not to a title, and is excluded from cluster maths** — with
+   one exception worth a flag: DLC that changes the executable or adds a launcher.
+7. **itch.io is the cheapest coverage in the library**, and its lack of an API count is fine
+   because nothing here needs a total. Small Godot / GameMaker / love2d builds buy whole classes
+   for a few hundred MB, where a AAA title costs 100 GB for one.
+
 ### 4.0 DECIDED — the split is by kind of content, not by authorship
 
 **AGB, 2026-09-08, resolving the plan's largest open question:**
