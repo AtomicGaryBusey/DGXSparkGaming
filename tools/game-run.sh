@@ -100,11 +100,21 @@ awk -v l="$LOAD" 'BEGIN{exit !(l>2.0)}' && warn "load average $LOAD — results 
 # instrumentation
 ENVS=()
 [ "${NO_HUD:-0}" = 1 ] || ENVS+=("DXVK_HUD=fps,frametimes,gpuload,version" "VKD3D_DEBUG=none")
-if command -v mangohud >/dev/null 2>&1; then
-  ENVS+=("MANGOHUD=1" "MANGOHUD_CONFIG=fps,frametime,gpu_stats,cpu_stats,output_folder=$RUNDIR,autostart_log=1,log_interval=100")
-  note "mangohud: on (CSV -> $RUNDIR)"
+# MangoHud must be the X86-64 build. The distro package here is mangohud:arm64,
+# which ships only an aarch64 layer and CANNOT be loaded into a translated x86
+# game -- so this script advertised "mangohud: on" and produced zero CSVs for its
+# entire life, while telling the reader to `apt install mangohud`, a package that
+# was already installed and could never have helped.
+MHLAYER="$HOME/dgx-gaming-work/mangohud-x86/root/usr/share/vulkan/implicit_layer.d"
+if [ -d "$MHLAYER" ]; then
+  ENVS+=("VK_ADD_LAYER_PATH=$MHLAYER" "MANGOHUD=1"
+         "MANGOHUD_CONFIG=fps,frametime,gpu_stats,cpu_stats,output_folder=$RUNDIR,autostart_log=1,log_interval=100")
+  note "mangohud: x86-64 layer (CSV -> $RUNDIR)"
+  note "  note: Vulkan layer only — 64-bit DXVK/VKD3D titles. 32-bit or OpenGL"
+  note "  titles (Quake 4, DOOM 3, Prey) get no CSV; use com_showFPS + watch-run.sh"
 else
-  warn "mangohud not installed — no CSV frametimes. sudo apt install mangohud"
+  warn "no x86-64 mangohud — no CSV frametimes. Run: tools/setup-mangohud-x86.sh"
+  warn "  (the distro mangohud:arm64 package cannot instrument an x86 game)"
 fi
 note "logs: $RUNDIR"
 
