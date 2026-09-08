@@ -42,6 +42,8 @@
 # Usage:
 #   tools/game-run.sh <appid> [-- extra game args]
 #     PROTON=proton_11        compat tool to expect (warn if different)
+#     RUNTIME=auto|fex|box64  which JIT to run under. ALWAYS recorded in run.json;
+#                             `auto` is Box64 here, because binfmt says so.
 #     LAUNCH_OPTION=          pick a non-default launch entry (e.g. option1), or
 #                             `dialog` to get Steam's chooser. See tools/appinfo.py.
 #     SECONDS_MAX=0           auto-stop after N seconds (0 = run until you quit)
@@ -190,6 +192,36 @@ else
          "$CT/proton" waitforexitandrun "$GAMEDIR/$EXE" "$@"
 fi
 
+# RUNTIME picks the JIT ON PURPOSE. Leaving it to chance is how, on 2026-09-07,
+# a Quake 4 session was written up as FEX when binfmt_misc had quietly handed the
+# whole chain to Box64 -- and the two do NOT agree: with everything else held
+# constant, Box64 played the game and FEX failed at SetPixelFormat before it
+# could create a GL context. The JIT is the single biggest variable on this rig
+# and it was the one thing no run recorded.
+#   auto  (default) whatever binfmt does -- which is Box64 here. Recorded, not assumed.
+#   fex             wrap the chain in FEXBash so every child stays inside FEX
+#   box64           same as auto, stated explicitly
+RUNTIME="${RUNTIME:-auto}"
+case "$RUNTIME" in
+  fex)
+    command -v FEXBash >/dev/null 2>&1 || die "RUNTIME=fex but FEXBash is not installed"
+    QUOTED=""; for a in "$@"; do QUOTED="$QUOTED $(printf '%q' "$a")"; done
+    set -- FEXBash -c "cd $(printf '%q' "$GAMEDIR") &&$QUOTED"
+    note "runtime: FEX (forced via FEXBash)" ;;
+  auto|box64)
+    # box32 and box64 are two binfmt entries pointing at the same interpreter;
+    # report the distinct set, not one line per registration.
+    _bf=$(for f in /proc/sys/fs/binfmt_misc/*; do
+            [ -f "$f" ] || continue
+            grep -q '^enabled' "$f" 2>/dev/null || continue
+            case "$(awk '/^interpreter/{print $2}' "$f")" in
+              *box64*|*box86*) echo Box64 ;; *FEX*) echo FEX ;;
+            esac
+          done | sort -u | tr '\n' ' ')
+    note "runtime: $RUNTIME — binfmt hands x86 ELF to ${_bf:-nothing}" ;;
+  *) die "RUNTIME must be auto, fex or box64" ;;
+esac
+
 if [ "${DRY_RUN:-0}" = 1 ]; then
   echo "== dry run: pre-flight only, nothing launched =="
   note "cwd:  $GAMEDIR"
@@ -197,6 +229,14 @@ if [ "${DRY_RUN:-0}" = 1 ]; then
   note "argv: $*"
   rmdir "$RUNDIR" 2>/dev/null
   exit 0
+fi
+
+# A scope left in `failed` state (killed run, crashed game) makes systemd-run
+# refuse the same --unit name, and the launch then silently does nothing: 0-byte
+# launch.log, no game, no error. Clear it first. Observed 2026-09-07 after an
+# interrupted run left game-2210.scope failed.
+if ! systemctl --user is-active "$SCOPE.scope" >/dev/null 2>&1; then
+  systemctl --user reset-failed "$SCOPE.scope" >/dev/null 2>&1 || true
 fi
 
 echo "== launching in cgroup scope '$SCOPE' =="
@@ -214,6 +254,33 @@ LAUNCH=$!
 # for 1h46m at 501% CPU and had to be killed by hand.
 game_pids() {
   local instdir pids=""
+  # PRIMARY SOURCE: the cgroup scope. This became reliable only when the launch
+  # moved off `steam -applaunch` -- that forwarded to the Steam daemon, which
+  # started the game in ITS cgroup, so our scope held nothing but the forwarder.
+  # With the direct Proton chain the game really is our descendant, so cgroup
+  # membership answers "is this ours?" exactly, with no pattern matching at all.
+  # Matching cmdlines was guesswork and got it wrong twice: it missed the game
+  # because the cmdline names the WINE path, not the install dir, which left
+  # run.json recording runtime_actual=unknown for runs that plainly worked.
+  local cg cgfile
+  cg=$(systemctl --user show -p ControlGroup --value "$SCOPE.scope" 2>/dev/null)
+  cgfile="/sys/fs/cgroup${cg}/cgroup.procs"
+  if [ -n "$cg" ] && [ -r "$cgfile" ]; then
+    while read -r pid; do
+      [ -n "$pid" ] || continue
+      [ "$pid" = "$$" ] && continue
+      pids="$pids $pid"
+    done < "$cgfile"
+  fi
+  if [ -n "$pids" ]; then
+    local out="" t
+    for pid in $pids; do
+      t=$(awk '/^Threads:/{print $2}' "/proc/$pid/status" 2>/dev/null)
+      [ "${t:-0}" -ge "${MIN_GAME_THREADS:-4}" ] && out="$out $pid"
+    done
+    [ -n "$out" ] && { echo $out; return; }
+  fi
+  # FALLBACK: pattern match, for a game that escaped the scope somehow.
   instdir=$(sed -n 's/.*"installdir"[[:space:]]*"\([^"]*\)".*/\1/p' "$M" | head -1)
   for d in /proc/[0-9]*; do
     local pid=${d#/proc/} cl
@@ -222,7 +289,17 @@ game_pids() {
     cl=$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null) || continue
     case "$cl" in
       *"compatdata/$APPID"*|*"AppId=$APPID"*) pids="$pids $pid";;
-      *) [ -n "$instdir" ] && case "$cl" in *"common/$instdir/"*) pids="$pids $pid";; esac;;
+      *)
+        # The game's own cmdline is `.../Proton - Experimental/.../wine Z:\...\Quake4.exe`
+        # -- it names the WINE path, not the install dir, so matching only
+        # common/<installdir>/ missed it entirely and runtime detection never
+        # ran (2026-09-07: run.json recorded runtime_actual=unknown for a run
+        # that plainly worked). Match the executable's basename too.
+        _hit=""
+        [ -n "$instdir" ] && case "$cl" in *"common/$instdir/"*) _hit=1;; esac
+        [ -z "$_hit" ] && [ -n "${EXE:-}" ] && case "$cl" in *"$(basename "${EXE//\\//}")"*) _hit=1;; esac
+        [ -n "$_hit" ] && pids="$pids $pid"
+      ;;
     esac
   done
   # Thread-count gate, the same trick watch-run.sh uses: a real game has many
@@ -237,7 +314,39 @@ game_pids() {
   echo $pids
 }
 
+# Read the JIT off a live process. Deliberately callable from ANY path: the
+# first version lived only in the "game is up" branch, so a SECONDS_MAX run --
+# which takes a different wait path -- recorded runtime_actual=unknown for a run
+# that plainly worked. The field that exists to prevent misattribution must not
+# depend on which branch the run happened to take.
+ACTUAL_JIT="${ACTUAL_JIT:-unknown}"
+detect_jit() {
+  [ "$ACTUAL_JIT" != "unknown" ] && return 0
+  local cg cgfile pid e
+  cg=$(systemctl --user show -p ControlGroup --value "$SCOPE.scope" 2>/dev/null)
+  cgfile="/sys/fs/cgroup${cg}/cgroup.procs"
+  if [ -n "$cg" ] && [ -r "$cgfile" ]; then
+    while read -r pid; do
+      [ -n "$pid" ] || continue
+      e=$(readlink "/proc/$pid/exe" 2>/dev/null) || continue
+      case "$e" in
+        *box64*|*box86*) ACTUAL_JIT="Box64"; return 0 ;;
+        */FEX*)          ACTUAL_JIT="FEX";   return 0 ;;
+      esac
+    done < "$cgfile"
+  fi
+  for pid in $(game_pids); do
+    e=$(readlink "/proc/$pid/exe" 2>/dev/null) || continue
+    case "$e" in
+      *box64*|*box86*) ACTUAL_JIT="Box64"; return 0 ;;
+      */FEX*)          ACTUAL_JIT="FEX";   return 0 ;;
+    esac
+  done
+  return 1
+}
+
 cleanup() {
+  detect_jit || true
   echo
   echo "== teardown =="
   systemctl --user stop "$SCOPE.scope" >/dev/null 2>&1 && note "scope stopped"
@@ -275,6 +384,38 @@ cleanup() {
     warn "  -applaunch handoff). Fall back to DXVK_HUD on-screen numbers if it persists."
   fi
   [ -s "$RUNDIR/gpu.csv" ] && note "gpu telemetry: $(wc -l < "$RUNDIR/gpu.csv") samples"
+  # PROTON_LOG writes to ~/steam-<appid>.log and the NEXT run overwrites it. On
+  # 2026-09-07 that destroyed the only record able to say which JIT produced the
+  # id Tech 4 x87 crash, so the question is now permanently unanswerable. Archive
+  # it into the run directory, where it belongs to this run alone.
+  if [ -f "$HOME/steam-$APPID.log" ]; then
+    cp -f "$HOME/steam-$APPID.log" "$RUNDIR/proton.log" 2>/dev/null \
+      && note "archived proton log ($(wc -l < "$RUNDIR/proton.log") lines)"
+  fi
+  # Game-side logs worth keeping with the run rather than left to be overwritten.
+  for _g in "$GAMEDIR"/*/qconsole.log; do
+    [ -f "$_g" ] && cp -f "$_g" "$RUNDIR/$(basename "$(dirname "$_g")")-qconsole.log" 2>/dev/null
+  done
+  # A machine-readable record of the conditions, so a claim can be traced to them
+  # instead of re-derived months later from memory.
+  cat > "$RUNDIR/run.json" <<JSONEOF
+{
+  "appid": "$APPID",
+  "name": "$NAME",
+  "runtime_requested": "${RUNTIME:-auto}",
+  "runtime_actual": "${ACTUAL_JIT:-unknown}",
+  "proton": "${USED:-${COMPAT:-unknown}}",
+  "runtime_container": "${RT_DIR:-none}",
+  "exe": "${EXE:-unknown}",
+  "launch_option": "${LAUNCH_OPTION:-default}",
+  "launch_via": "${LAUNCH_VIA:-proton}",
+  "date": "$(date -Iseconds)",
+  "load_at_start": "$(cut -d' ' -f1 /proc/loadavg)",
+  "kernel": "$(uname -r)",
+  "note": "runtime_actual is read from /proc/<pid>/exe. If it is unknown, this run cannot be attributed to a JIT."
+}
+JSONEOF
+  note "manifest: $RUNDIR/run.json  (runtime_actual=${ACTUAL_JIT:-unknown})"
   note "run dir: $RUNDIR"
 }
 trap cleanup EXIT INT TERM
@@ -304,6 +445,9 @@ else
     note "  (Steam may still be starting it; check 'logs/console-linux.txt' for the appid)"
   else
     note "game is up (pids:$(game_pids) ) — waiting for it to exit"
+  detect_jit || true
+  note "runtime ACTUALLY executing the game: $ACTUAL_JIT"
+  [ "$ACTUAL_JIT" = "unknown" ] && warn "could not determine the JIT — do NOT attribute this run to one"
     while [ -n "$(game_pids)" ]; do sleep 5; done
     note "game exited on its own"
   fi
