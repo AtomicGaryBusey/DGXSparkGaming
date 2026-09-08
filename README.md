@@ -2085,7 +2085,7 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 | **DOOM 3** | 32-bit x86 OpenGL (id Tech 4). Launches, initializes OpenGL (ARB2 renderer), loads to menu, crashes on map load. x87 FPU stack corruption — NaN/INF values, engine's FPU state check fails: `the FPU stack is not empty at the end of the frame`. 32-bit binary goes through BOX32 mode. |
 | **DOOM 3 BFG Edition** | **Corrected 2026-09-07: this build is `PE32 executable ... Intel 80386` — 32-BIT, not 64-bit as previously recorded here** (`file Doom3BFG.exe`). That matters: it was the title relied on to test whether the id Tech 4 failure is 32-bit-specific, and it cannot, because every id Tech 4 title installed here is 32-bit. The only 64-bit member of the extended family is **Skin Deep** (`PE32+ x86-64`, a dhewm3 fork), which inherits that role. OpenGL (id Tech 4 remaster). Same FPU stack check crash as DOOM 3 — engine validates x87 state every frame. FPU values are clean (all zeros) but engine still bails. GLSL `gl_FragColor` deprecation warnings are cosmetic, not the cause. id Tech 4's aggressive FPU validation is incompatible with FEX's x87 translation. id Tech 6+ (DOOM 2016, Eternal, Q2 RTX) all work fine — newer engines dropped x87 checks. |
 | **Prey (2006)** | OpenGL (id Tech 4 variant, Human Head). Same x87 FPU stack crash as DOOM 3 and BFG Edition. All id Tech 4 games are broken on the Spark due to FPU state validation. **Bounded 2026-09-07:** Daikatana (**id Tech 2**, 32-bit x86, OpenGL) runs excellently, so this is id Tech 4's own per-frame FPU assertion, **not** a general x87-under-FEX problem. Engine matrix: id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅. |
-| **Quake 4** | OpenGL ARB2 (id Tech 4). Tested 2026-09-07, Proton Experimental, appid **2210**. Dies on the **first frame** — before the main menu, not at map load — with `idCommon::Frame: the FPU stack is not empty at the end of the frame`. Unlike DOOM 3 it prints its state first: `CTRL=0000013f STAT=00000100 TAGS=0000ffc0`, all four IP/DP fields zero, `num values on stack = 0`, `Top of stack pointer = 0`. `Sys_FPU_StackIsEmpty()` reads **only** the tag word (`fnstenv; mov eax,[eax+8]; xor eax,-1; and eax,0xFFFF; jz empty`), and `0xffc0 ^ 0xffff = 0x3f`, so it fatals. The image is self-inconsistent: `0xffc0` marks R0/R1/R2 in use, but three pushes onto an empty stack give TOP=5 / `0x03ff`. `CTRL=0x013f` is also impossible — its precision-control field is the **reserved** encoding `01`; `finit` gives `0x037f`. See the measurement section below: FEX is NOT fabricating the tag word, and the root cause is **not yet identified**. |
+| **Quake 4** | OpenGL ARB2 (id Tech 4), 32-bit. **PARTIALLY RESOLVED 2026-09-07 — see the correction above; this row is kept because the diagnosis it records is still the useful part.** Under **Box64** the game PLAYS: main menu, `game/airdefense1` loads, movement and weapons confirmed by a human (`evidence/runs/2210-20260907-223229/`). Under **FEX** it dies at `SetPixelFormat failed` x2 -> `Unable to initialize OpenGL`, never creating a GL context, and the x87 assertion never fires at all (`evidence/runs/2210-20260907-225230/`). The original frame-1 crash printed `CTRL=0000013f STAT=00000100 TAGS=0000ffc0` with all four IP/DP fields zero — but that run's log was overwritten before its runtime could be read, and `0xffc0` is **Box64's** signature tag-word bug, not FEX's. **TODO:** 104 recurring access violations at `ntdll.so + 0x71f0` (faulting address `0x7c`) begin at input init and run the whole session; the user reported mouse movement confined to a narrow region. |
 | **Dark Souls: Prepare to Die Edition** | DX9 via DXVK. Crashes at launch — GStreamer deadlock in Wine's media pipeline during intro video playback. Log shows `Trying to join task from its thread would deadlock`. The infamously bad PC port uses Windows Media Foundation for videos, which Wine handles via GStreamer — the threading model breaks under FEX translation. |
 | **Dark Souls III** | DX11 via DXVK. Launches and renders the intro cutscene, but crashes to desktop at the cutscene-to-gameplay transition every time. Crash occurs whether skipping or watching the cutscene, and with movie files removed entirely. No crash dump or Vulkan extension error — silent exit. Surprising given Sekiro (same studio, same API) works flawlessly. |
 | **Red Dead Redemption 2** | Requires Proton Experimental (Proton 10.0 can't launch Rockstar Launcher). Gets to main menu on Vulkan renderer, but crashes with `EXCEPTION_FLT_INVALID_OPERATION` (0xc0000090) during world load — FPU translation issue under FEX. DX12 mode fails to get past the launcher. Freezes when changing graphics settings. Neither renderer is viable. |
@@ -2121,6 +2121,49 @@ Console emulation also reported working: Skate 3 (PS3 via RPCS3) at 60 FPS, Forz
 >
 > **The engine matrix (2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅) is therefore not safe to state as a fact about
 > the family.** It was measured without knowing the runtime, and at least one member plays.
+
+#### `steamclient_init` access violation — root-caused to Box64 (2026-09-08)
+
+DOOM 3, Prey (2006) and Resurrection of Evil die under **Box64** with
+`err:steamclient:steamclient_call Access violation in steamclient_init`, before the engine
+reaches its own config parser. Under **FEX** the same titles get past it entirely. Every step
+below was re-verified locally.
+
+**The chain, end to end:**
+
+1. **The executables are SteamStub-wrapped; Quake 4's is not.** `prey.exe`, `Doom3.exe` and
+   `Rage.exe` each carry a `.bind` section with the entry point *inside it*
+   (`EP=0x029923db` in `.bind` for Prey). `Quake4.exe` has no `.bind` and enters at `.text`.
+   That stub loads `steamapps/common/Steam.dll` at runtime — it is not a static import.
+   **This, not the appinfo DRM key, is the discriminator:** Prey and Quake 4 are *both*
+   `legacykeyregistrationmethod=disk` and behave oppositely.
+2. Proton's Wine hooks any `LoadLibrary` of `steamclient`/`steamclient64` and redirects it to
+   builtin `lsteamclient.dll` (ValveSoftware/wine `53ba023e`).
+3. For a **32-bit** process, `lsteamclient`'s unix half is a 32-bit ELF that is the only one in
+   `i386-unix/` (with `vrclient.so`) needing **`libstdc++.so.6`**.
+4. Box64's box32 32-bit libc wrapper table is **missing four symbols that i386 `libstdc++`
+   imports**: `arc4random`, `strfromf128`, `strtof128` are absent from `src/wrapped32/`
+   entirely, and `strtold` is commented out at `wrappedlibc_private.h:1754` (`//GO(strtold, DEpp)`).
+   All four are present and active in the 64-bit table. `strtold_l` *is* wrapped, which is why
+   exactly four symbols fail and not five.
+5. Wine `dlopen`s unix halves `RTLD_NOW`; a missing non-weak `R_386_JMP_SLOT` under bind-now is
+   fatal, so `dlopen` returns NULL and `__wine_unixlib_handle` stays 0.
+6. At `ntdll.so + 0x465d6` the dispatcher executes `call dword ptr [eax+edx*4]` with
+   **`eax=00000000`, `edx=00000000`** — exactly what the fault dump shows.
+
+**Observed in `evidence/runs/3970-20260907-231525/proton.log`:** 2× each of
+`Symbol {arc4random,strfromf128,strtof128,strtold} not found, cannot apply R_386_JMP_SLOT`
+→ `Error: relocating Plt symbols in elf libstdc++.so.6` → one `steamclient_init` AV.
+The FEX run of the same title: **zero of each**.
+
+**This is an ARM64 translation bug, not a Proton or Wine bug**, and it is narrow: four entries
+in one table in Box64 v0.4.4 (`2f130fab1`). It should be filable upstream with the reproducer
+above. Any 32-bit Steam title whose unix-side helper pulls in `libstdc++` is affected, which is
+a much larger set than id Tech 4.
+
+**RAGE (9200) is the live test of the scope claim** — 32-bit, `.bind` with EP inside it, but
+*no* legacy-DRM keys and it statically imports `steam_api.dll`. Until it is run, treat
+"EP in `.bind` ⇒ loads `Steam.dll`" as scoped to the 2004-2009 id titles.
 
 #### The id Tech 4 x87 failure, measured (2026-09-07)
 
@@ -2222,6 +2265,29 @@ These games are selected to validate the hypothesis that DX11 games (via DXVK) w
 | 6 | **Lord of the Rings Online** | DX9/DX11 | Oldest engine in the set (2007 MMO). Floor test for the DXVK path. | Works | **Confirmed.** Maxed out, no issues. |
 
 ### Installed — Not Yet Tested
+
+#### id Tech 4 family — installed and armed 2026-09-07, awaiting a per-JIT run
+
+All armed with `tools/idtech4-prep.sh` (flushed logging, console, real resolution). Test each with
+`tools/ab-runtime.sh <appid> 150`, which runs both translators and records `runtime_actual`.
+**The runtime matters more than the title here:** Quake 4 plays under Box64 and fails under FEX.
+
+| Game | AppID | Bits | What it probes that nothing else does |
+|---|---|---|---|
+| **Skin Deep** | 301280 | **64-bit** | **The only 64-bit member of the family.** Every other id Tech 4 title installed here is 32-bit, so this is the sole test of whether the failures are 32-bit-specific. A dhewm3 fork (2025). |
+| Quadrilateral Cowboy | 240440 | 32-bit | dhewm3 fork, **native Linux ELF** — no Wine in the path at all, straight to Box64. A completely different stack for the same engine lineage. |
+| DOOM 3: BFG Edition | 208200 | 32-bit | The 2012 remaster. Previously recorded here as 64-bit; it is **not** (`file` says `PE32/Intel 80386`). Uses `.resources` rather than `.pk4`. |
+| DOOM 3: Phobos | 3978420 | 32-bit | Standalone mod on id's engine. Check which engine binary it ships before drawing conclusions. |
+| The Chronicles of Riddick: AoDA | 9860 | — | Starbreeze's heavily modified id Tech 4 — separates "id's shared engine code" from "id's build". |
+| Wolfenstein (2009) | 10170 | 32-bit | Raven's id Tech 4 variant. Ships `SP/base` and `MP/base`; arm the SP tree. |
+| BRINK | 22350 | — | Splash Damage's id Tech 4 derivative. |
+| RAGE | 9200 | — | id Tech **5** — the missing rung between broken 4 and working 6+. When did id drop the per-frame FPU assertion? |
+| DOOM 3 / RoE | 9050 / 9070 | 32-bit | Both currently blocked earlier than the engine: `Access violation in steamclient_init` via the legacy Steam DRM path. |
+| Prey (2006) | 3970 | 32-bit | Same `steamclient_init` block under Box64; reaches its config under FEX and dies at `SetPixelFormat`. |
+
+**Trap:** Steam lists two games called *Prey*. **3970** is the 2006 Human Head id Tech 4 title.
+**480490** is Prey 2017 (Arkane, CryEngine) and is unrelated.
+
 
 > **Which machine:** this is the **DGX Spark (4 TB)** library. The ZGX Nano test rig has a 1 TB disk
 > and as of 2026-09-06 holds Half-Life 2 (+ Lost Coast, Episode One, Episode Two), Esoteric Ebb,

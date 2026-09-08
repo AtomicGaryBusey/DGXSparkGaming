@@ -18,7 +18,8 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 | **Box64 writes the FSAVE tag word stack-relative, not physical** (`0xffc0` vs `0x03ff`); FEX is correct | `tools/isa-probe.sh`, reproducible in a bare 32-bit ELF | high |
 | **FEX 2607/2608 does not advertise CPUID leaf-1 DE/PSE**; fixed at fexsrc HEAD | `tools/isa-probe.sh` before/after a source build | high |
 | **`vkGetPhysicalDeviceDescriptorSizeEXT` is not a failure signature** — emitted by working games | `tools/signature-check.sh 'DescriptorSizeEXT'` | high |
-| **DOOM 3 and Prey die in `steamclient_init`** under Box64 via the legacy Steam DRM path | `evidence/runs/3970-20260907-231525/` | high |
+| **DOOM 3 / Prey `steamclient_init` AV is a Box64 bug** — four symbols missing from its box32 libc wrapper table (`arc4random`, `strfromf128`, `strtof128`, `strtold`) break `dlopen` of 32-bit `lsteamclient.so`, leaving `__wine_unixlib_handle=0` | `evidence/runs/3970-20260907-231525/`, box64 `2f130fab1` source, `notes/2026-09-08-ultracode-steamclient-init-dive.md` | high — every step re-verified locally |
+| **SteamStub (`.bind` section with the EP inside it) is the discriminator, not the appinfo DRM key** — Prey/DOOM 3/RAGE have it, Quake 4 does not | PE headers, checked directly | high |
 | **`game-run.sh` produced no telemetry for its entire life** — env never reached the game, and the distro MangoHud is arm64 | five runs, zero CSVs | high |
 
 ---
@@ -34,7 +35,22 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 reporting `GetLastError`, run under both JITs via `tools/run-both.sh --wine`. Cheaper than any
 game launch, and it localises the fault to `opengl32`/`winex11` vs the thunk layer.
 
-### 2. Can the legacy Steam DRM path be bypassed?
+### 2. File the Box64 wrapper-table bug upstream, and test the fix
+**Root-caused 2026-09-08 and narrow enough to fix:** four entries missing from
+`src/wrapped32/wrappedlibc_private.h` in box64 v0.4.4. `strtold` is commented out at line 1754;
+`arc4random`, `strfromf128` and `strtof128` are absent from `src/wrapped32/` entirely. All four
+are present in the 64-bit table, and `strtold_l` *is* wrapped — which is why exactly four
+symbols fail.
+
+*Next step:* build box64 from source with the four added, re-run
+`tools/ab-runtime.sh 3970 150`, and confirm the `Symbol ... not found` lines and the AV both
+disappear. Then file it with the reproducer. Affects **any** 32-bit Steam title whose unix-side
+helper pulls in `libstdc++`, which is a much wider set than id Tech 4.
+
+*Also still worth testing:* the `NO_STEAM_API=1` bypass, as a workaround that needs no Box64
+rebuild. Costs: no overlay, achievements, cloud saves or playtime.
+
+### 2b. Does the `.bind` rule generalise past the 2004-2009 id titles?
 DOOM 3 and Prey load Valve's `legacycompat/Steam.dll`, which pulls in the *native*
 `steamclient.dll` instead of Proton's `lsteamclient` shim, and that access-violates inside Wine's
 32-bit unix-call dispatcher.
@@ -43,8 +59,10 @@ DOOM 3 and Prey load Valve's `legacycompat/Steam.dll`, which pulls in the *nativ
 init — far past the fault. *Next step:* `NO_STEAM_API=1` in `game-run.sh`, then A/B it. Costs to
 document: no overlay, achievements, cloud saves or playtime.
 
-*Unexplained:* Prey and Quake 4 both use `legacykeyregistrationmethod=disk`, yet only Prey loads
-the shim. That discriminator is unknown.
+**RAGE (9200) is the live test.** It is 32-bit with a `.bind` section and its EP inside it, but
+has *no* `legacykey*` keys and statically imports `steam_api.dll`. Until it is run, scope
+"EP in `.bind` ⇒ loads `Steam.dll`" to the legacy id titles. Still unknown: which instruction in
+`.bind` calls `LoadLibrary`, and with what path string.
 
 ### 3. Which id Tech 4 titles work under Box64?
 Quake 4 does. DOOM 3, RoE, Prey, BFG, Phobos, Wolfenstein 2009, Riddick, Brink and the two

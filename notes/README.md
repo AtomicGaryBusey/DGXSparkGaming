@@ -17,6 +17,11 @@ main README wins: it incorporates corrections these files do not.
   clusters. Its premise correction turned out to be **right and important**: the
   `vkGetPhysicalDeviceDescriptorSizeEXT` signature this log had cited for months is emitted by games
   that WORK. Verified independently before acting on it, and the README now carries the retraction.
+- `2026-09-08-ultracode-steamclient-init-dive.md` — 14 agents, 1.48M tokens. **The strongest run so
+  far, and it holds up:** it decoded the faulting instruction rather than inferring it, and every
+  load-bearing claim was re-verified locally afterwards (PE `.bind` sections, the four missing
+  box64 symbols, the i386 libstdc++ UND set, and the failure chain in our own logs). 8 of 9
+  findings survived adversarial verification.
 - `2026-09-07-ultracode-new-titles-eval-plan.md` — 8 agents. Classification and evaluation ordering
   for 21 newly installed titles.
 

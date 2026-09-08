@@ -446,7 +446,7 @@ run the tool, then act.**
 | `README.md` | the compatibility log — results, per title |
 | **`docs/OPEN-QUESTIONS.md`** | **what is settled / open / ruled out, each with its next step. Read FIRST when resuming work.** |
 | `docs/DIAGNOSTICS.md` | where every log and dump lives, per engine and per layer |
-| `tools/` | 34 scripts; `tools/README.md` indexes them by what you are trying to do |
+| `tools/` | 29 scripts; `tools/README.md` indexes them by what you are trying to do |
 | `tools/probes/` | hand-written probes — **check here before writing a new one** |
 | `tools/isa-probe/` | freestanding SDK-answer probes + runner |
 | `tools/patches/` | GPL-3.0 OptiScaler patches (the rest of the repo is MIT) |
