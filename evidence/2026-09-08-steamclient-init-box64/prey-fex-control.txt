@@ -1,0 +1,5 @@
+# CONTROL: the same title under FEX (evidence/runs/3970-20260907-231800)
+missing-symbol errors      : 0
+libstdc++ Plt failures     : 0
+steamclient_init AVs       : 0
+how far it got instead     : 2 x SetPixelFormat failed (reached the engine's config)

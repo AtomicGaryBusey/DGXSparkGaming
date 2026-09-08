@@ -2151,7 +2151,7 @@ below was re-verified locally.
 6. At `ntdll.so + 0x465d6` the dispatcher executes `call dword ptr [eax+edx*4]` with
    **`eax=00000000`, `edx=00000000`** — exactly what the fault dump shows.
 
-**Observed in `evidence/runs/3970-20260907-231525/proton.log`:** 2× each of
+**Evidence:** [`evidence/2026-09-08-steamclient-init-box64/`](evidence/2026-09-08-steamclient-init-box64/) — including `verify.sh`, which re-runs all 16 checks (16/16 pass as of 2026-09-08) and is written so each one *can* fail. **Observed in that run's Proton log:** 2× each of
 `Symbol {arc4random,strfromf128,strtof128,strtold} not found, cannot apply R_386_JMP_SLOT`
 → `Error: relocating Plt symbols in elf libstdc++.so.6` → one `steamclient_init` AV.
 The FEX run of the same title: **zero of each**.

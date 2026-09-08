@@ -48,6 +48,13 @@ handed the whole chain to Box64.
 | `3970-20260907-231800` | Prey | **FEX** | Experimental | SetPixelFormat |
 | `9050-20260907-232102` | DOOM 3 | **Box64** | Experimental | - |
 | `9050-20260907-232337` | DOOM 3 | **FEX** | Experimental | SetPixelFormat |
+## `2026-09-08-steamclient-init-box64/`
+
+The `steamclient_init` root cause: four symbols missing from Box64's box32 libc wrapper table.
+Documented to the `log-result` convention — the six questions answered explicitly — and shipped
+with **`verify.sh`, which re-runs all 16 checks** rather than asking you to trust a transcript.
+16/16 pass as of 2026-09-08.
+
 ## `2026-09-07-quake4-x87/`
 
 The artefacts behind the id Tech 4 x87 entries in `README.md`:

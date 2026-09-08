@@ -1,0 +1,25 @@
+== 1. SteamStub: entry point inside .bind (and Quake 4 without one) ==
+  PASS  Prey 2006/prey.exe         EP=0x029923db in .bind (expected .bind)
+  PASS  Doom 3/Doom3.exe           EP=0x027f4000 in .bind (expected .bind)
+  PASS  Quake 4/Quake4.exe         EP=0x0028846d in .text (expected .text)
+  PASS  RAGE/Rage.exe              EP=0x016ce2ee in .bind (expected .bind)
+
+== 2. Box64's box32 table is missing the four symbols ==
+  box64 source: 2f130fab1 Bumped version to v0.4.4
+  [32mPASS[0m  arc4random absent from src/wrapped32/ (present in src/wrapped/: yes)
+  [32mPASS[0m  strfromf128 absent from src/wrapped32/ (present in src/wrapped/: yes)
+  [32mPASS[0m  strtof128 absent from src/wrapped32/ (present in src/wrapped/: yes)
+  [32mPASS[0m  strtold is COMMENTED OUT in src/wrapped32/wrappedlibc_private.h
+  [32mPASS[0m  __strtold_l IS wrapped — which is why 4 symbols fail, not 5
+
+== 3. The container's i386 libstdc++ imports exactly those symbols ==
+  [32mPASS[0m  libstdc++ imports arc4random
+  [32mPASS[0m  libstdc++ imports strfromf128
+  [32mPASS[0m  libstdc++ imports strtof128
+  [32mPASS[0m  libstdc++ imports strtold
+
+== 4. The failure chain in an archived Box64 run, absent in the FEX run ==
+  [32mPASS[0m  Box64: 9 missing-symbol, 2 libstdc++ Plt failure, 1 AV
+  [32mPASS[0m  FEX: zero missing-symbol errors, zero AV (as expected)
+
+ALL CHECKS PASSED — the README entry is supported.

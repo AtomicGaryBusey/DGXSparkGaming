@@ -1,0 +1,28 @@
+# Excerpt from evidence/runs/3970-20260907-231525 (Prey 2006, runtime_actual=Box64)
+# Full log kept out of git for size; regenerate with tools/find-logs.sh 3970
+
+### the missing symbols, one block per box64 library_t instance
+1979:[BOX32] Error: Symbol closefrom not found, cannot apply R_386_JMP_SLOT 0x4065beac (0x41a6) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libgpg-error.so.0
+2198:[BOX32] Error: Symbol arc4random not found, cannot apply R_386_JMP_SLOT 0x4081e0b8 (0x7b316) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2199:[BOX32] Error: Symbol strfromf128 not found, cannot apply R_386_JMP_SLOT 0x4081e8e0 (0x7d3b6) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2200:[BOX32] Error: Symbol strtold not found, cannot apply R_386_JMP_SLOT 0x4081ebf8 (0x7e016) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2201:[BOX32] Error: Symbol strtof128 not found, cannot apply R_386_JMP_SLOT 0x4081ecc0 (0x7e336) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2384:[BOX32] Error: Symbol arc4random not found, cannot apply R_386_JMP_SLOT 0x4081e0b8 (0x7b316) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2410:[BOX32] Error: Symbol strfromf128 not found, cannot apply R_386_JMP_SLOT 0x4081e8e0 (0x7d3b6) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2420:[BOX32] Error: Symbol strtold not found, cannot apply R_386_JMP_SLOT 0x4081ebf8 (0x7e016) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+2424:[BOX32] Error: Symbol strtof128 not found, cannot apply R_386_JMP_SLOT 0x4081ecc0 (0x7e336) in /home/aharmon/.local/share/Steam/steamapps/common/SteamLinuxRuntime_4/pressure-vessel/bin/../../steamrt4_platform_4.0.20260805.254769/files/lib/i386-linux-gnu/libstdc++.so.6
+
+### the resulting dlopen failure
+1980:[BOX32] Error: relocating Plt symbols in elf libgpg-error.so.0
+2213:[BOX32] Error: relocating Plt symbols in elf libstdc++.so.6
+2439:[BOX32] Error: relocating Plt symbols in elf libstdc++.so.6
+
+### the load order that gets there
+Loaded L"C:\\windows\\system32\\lsteamclient.dll" at 00006FFFFD790000: builtin
+Loaded L"Z:\\home\\aharmon\\.local\\share\\Steam\\steamapps\\common\\Steam.dll" at 79F30000: native
+Loaded L"C:\\windows\\system32\\lsteamclient.dll" at 785C0000: builtin
+Loaded L"C:\\Program Files (x86)\\Steam\\steamclient.dll" at 78870000: native
+
+### the fault: eax=0 (unixlib handle) and edx=0 (function index)
+2447:189584.600:0140:0144:trace:seh:handle_syscall_fault code=c0000005 flags=0 addr=0x4004c5d6 ip=4004c5d6
+2456:189584.600:0140:0144:err:steamclient:steamclient_call Access violation in steamclient_init.
