@@ -122,11 +122,6 @@ else
 fi
 note "logs: $RUNDIR"
 
-# GPU telemetry alongside the run — answers GPU-bound vs CPU-bound, this project's core thesis
-( nvidia-smi --query-gpu=timestamp,utilization.gpu,clocks.sm,power.draw,memory.used \
-    --format=csv -l 1 > "$RUNDIR/gpu.csv" 2>/dev/null ) &
-TELE=$!
-
 # --- resolve the real launch chain -------------------------------------------
 # LAUNCH_VIA=steam restores the old `steam -applaunch` path. It is NOT the
 # default any more, because it does not work for instrumentation: -applaunch is
@@ -488,8 +483,32 @@ cleanup() {
 JSONEOF
   note "manifest: $RUNDIR/run.json  (runtime_actual=${ACTUAL_JIT:-unknown})"
   note "run dir: $RUNDIR"
+  # Reap the telemetry sampler. It is a background child holding an open fd to
+  # gpu.csv; nothing else ever killed it, so every invocation of this script
+  # leaked one. On 2026-09-08 there were NINETEEN of them on this machine, the
+  # oldest 16 hours old, 206 cumulative process-hours, all still appending
+  # idle-desktop GPU samples to the run directories of games that had long since
+  # exited. Any tool that later reads gpu.csv as "the game rendered for N
+  # samples" would have been reading hours of screensaver.
+  if [ -n "${TELE:-}" ]; then
+    kill "$TELE" 2>/dev/null
+    wait "$TELE" 2>/dev/null
+  fi
 }
 trap cleanup EXIT INT TERM
+
+# GPU telemetry alongside the run — answers GPU-bound vs CPU-bound, this project's
+# core thesis. Started HERE, deliberately: after the DRY_RUN exit (a dry run must
+# launch nothing, and starting a sampler is launching something) and after the
+# EXIT trap is armed, so it cannot outlive the script. Before 2026-09-08 it was
+# started during pre-flight with no trap in scope, which meant a dry run left both
+# a live sampler AND a run directory containing nothing but gpu.csv -- because the
+# `rmdir "$RUNDIR"` on the dry-run path fails once the sampler has created a file
+# in it. That is where this machine's 14 phantom gpu.csv-only run directories came
+# from, and they would have imported into any index as real runs with real evidence.
+( nvidia-smi --query-gpu=timestamp,utilization.gpu,clocks.sm,power.draw,memory.used \
+    --format=csv -l 1 > "$RUNDIR/gpu.csv" 2>/dev/null ) &
+TELE=$!
 
 if [ "$MAXS" -gt 0 ]; then
   note "will auto-stop after ${MAXS}s"
