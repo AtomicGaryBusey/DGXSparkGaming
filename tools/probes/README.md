@@ -54,6 +54,18 @@ FEX-2607 is bit 2 (DE) and bit 3 (PSE) — and upstream **FEX PR #5807** reports
 Paradise reads the **DE** bit as its SSE2 flag. `div0.S` probes divide-by-zero exception
 behaviour.
 
+### `ngx/` — what does the driver's own NGX core say about GB10?
+
+`ngx-arch-probe.c` loads the **host ARM64** NGX core and asks it which GPU architecture it
+reports for GB10, via `NVSDK_NGX_CUDA_Init`. `ngx-metadata-stub.c` is a minimal fake NGX
+snippet exporting only the metadata getters the core `dlsym`s, so that
+`NGXValidateSnippetMetaData` runs and logs the driver's own architecture value rather than one
+we guessed.
+
+Relevant to the DLSS-5 thread: the question of whether a given NGX feature is refused because
+of the architecture value, the snippet metadata, or something else, is otherwise answered only
+by inference.
+
 ### `wine-crt/` — the DLL that would not initialise
 
 `loadtest.c` and `mini.cpp` are the minimal harness that localised a crash to **Wine's builtin
