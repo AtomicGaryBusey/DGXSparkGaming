@@ -113,6 +113,28 @@ dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untes
 DOOM 3 BFG was assumed to be 64-bit and is not.
 
 ### 4. The odd mouse behaviour in Prey and Quake 4 — STILL OPEN (the fault beside it is solved)
+**Leading candidate, 2026-09-08, and it is our own fault:** the display is **5120x1440** and
+`tools/idtech4-prep.sh` hardcoded `r_customWidth 2560`, so both games created a "fullscreen"
+window over the **left half of the screen** (`...created window @ 0,0 (2560x1440)` in both
+`qconsole.log`s). Wine decides whether a window is fullscreen by comparing its rect to the
+monitor rect, so a half-width window is not fullscreen to Wine and the pointer is not confined
+the way an exclusive-mode DirectInput game expects. The prep tool's own header warns that a
+small window gets mistaken for broken mouse capture — and then created that condition.
+
+`idtech4-prep.sh` now detects the display, picks the nearest id Tech 4 aspect, and refuses to
+be quiet when the window does not match the screen. Both games re-armed at 5120x1440.
+**NOT YET CONFIRMED as the fix** — it needs one launch and a human hand on the mouse.
+
+If it is not the whole answer, the apparatus is now built rather than improvised:
+`tools/mousefeel.sh` measures DirectInput (exclusive+relative+buffered, exactly what the engine
+asks for) against Win32 raw input over the same movement, and `tools/wine-mouse-knobs.sh` A/Bs
+`GrabPointer` / `GrabFullscreen` / `MouseWarpOverride`, all three of which are unset here.
+
+A note on why the earlier probe missed this: it used `DISCL_NONEXCLUSIVE | DISCL_BACKGROUND`
+and read the device once. id Tech 4 uses `DISCL_EXCLUSIVE | DISCL_FOREGROUND` with
+`DIPROPAXISMODE_REL` and a 256-entry buffer. "DirectInput is clean" was a true statement about
+code the games never execute.
+
 **RESOLVED 2026-09-08 — the recurring fault, but NOT the mouse.** The `c0000005` faults that
 sat next to this question are a Box64 bug with a 200-line reproducer and nothing to do with
 input: `NtCreateFile` with `FILE_CREATE` returning `STATUS_OBJECT_NAME_COLLISION` faults under
