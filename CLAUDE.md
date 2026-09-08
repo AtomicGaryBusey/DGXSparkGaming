@@ -70,6 +70,14 @@ failure it prevents — because that rationale is the point of this repo. Curren
   **Under FEX the backtraces are unsymbolizable JIT addresses** — the wchan census is the useful part.
 - **`tools/build-dlssnr-addon.sh`** — builds the ReShade NR add-on from source, no sudo. Four
   documented gotchas in its header, each of which cost a build cycle.
+- **`tools/run-report.sh [rundir]`** — after ANY run: reads only the evidence archived inside
+  that run directory (so it cannot pick up a newer run's log) and checks every failure signature
+  this project has hit, engine-side and Wine-side. Says outright when a run has no manifest or an
+  unknown JIT. Replaces the six-greps-from-memory ritual that made the results table inconsistent.
+- **`tools/ab-runtime.sh <appid> [secs]`** — run one title under BOTH JITs and print them side by
+  side. Clears the engine log between sides, and flags the case where both fail IDENTICALLY, which
+  means suspect the test rather than the translators. This is how Quake 4 was shown to play under
+  Box64 and fail at `SetPixelFormat` under FEX.
 - **`tools/signature-check.sh`** — **run this before citing ANY log line as a root cause.**
   Greps every Proton log, resolves each title's status from README.md itself, and refuses the
   claim if a title recorded as WORKING emits the same line. Reproduces the 2026-09-07
@@ -389,6 +397,8 @@ run the tool, then act.**
 | start OR finish an experiment | **`tools/config-snapshot.sh save/diff`** | OptiScaler rewrites its own ini on exit; Cyberpunk re-enabled Frame Generation by itself. Two DLSS runs were contaminated by settings nobody knew were set |
 | a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
 | **kill or wait on processes by name** | **`MIN_THREADS=20 tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
+| finish any test run | **`tools/run-report.sh`** | The failure signatures here are a known finite list; checking them from memory produced a different subset every time |
+| ask "is it FEX or Box64?" | **`tools/ab-runtime.sh <appid>`** | The two JITs give OPPOSITE results on id Tech 4 — Box64 plays Quake 4, FEX cannot create a GL context |
 | **cite a log line as a root cause** | **`tools/signature-check.sh '<line>'`** | The single most expensive recurring error here. "descriptor_buffer" survived months because nobody grepped a WORKING game; Cyberpunk and Daikatana both emit it and both run fine |
 | test a CPU-semantics hypothesis | **`tools/isa-probe.sh`** | A 40-line probe answers in seconds what a game install answers in 45 minutes and 36 GB — and its expected value comes from the SDM, not from whichever runtime ran first |
 | claim "FEX does X" | **`tools/run-both.sh --which`** | binfmt registers **only Box64** for x86 ELF. Run a binary by path and you measured Box64. Steam is FEX-hosted, so its games are FEX; almost nothing else you type is |

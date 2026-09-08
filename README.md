@@ -1,5 +1,7 @@
 # DGX Spark Steam Gaming Setup
 
+> **Tooling:** every script in `tools/` is documented in **[`tools/README.md`](tools/README.md)** — organised by what you are trying to do, with the specific mistake each one exists to prevent.
+
 ## Status
 
 | Component | Status | Version (as of 2026-09-05) |
