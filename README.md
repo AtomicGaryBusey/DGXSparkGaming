@@ -1,6 +1,8 @@
 # DGX Spark Steam Gaming Setup
 
 > **Tooling:** every script in `tools/` is documented in **[`tools/README.md`](tools/README.md)** — organised by what you are trying to do, with the specific mistake each one exists to prevent.
+>
+> **Diagnostics:** **[`docs/DIAGNOSTICS.md`](docs/DIAGNOSTICS.md)** maps every log, dump and crash artifact this stack produces — per engine, per layer — with the failure signatures we have actually hit and what each one means. Most of it applies to any Proton-on-ARM64 setup, not just a DGX Spark. `tools/find-logs.sh <appid>` prints the live paths for a given title.
 
 ## Status
 

@@ -70,6 +70,10 @@ failure it prevents — because that rationale is the point of this repo. Curren
   **Under FEX the backtraces are unsymbolizable JIT addresses** — the wchan census is the useful part.
 - **`tools/build-dlssnr-addon.sh`** — builds the ReShade NR add-on from source, no sudo. Four
   documented gotchas in its header, each of which cost a build cycle.
+- **`tools/find-logs.sh <appid>`** — every diagnostic artifact a title can produce, with the
+  ones that are ABSENT shown too (no engine log = it never reached its config, a different
+  failure from crashing later). The full map, per engine and per layer, is in
+  `docs/DIAGNOSTICS.md`, which is written for strangers who find this repo.
 - **`tools/run-report.sh [rundir]`** — after ANY run: reads only the evidence archived inside
   that run directory (so it cannot pick up a newer run's log) and checks every failure signature
   this project has hit, engine-side and Wine-side. Says outright when a run has no manifest or an
@@ -397,6 +401,7 @@ run the tool, then act.**
 | start OR finish an experiment | **`tools/config-snapshot.sh save/diff`** | OptiScaler rewrites its own ini on exit; Cyberpunk re-enabled Frame Generation by itself. Two DLSS runs were contaminated by settings nobody knew were set |
 | a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
 | **kill or wait on processes by name** | **`MIN_THREADS=20 tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
+| go looking for a log | **`tools/find-logs.sh <appid>`** | id Tech 4 writes `qconsole.log` beside the `.pk4` files and nobody knew for months; a Proton traceback sat unread in `launch.log` for an hour |
 | finish any test run | **`tools/run-report.sh`** | The failure signatures here are a known finite list; checking them from memory produced a different subset every time |
 | ask "is it FEX or Box64?" | **`tools/ab-runtime.sh <appid>`** | The two JITs give OPPOSITE results on id Tech 4 — Box64 plays Quake 4, FEX cannot create a GL context |
 | **cite a log line as a root cause** | **`tools/signature-check.sh '<line>'`** | The single most expensive recurring error here. "descriptor_buffer" survived months because nobody grepped a WORKING game; Cyberpunk and Daikatana both emit it and both run fine |

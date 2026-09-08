@@ -89,6 +89,7 @@ under both JITs because it clobbered its own jump target.
 | **`run-report.sh`** | A run failed and you want the known signatures checked for you. |
 | **`wine-dll-loadtest.sh`** | A DLL fails to initialise. Reports the **owning module** of the fault, not just "it failed". |
 | **`capture-hang.sh`** | A game is wedged. Note: under FEX the backtraces are unsymbolizable JIT addresses — the wchan census is the useful part. |
+| **`find-logs.sh <appid>`** | You need the evidence and cannot remember where this engine puts it. Prints every log/dump/prefix path for a title, marking which exist — absence is itself diagnostic. See [`../docs/DIAGNOSTICS.md`](../docs/DIAGNOSTICS.md). |
 | **`config-snapshot.sh save\|diff`** | Before and after any experiment. OptiScaler rewrites its ini on exit; Cyberpunk re-enables Frame Generation by itself. |
 | **`dlssnr-control-run.sh <layer>`** | Bisecting a hang against an injection chain. Run `baseline` first — always. |
 
