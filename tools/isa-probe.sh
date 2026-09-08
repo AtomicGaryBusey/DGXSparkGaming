@@ -40,6 +40,14 @@ WORK="$(mktemp -d "${CLAUDE_JOB_DIR:-/tmp}/isaprobe.XXXXXX")"
 [ "${KEEP:-0}" = 1 ] || trap 'rm -rf "$WORK"' EXIT
 
 command -v FEXBash >/dev/null 2>&1 || { echo "!! FEXBash not found"; exit 2; }
+# FEX_BIN=<prefix>/bin points the RUN step at a locally built FEX while still
+# building the probes with the system FEXBash (which supplies the RootFS).
+if [ -n "${FEX_BIN:-}" ]; then
+  FEX_INTERP="$FEX_BIN/FEXInterpreter"
+  [ -x "$FEX_INTERP" ] || { echo "!! no FEXInterpreter at $FEX_INTERP"; exit 2; }
+  echo "  using FEX build: $FEX_INTERP"
+  export FEX_INTERP
+fi
 command -v box64   >/dev/null 2>&1 || echo "  ! box64 not found — FEX only, so no cross-check"
 
 RED=$'\033[31m'; YEL=$'\033[33m'; GRN=$'\033[32m'; OFF=$'\033[0m'
@@ -60,7 +68,10 @@ for src in "$DIR"/*.S; do
   fi
   ran=$((ran+1))
 
-  FEXBash -c "'$WORK/$base'" >"$WORK/$base.fex" 2>/dev/null
+  # Probes are static binaries, so FEXInterpreter can run them directly -- and
+  # that makes FEX_BIN able to point at a locally BUILT FEX, which is how a
+  # source build gets gated on this suite instead of on hope.
+  "${FEX_INTERP:-FEXInterpreter}" "$WORK/$base" >"$WORK/$base.fex" 2>/dev/null
   if command -v box64 >/dev/null 2>&1; then
     box64 "$WORK/$base" >"$WORK/$base.box64" 2>/dev/null
   else

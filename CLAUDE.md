@@ -70,6 +70,34 @@ failure it prevents — because that rationale is the point of this repo. Curren
   **Under FEX the backtraces are unsymbolizable JIT addresses** — the wchan census is the useful part.
 - **`tools/build-dlssnr-addon.sh`** — builds the ReShade NR add-on from source, no sudo. Four
   documented gotchas in its header, each of which cost a build cycle.
+- **`tools/signature-check.sh`** — **run this before citing ANY log line as a root cause.**
+  Greps every Proton log, resolves each title's status from README.md itself, and refuses the
+  claim if a title recorded as WORKING emits the same line. Reproduces the 2026-09-07
+  descriptor_buffer retraction in one command. Exit 1 = refuted, 2 = not found ("nothing to
+  conclude", never a silent pass).
+- **`tools/run-both.sh`** — runs one x86 command under FEX **and** Box64 and compares.
+  `--which` just names who binfmt would hand it to. Different wrong answers = the translator is
+  implicated; identical wrong answers = suspect the test. Found the Box64 x87 bug in a bare ELF.
+- **`tools/isa-probe.sh`** + **`tools/isa-probe/`** — freestanding probes that ask the translator
+  a question whose answer the Intel SDM already fixes, built with the x86 binutils inside FEX's
+  RootFS and run under both JITs. Seconds, no game, no GPU, no install. Two probes so far and both
+  found a real bug (Box64 tag word; FEX CPUID DE/PSE). **Add a probe before installing a 100 GB
+  game to test a CPU-semantics hypothesis.**
+- **`tools/idtech4-prep.sh`** — arms any id Tech 4 title with the diagnostic config that answered
+  the Quake 4 question on its first run (`logFile 2` flushes per write; `1` buffers and the crash
+  eats the lines you need) plus a real resolution. Detects the mod dir from the `.pk4` files.
+- **`tools/make-launcher-shim.sh`** — replaces a launcher with a ~10 KB PE that starts the real exe
+  and **waits** (Steam tracks the process it launched). Matches the launcher's architecture,
+  backs up as `<name>.orig`, `--undo`. For the cluster where the engine works and the wrapper does not.
+- **`tools/setup-mangohud-x86.sh`** — the distro package is `mangohud:arm64` and **cannot** be
+  loaded into a translated x86 game. This fetches the official amd64 `.deb` into a local prefix.
+  No i386 build exists, so 32-bit/OpenGL titles still get no CSV — use `com_showFPS` + `watch-run.sh`.
+- **`tools/fex-build.sh`** — builds FEX from source into a local prefix (clang only; CMake
+  `FATAL_ERROR`s on GCC), never over `/usr`, and **gates the result on `isa-probe.sh`**. HEAD
+  already fixes the CPUID DE/PSE gap, so the cpuid probe flipping to OK is the proof the build works.
+- **`tools/appinfo.py <appid> --launch|--name|--json`** — now a CLI as well as a library. `--launch`
+  lists every launch entry, which is how `game-run.sh` resolves the real exe instead of guessing,
+  and how NBA 2K27's "without EAC (offline only)" entry was found.
 - **`tools/dlssnr-control-run.sh`** — bisects the DLSS-5 NR injection chain against a game hang:
   arms one of four layers (`baseline`/`reshade`/`probe`/`nr`) by file, then samples CPU until it can
   say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer
@@ -109,6 +137,23 @@ README.md. It asks the six questions that would have prevented the worst claim i
 is the counter *specific* to the feature or a generic hook it rides on; what is the control;
 if it should change pixels, did anyone look at the pixels; what would falsify it; where is the
 artifact. A human A/B beat every counter being read that day.
+
+### Measure the measurement (2026-09-07)
+
+**`game-run.sh` produced no numbers for its entire life, and nobody checked.** Two independent
+causes, either of which alone was fatal:
+
+1. It set `DXVK_HUD`/`MANGOHUD`/`VKD3D_DEBUG` around **`steam -applaunch`**, which is only an IPC
+   request to the running Steam daemon — the daemon spawns the game with *its* environment. Every
+   variable was silently dropped. It now launches Proton directly (`LAUNCH_VIA=steam` restores the
+   old path and warns).
+2. The installed MangoHud is **`mangohud:arm64`**, which cannot be loaded into a translated x86
+   process. The tool's own advice — "sudo apt install mangohud" — named a package that was already
+   installed and could never have helped.
+
+Five runs had produced `gpu.csv` (nvidia-smi, in *our* process) and **zero** MangoHud CSVs. That is
+why the results table is full of adjectives. The lesson generalises past this tool: **when an
+instrument reports success, check that it produced an artifact.** `ls` the output directory.
 
 ### Process hygiene when testing (all four of these bit us on 2026-09-05)
 
@@ -344,6 +389,12 @@ run the tool, then act.**
 | start OR finish an experiment | **`tools/config-snapshot.sh save/diff`** | OptiScaler rewrites its own ini on exit; Cyberpunk re-enabled Frame Generation by itself. Two DLSS runs were contaminated by settings nobody knew were set |
 | a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
 | **kill or wait on processes by name** | **`MIN_THREADS=20 tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
+| **cite a log line as a root cause** | **`tools/signature-check.sh '<line>'`** | The single most expensive recurring error here. "descriptor_buffer" survived months because nobody grepped a WORKING game; Cyberpunk and Daikatana both emit it and both run fine |
+| test a CPU-semantics hypothesis | **`tools/isa-probe.sh`** | A 40-line probe answers in seconds what a game install answers in 45 minutes and 36 GB — and its expected value comes from the SDM, not from whichever runtime ran first |
+| claim "FEX does X" | **`tools/run-both.sh --which`** | binfmt registers **only Box64** for x86 ELF. Run a binary by path and you measured Box64. Steam is FEX-hosted, so its games are FEX; almost nothing else you type is |
+| test any id Tech 4 title | **`tools/idtech4-prep.sh <appid>`** | The engine prints its whole x87 environment one line before dying, and this log went months without turning the log on |
+| blame a game's launcher | **`tools/make-launcher-shim.sh`** | The engine usually works: Far Cry's Dunia renders fine when the exe is started directly, and Cyberpunk needed a 10 KB shim after ~10 failed hand-offs |
+| edit a guard hook | **`.claude/hooks/test-guards.sh`** | 20 cases, every one a real command or a real false positive. Rule 3 once blocked an `echo` that merely CONTAINED `-applaunch` |
 
 ## Common requests & how to handle them
 

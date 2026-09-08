@@ -26,6 +26,21 @@ Write the answers out. If any answer is "I don't know", the claim is not ready.
 3. **What is the control?** What did the same measurement read with the feature off,
    or with a deliberately bogus input? `CreateFeature(18)` returned Success for
    feature **99** too — a result with no control is a rubber stamp.
+
+3b. **If the evidence is a LOG LINE, run `tools/signature-check.sh '<line>'` and
+   paste the output.** It greps every Proton log and refuses the claim if a title
+   recorded as WORKING emits the same line. This is not optional and it is not
+   slow. On 2026-09-07 it took one command to destroy a root cause this log had
+   carried for months for three AAA titles: `vkGetPhysicalDeviceDescriptorSizeEXT`
+   is emitted 16x by Cyberpunk 2077 and 4x by Daikatana, both of which run fine.
+   Exit 1 means refuted. Exit 2 means "not found" — which is *nothing to conclude*,
+   not a pass; if no working title has a log at all, go get one
+   (`tools/game-run.sh` now writes `PROTON_LOG` on every run).
+
+3c. **If the claim names a runtime, prove which one you measured.**
+   `tools/run-both.sh --which` — binfmt registers only Box64 for x86 ELF, so a
+   binary run by path is Box64 no matter what you meant. A 32-bit PE result was
+   nearly published as FEX on 2026-09-07; a stray `[BOX32]` banner was the only tell.
 4. **If it is supposed to change pixels, did anyone look at the pixels?**
    A screenshot A/B, a debug view, a capture folder. If not, the entry says
    "visual correctness unverified" — in the entry, not just in your head.
@@ -45,6 +60,10 @@ Follow the conventions in CLAUDE.md exactly:
 - **Fails** → a row in **Known Issues** with a ROOT CAUSE, not "crashes". Tie it to an
   existing failure signature when it matches; add a new signature if it does not.
 - **Move the game** out of "Installed — Not Yet Tested" / "Likely to Work".
+- **Check the instrument produced an artifact.** `ls` the run directory. `game-run.sh`
+  advertised "mangohud: on" and produced zero CSVs for its whole life, because its
+  env never reached the game AND the installed MangoHud was arm64. A tool saying it
+  is on is not evidence that it ran.
 - Performance claims need numbers. `tools/game-run.sh` at minimum, `tools/bench-ab.sh`
   for any version comparison. Record which Proton, read from the prefix's
   `config_info`, not from intent.
