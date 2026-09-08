@@ -112,7 +112,18 @@ dhewm3 forks (Quadrilateral Cowboy, Skin Deep) are installed and armed but untes
 (`PE32+ x86-64`) and is therefore the sole test of whether any of this is 32-bit-specific —
 DOOM 3 BFG was assumed to be 64-bit and is not.
 
-### 4. A shared recurring fault — NOT the input path, and probably not the mouse
+### 4. The odd mouse behaviour in Prey and Quake 4 — STILL OPEN (the fault beside it is solved)
+**RESOLVED 2026-09-08 — the recurring fault, but NOT the mouse.** The `c0000005` faults that
+sat next to this question are a Box64 bug with a 200-line reproducer and nothing to do with
+input: `NtCreateFile` with `FILE_CREATE` returning `STATUS_OBJECT_NAME_COLLISION` faults under
+box32 and the caught fault replaces the status, so the app gets `ERROR_NOACCESS`. FEX clean,
+64-bit clean, stock v0.4.4 affected. See `notes/box64-bug-3-ntcreatefile-collision.md` and
+`tools/probes/namedobj/`. The counts (Prey 276, Quake 4 124) are just how many file/directory
+creations each game makes against paths that already exist.
+
+**What is still open is the mouse itself**, and it now has *no* candidate explanation — both
+the ones this entry carried are gone. History below, because the way it went wrong is the point.
+
 **Mislabelled until 2026-09-08.** It was called an "input-path" fault because it first appears
 near DirectInput initialisation and both games have odd mouse behaviour. `tools/probes/dinput/`
 tested that directly and **refuted it**: a 32-bit PE that creates DirectInput 8, enumerates

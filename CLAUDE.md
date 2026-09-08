@@ -353,6 +353,15 @@ elsewhere. Those are logistics, not evidence.
   calls the real `LoadLibrary` unconditionally and returns its handle; only its own delayed-hook
   install is skipped on mutex contention (`source/hook_manager.cpp`). This log published the wrong
   reading before checking the source. Treat the line as evidence of hook-mutex contention only.
+- **box32 `NtCreateFile` collision returns `ERROR_NOACCESS` (998)** — under **Box64 only**, a
+  32-bit program creating a file or directory that already exists faults inside Wine's 32-bit
+  syscall return (`c0000005` at `ntdll.so+0x71f0` reading null+0x7c, `eax=c0000035`), and the
+  caught fault **replaces the status**, so the app gets `ERROR_NOACCESS` instead of
+  `ERROR_FILE_EXISTS`/`ERROR_ALREADY_EXISTS`. FEX is clean; 64-bit under Box64 is clean; named
+  *kernel* objects are clean. Reproducer: `tools/probes/namedobj/`. Write-up:
+  `notes/box64-bug-3-ntcreatefile-collision.md`. Under `+seh` this shows up as hundreds of
+  handled faults — **noise you can ignore when triaging a crash**, which is exactly the mistake
+  it caused: they were logged as a "shared input-path bug" behind the id Tech 4 mouse anomaly.
 - **RTX Remix dual-process IPC** — HL2 RTX, any Remix title: 32-bit↔64-bit shared-memory
   bridge breaks under translation.
 - **Wave64-only AMD shaders** — Black Myth: Wukong requires `WaveSize(64)`; NVIDIA is
