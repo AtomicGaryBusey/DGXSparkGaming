@@ -288,7 +288,7 @@ run the tool, then act.**
 | watch a launch / decide if it is hung | **`tools/watch-run.sh`** | Hand-rolled ten times on 2026-09-07, wrong twice (own shell; the 1-thread launch wrapper). `ps` %CPU is a lifetime average — only a `/proc/<pid>/stat` delta is honest |
 | start OR finish an experiment | **`tools/config-snapshot.sh save/diff`** | OptiScaler rewrites its own ini on exit; Cyberpunk re-enabled Frame Generation by itself. Two DLSS runs were contaminated by settings nobody knew were set |
 | a DLL fails to initialise / `LoadLibrary` fails | **`tools/wine-dll-loadtest.sh`** | It reports the *owning module* of the fault. On 2026-09-07 that instantly showed the crash was inside **Wine's** `MSVCP140.dll`, not our code — after three confident wrong diagnoses |
-| **kill or wait on processes by name** | **`tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
+| **kill or wait on processes by name** | **`MIN_THREADS=20 tools/safe-proc.sh {list\|wait\|kill} <pattern>`** | `pgrep -f` / `pkill -f` match **your own shell**, because the pattern is in its command line. This happened **three times** in two days — twice *after* a rule was written forbidding it. Never use bare `pkill -f`/`pgrep -f` here |
 
 ## Common requests & how to handle them
 

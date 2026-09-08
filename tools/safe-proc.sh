@@ -71,15 +71,35 @@ is_ours() {
 }
 
 # Match on /proc/<pid>/cmdline, excluding our own lineage AND descendants.
+#
+# THIRD GAP, found 2026-09-07: excluding self/ancestors/descendants is still not
+# enough. A SIBLING process -- another tool invocation from the same agent, or a
+# previous shell that merely mentions the pattern in its command line -- is none of
+# those, and matches anyway. A listing for "Cyberpunk2077.exe" that day returned
+# three pids, two of which were 1-thread agent shells with ppid=claude. A watcher
+# then latched onto one and reported a verdict about the wrong process.
+#
+# Two defences, because there is no way to know in general which match the caller
+# meant:
+#   * other invocations of THIS script are never the target -- drop them outright;
+#   * MIN_THREADS lets the caller say "the thing I want is a real program". A game
+#     here runs 70+ threads; a shell that merely names it runs 1. Opt-in, because
+#     safe-proc is also used to find genuinely single-threaded processes.
 matches() {
-  local pid cl
+  local pid cl t
   for d in /proc/[0-9]*; do
     pid=${d#/proc/}
     is_ours "$pid" && continue
     [ -r "$d/cmdline" ] || continue
     cl=$(tr '\0' ' ' < "$d/cmdline" 2>/dev/null) || continue
     [ -z "$cl" ] && continue
-    case "$cl" in *"$PAT"*) printf '%s\t%s\n' "$pid" "${cl:0:110}";; esac
+    case "$cl" in *safe-proc.sh*) continue;; esac
+    case "$cl" in *"$PAT"*) ;; *) continue;; esac
+    if [ "${MIN_THREADS:-0}" -gt 0 ]; then
+      t=$(ls "$d/task" 2>/dev/null | wc -l)
+      [ "${t:-0}" -ge "$MIN_THREADS" ] || continue
+    fi
+    printf '%s\t%s\n' "$pid" "${cl:0:110}"
   done
 }
 

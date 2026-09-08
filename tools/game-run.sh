@@ -164,10 +164,15 @@ cleanup() {
   if [ -n "$csv" ] && [ "$(wc -l < "$csv")" -gt 3 ]; then
     note "mangohud CSV: $(wc -l < "$csv") samples -> $csv"
   elif command -v mangohud >/dev/null 2>&1; then
-    warn "mangohud produced no CSV — the x86-64 layer likely did not load under FEX."
-    warn "  check: MANGOHUD_CONFIG had output_folder set, and the RootFS carries"
-    warn "  /usr/lib/x86_64-linux-gnu/mangohud/libMangoHud.so (it does). If this persists,"
-    warn "  fall back to DXVK_HUD on-screen numbers and record them manually."
+    warn "mangohud produced no CSV."
+    warn "  NOT necessarily a FEX problem. This script printed \"the x86-64 layer likely did"
+    warn "  not load under FEX\" for weeks and that was WRONG: it was tearing down before"
+    warn "  anything could be sampled (the wait-on-cgroup-scope bug, fixed 2026-09-07). With"
+    warn "  the fix, a normal run captures ~44 samples."
+    warn "  Real causes, in order: the game exited almost immediately; it is an OpenGL title"
+    warn "  (Daikatana) where the Vulkan/DXVK layer never loads; or MANGOHUD_CONFIG did not"
+    warn "  reach the game because Steam launched it (env set here does not follow an"
+    warn "  -applaunch handoff). Fall back to DXVK_HUD on-screen numbers if it persists."
   fi
   [ -s "$RUNDIR/gpu.csv" ] && note "gpu telemetry: $(wc -l < "$RUNDIR/gpu.csv") samples"
   note "run dir: $RUNDIR"
