@@ -18,7 +18,7 @@ were rebuilt from scratch on 2026-09-07 because their existence was not written 
 | **Box64 writes the FSAVE tag word stack-relative, not physical** (`0xffc0` vs `0x03ff`); FEX is correct | `tools/isa-probe.sh`, reproducible in a bare 32-bit ELF | high |
 | **FEX 2607/2608 does not advertise CPUID leaf-1 DE/PSE**; fixed at fexsrc HEAD | `tools/isa-probe.sh` before/after a source build | high |
 | **`vkGetPhysicalDeviceDescriptorSizeEXT` is not a failure signature** — emitted by working games | `tools/signature-check.sh 'DescriptorSizeEXT'` | high |
-| **DOOM 3 / Prey `steamclient_init` AV is a Box64 bug** — four symbols missing from its box32 libc wrapper table (`arc4random`, `strfromf128`, `strtof128`, `strtold`) break `dlopen` of 32-bit `lsteamclient.so`, leaving `__wine_unixlib_handle=0` | `evidence/runs/3970-20260907-231525/`, box64 `2f130fab1` source, `notes/2026-09-08-ultracode-steamclient-init-dive.md` | high — every step re-verified locally |
+| **DOOM 3 / Prey `steamclient_init` AV is a Box64 bug — AND THE FIX IS VERIFIED (2026-09-08): 9→1 symbol errors, 2→0 Plt failures, 1→0 AVs** — four symbols missing from its box32 libc wrapper table (`arc4random`, `strfromf128`, `strtof128`, `strtold`) break `dlopen` of 32-bit `lsteamclient.so`, leaving `__wine_unixlib_handle=0` | `evidence/runs/3970-20260907-231525/`, box64 `2f130fab1` source, `notes/2026-09-08-ultracode-steamclient-init-dive.md` | high — every step re-verified locally |
 | **SteamStub (`.bind` section with the EP inside it) is the discriminator, not the appinfo DRM key** — Prey/DOOM 3/RAGE have it, Quake 4 does not | PE headers, checked directly | high |
 | **`game-run.sh` produced no telemetry for its entire life** — env never reached the game, and the distro MangoHud is arm64 | five runs, zero CSVs | high |
 
@@ -55,7 +55,15 @@ game launch, and it localises the fault to `opengl32`/`winex11` vs the thunk lay
 are present in the 64-bit table, and `strtold_l` *is* wrapped — which is why exactly four
 symbols fail.
 
-**ATTEMPTED 2026-09-08 — INCONCLUSIVE, and the reason matters.** The patched box64 was built
+**RESOLVED 2026-09-08 — the fix works.** With the patched binary swapped into
+`/usr/local/bin/box64` (the only path `binfmt_misc` uses inside the container), Prey's run went
+from 9 symbol errors / 2 `libstdc++` Plt failures / 1 AV to **1 / 0 / 0** — the remaining one
+being `closefrom` in `libgpg-error`, unrelated. Evidence:
+`evidence/2026-09-08-steamclient-init-box64/verification-patched-box64-2026-09-08.txt`.
+**Remaining work: file it upstream**, and note honestly that this unblocks the DRM layer rather
+than the game — Prey still did not reach its engine config in 150 s under the patched build.
+
+**The near-miss, kept because it is instructive.** The patched box64 was built
 (`tools/build-box64-symfix.sh`) and Prey was run against it. The errors and the AV were
 unchanged — but **that run tested nothing**: the game executes inside pressure-vessel, and once
 that container namespace exists every exec goes through `binfmt_misc`, whose interpreter is

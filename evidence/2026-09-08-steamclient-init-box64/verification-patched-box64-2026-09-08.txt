@@ -1,0 +1,22 @@
+# VERIFICATION: patched box64 swapped into /usr/local/bin (binfmt path), 2026-09-08
+# Prey 2006 (3970), Proton Experimental, SteamLinuxRuntime_4 container.
+# The patched binary was confirmed in place by md5 before the run:
+#   /usr/local/bin/box64                    bab393088b91ca0249815ab478a28231
+#   ~/dgx-gaming-work/box64-symfix/bin/box64 bab393088b91ca0249815ab478a28231
+#   /usr/local/bin/box64.stock-backup       97aeb5160e5c8e4ca752f32003e6986b
+#   patched: built on Sep  8 2026 00:26:37   stock: Sep  5 2026 16:18:12
+
+RUN          symbol-errors    libstdc++-Plt  AV      
+STOCK        9                2              1       
+PATCHED      1                0              0       
+
+### which symbols remained missing, patched run
+      1 Symbol closefrom not found
+  (closefrom is in libgpg-error, not libstdc++, and is unrelated to this chain)
+
+### which symbols were missing, stock run
+      2 Symbol arc4random not found
+      1 Symbol closefrom not found
+      2 Symbol strfromf128 not found
+      2 Symbol strtof128 not found
+      2 Symbol strtold not found

@@ -2163,13 +2163,27 @@ in one table in Box64 v0.4.4 (`2f130fab1`). It should be filable upstream with t
 above. Any 32-bit Steam title whose unix-side helper pulls in `libstdc++` is affected, which is
 a much larger set than id Tech 4.
 
-**The fix is built but UNVERIFIED.** `tools/build-box64-symfix.sh` adds the four wrappers and
-builds box64 locally, but it cannot be tested without root: the game runs inside
-pressure-vessel, where `binfmt_misc` hard-wires the interpreter to `/usr/local/bin/box64`, so a
-patched build passed via `BOX64_BIN` never actually executes the game. An attempt on 2026-09-08
-showed unchanged errors and would have been easy to mis-read as a refutation — it tested
-nothing. The root-level command that would settle it is in
-[`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md).
+**FIX VERIFIED 2026-09-08.** `tools/build-box64-symfix.sh` adds the four wrappers; with the
+built binary swapped into `/usr/local/bin/box64` (md5-confirmed in place first, because that is
+the only path `binfmt_misc` uses inside the container) and Prey re-run:
+
+| | symbol errors | `libstdc++` Plt failures | `steamclient_init` AV |
+|---|---|---|---|
+| **stock box64** | 9 | 2 | **1** |
+| **patched box64** | **1** | **0** | **0** |
+
+The one remaining error is `closefrom` in `libgpg-error`, a different library and unrelated to
+this chain. All four target symbols resolve, `dlopen` of the 32-bit `lsteamclient.so` succeeds,
+and the access violation is gone. **Four entries in one table.** Worth filing upstream.
+
+An earlier attempt passing the binary via `BOX64_BIN` showed *unchanged* errors and would have
+been easy to mis-file as a refutation — it tested nothing, because `BOX64_BIN` only affects the
+first process (`reaper`) while everything after it goes through `binfmt_misc` to the stock
+build. That near-miss is recorded in [`docs/OPEN-QUESTIONS.md`](docs/OPEN-QUESTIONS.md).
+
+**This unblocks the DRM layer, not necessarily the game.** Prey still did not reach its engine
+config within a 150 s run under the patched build; a longer run is needed to see whether
+SteamStub decryption simply takes longer than that under translation.
 
 **RAGE (9200) is the live test of the scope claim** — 32-bit, `.bind` with EP inside it, but
 *no* legacy-DRM keys and it statically imports `steam_api.dll`. Until it is run, treat
