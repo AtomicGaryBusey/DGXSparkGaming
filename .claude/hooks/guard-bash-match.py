@@ -17,7 +17,49 @@ import re
 import sys
 
 HEREDOC = re.compile(r"<<-?\s*[\"']?([A-Za-z_][A-Za-z0-9_]*)[\"']?")
-CMDPOS = r"(?:^|[;&|(){}]|\$\(|&&|\|\||\bthen\b|\bdo\b|\belse\b)\s*(?:sudo\s+)?"
+CMDPOS = r"(?:^|[;&|(){}]|\$\(|&&|\|\||\bthen\b|\bdo\b|\belse\b)\s*(?:sudo\s+)?[\"']?"
+
+
+def mask_quoted(s: str) -> str:
+    """Blank out quoted text that is DATA, keeping quoted text that is a COMMAND.
+
+    Needed because bash command separators occur inside ordinary prose. On
+    2026-09-07 the string
+
+        echo "=== control run (steam -applaunch, warm prefix) ==="
+
+    was blocked, because the "(" inside the message is a real command position
+    (a subshell) as far as a regex is concerned. Prose is not a command.
+
+    But a quoted string CAN be the command:
+
+        "$STEAM/ubuntu12_32/steam" -applaunch 2210
+
+    so quotes are only blanked when the opening quote is NOT itself at a command
+    position. Length is preserved so that offsets and CMDPOS anchors still line
+    up with the original text.
+    """
+    out = list(s)
+    i, n = 0, len(s)
+    while i < n:
+        ch = s[i]
+        if ch not in "\"'":
+            i += 1
+            continue
+        # is this opening quote in command position? look back over blanks
+        j = i - 1
+        while j >= 0 and s[j] in " \t":
+            j -= 1
+        at_cmd = j < 0 or s[j] in ";&|(){}\n" or s[max(0, j - 1):j + 1] in ("&&", "||")
+        k = s.find(ch, i + 1)
+        if k < 0:
+            break
+        if not at_cmd:
+            for m in range(i + 1, k):
+                if s[m] not in " \t\n":
+                    out[m] = "_"
+        i = k + 1
+    return "".join(out)
 
 
 def strip_heredocs(s: str) -> str:
@@ -38,7 +80,7 @@ def main() -> None:
     cmd = sys.stdin.read()
     if "HOOK_OVERRIDE:" in cmd:
         return
-    c = strip_heredocs(cmd)
+    c = mask_quoted(strip_heredocs(cmd))
 
     # 1. pgrep -f / pkill -f: matches the invoking shell, because the pattern is in
     #    that shell's own command line. Three occurrences in this project, twice
@@ -57,7 +99,15 @@ def main() -> None:
         return
 
     # 3. Hand-launching a game: no cgroup scope, no telemetry, no pre-flight.
-    if re.search(r"-applaunch\b", c) and not re.search(r"game-run\.sh", c):
+    #    This rule USED to be a bare substring match for "-applaunch", with no
+    #    command-position requirement -- unlike rules 1 and 2. On 2026-09-07 it
+    #    duly blocked `echo "=== control run (steam -applaunch, warm prefix) ==="`,
+    #    i.e. a string being PRINTED, which is the exact "hook cries wolf, gets
+    #    switched off" failure this file's header warns about. It now requires an
+    #    actual steam command at a command position with -applaunch as its
+    #    argument, so writing about the flag is fine and running it is not.
+    if re.search(CMDPOS + r"(?:\S*/)?steam(?:\.sh)?[\"']?\s[^;&|\n]*?-applaunch\b", c, re.M) \
+            and not re.search(r"game-run\.sh", c):
         print("applaunch")
         return
 
