@@ -64,6 +64,16 @@ int main(void) {
     step("CreateWindowExA", w != NULL);
     if (!w) return 1;
 
+    /* The window is normally left UNMAPPED so this probe can run while someone
+     * is using the machine. That is a confound: if Wine's GLX drawable needs a
+     * mapped window, an unmapped one would fail for reasons that have nothing to
+     * do with the runtime. WGLPROBE_SHOW=1 maps it and pumps the queue so that
+     * assumption can be tested rather than assumed. */
+    if (getenv("WGLPROBE_SHOW")) {
+        ShowWindow(w, SW_SHOW); UpdateWindow(w);
+        MSG m; for (int i = 0; i < 200 && PeekMessageA(&m, NULL, 0, 0, PM_REMOVE); i++)
+            { TranslateMessage(&m); DispatchMessageA(&m); }
+    }
     HDC dc = GetDC(w);
     step("GetDC", dc != NULL);
     if (!dc) return 1;

@@ -271,3 +271,24 @@ trusting intent) and line 1224 (a second title before believing a one-data-point
   currently have no CSV path at all — `com_showFPS` plus `tools/watch-run.sh` is the fallback.
 - **The `CONTEXT` block in `workflows/*.js` goes stale.** Refresh from `tools/check-stack.sh`
   before re-running any of them.
+
+### Does 32-bit OpenGL work under FEX? Daikatana says yes, measurement says no — OPEN
+
+Flagged 2026-09-08. Two claims in this repo contradict each other and one of them is wrong:
+
+- `tools/probes/wgl/wgl-formatsweep32.c` measures FEX setting **0 of 320** pixel formats for a
+  32-bit Wine program (Box64: 320/320; a 64-bit build under FEX: 320/320). Confirmed with the
+  window both **mapped and unmapped**, so it is not an artifact of the probe hiding its window.
+  Quake 4 fails the same way in a real run.
+- README records **Daikatana** — 32-bit, `ref_gl.dll`, which imports `SetPixelFormat` /
+  `ChoosePixelFormat` / `wglCreateContext` — as running **excellently** "through FEX's 32-bit path".
+
+The Daikatana runs (`~/dgx-gaming-work/runs/242980-*`) **predate `run.json`**, so they carry no
+`runtime_actual` and no Proton log — only `gpu.csv` and `launch.log`. That is exactly the era in
+which this log mis-attributed a Box64 run to FEX, which is why the row is now flagged rather than
+trusted. It is also possible the run used a non-GL backend (the game ships `3dfxgl.dll` and
+`pvrgl.dll` as well).
+
+*Next step:* `tools/ab-runtime.sh 242980` — one command, runs it under both and records
+`runtime_actual`. **Until that is done, do not use Daikatana as evidence either way**, and do not
+weaken the 0/320 measurement on the strength of it.
