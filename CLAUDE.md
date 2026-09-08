@@ -204,6 +204,13 @@ a version switch empties `shadercache/<appid>/DXVK_state_cache/`, so the first r
 compilation, not the runtime. An earlier revision of this file said "default to Proton 11"
 unqualified; that came from reasoning, not benchmarking. See the README's *Which Proton on ARM64*.
 
+**Do not propose replicating a result on another Spark.** AGB has several units (this one is an
+HP ZGX Nano G1n, 1 TB; the others are 4 TB DGX Sparks) but the **hardware is identical — only disk
+capacity differs**. Same silicon, same driver, same OS image, so a cross-unit re-run re-measures the
+same variables and validates nothing. The other units are useful for **capacity** (the 1 TB is the
+binding constraint — NBA 2K27 alone is 102 GB) and for running something long while working
+elsewhere. Those are logistics, not evidence.
+
 ## Recurring failure signatures (cite these when diagnosing)
 
 - **`vkGetPhysicalDeviceDescriptorSizeEXT` unthunked** — `VK_EXT_descriptor_buffer` gap in
