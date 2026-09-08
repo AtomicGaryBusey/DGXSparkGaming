@@ -1,6 +1,6 @@
 # Open questions, dead ends, and what to do next
 
-The state of the investigation, as of **2026-09-07**. `README.md` records *results*; this
+The state of the investigation, as of **2026-09-08**. `README.md` records *results*; this
 records *the work* — what is settled, what is open, what has been ruled out, and what the next
 concrete step is for each.
 
@@ -51,13 +51,9 @@ helper pulls in `libstdc++`, which is a much wider set than id Tech 4.
 rebuild. Costs: no overlay, achievements, cloud saves or playtime.
 
 ### 2b. Does the `.bind` rule generalise past the 2004-2009 id titles?
-DOOM 3 and Prey load Valve's `legacycompat/Steam.dll`, which pulls in the *native*
-`steamclient.dll` instead of Proton's `lsteamclient` shim, and that access-violates inside Wine's
-32-bit unix-call dispatcher.
-
-*Strong hint, not yet controlled:* launching `Doom3.exe` with **no `SteamAppId`** reached OpenGL
-init — far past the fault. *Next step:* `NO_STEAM_API=1` in `game-run.sh`, then A/B it. Costs to
-document: no overlay, achievements, cloud saves or playtime.
+The rule established on 2026-09-08 is: **entry point inside a `.bind` section ⇒ SteamStub ⇒ the
+stub loads `Steam.dll` at runtime ⇒ Proton redirects to `lsteamclient` ⇒ Box64's missing symbols
+kill it.** Confirmed for Prey, DOOM 3 and RoE; Quake 4 has no `.bind` and is unaffected.
 
 **RAGE (9200) is the live test.** It is 32-bit with a `.bind` section and its EP inside it, but
 has *no* `legacykey*` keys and statically imports `steam_api.dll`. Until it is run, scope
