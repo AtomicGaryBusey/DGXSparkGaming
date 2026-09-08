@@ -1,0 +1,12 @@
+# SDM: FINCSTP/FDECSTP move TOP and "do not affect the tag word or the contents
+# of any register." One push from empty puts the value in PHYSICAL R7, so the
+# tag word is 0x3FFF no matter where TOP is afterwards.
+INC1  0x3fff
+DEC1  0x3fff
+# CONTROL: TOP returns to its starting point. Box64 passes this because its two
+# per-instruction errors cancel — which is why the case is here. Without it the
+# other three read as "TOP handling is broken", a broader claim than the evidence
+# supports.
+RT1   0x3fff
+# Seven pushes leave R1..R7 in use; FINCSTP must not change that.
+IN7   0x0003

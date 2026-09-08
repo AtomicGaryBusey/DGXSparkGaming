@@ -311,6 +311,14 @@ elsewhere. Those are logistics, not evidence.
   nobody implements. **No Man's Sky, Halo Infinite and Elden Ring are UNDIAGNOSED** — do not
   substitute a new guess. Same error class as "3,983 evaluates": a real log line read as evidence
   for something it does not measure, never controlled against a working title.
+- **Box64 loses x87 tags across FINCSTP/FDECSTP** — found 2026-09-08. Box64 holds the tag array
+  stack-relative and does not rotate it when TOP moves explicitly, so `fld1; fincstp` reports
+  `0xfffc` where the SDM says `0x3fff`. FEX is correct. **This is the same root defect as the
+  FSAVE write-out order and the `fpu_savenv` rotation fix does NOT cover it.** A `fincstp` paired
+  with a `fdecstp` cancels out, which is why it hid for so long. Both id Tech 4 binaries contain
+  these opcodes and `Sys_FPU_StackIsEmpty()` reads the tag word and nothing else — a plausible
+  mechanism for the fatal error, **not yet proven to be it**. Gate: `tools/isa-probe/x87top.32.S`.
+  Write-up: `notes/upstream/box64-issue-4-fincstp-tag-rotation.md`.
 - **id Tech 4 x87 FPU stack validation** — DOOM 3, BFG, Prey (2006), Quake 4. Matrix:
   id Tech 2 ✅ / 3 ✅ / 4 ❌ / 6+ ✅ (Daikatana runs excellently, so this is not general x87 breakage).
   **Measured 2026-09-07 via Quake 4, which prints its whole x87 environment one line before dying:**
