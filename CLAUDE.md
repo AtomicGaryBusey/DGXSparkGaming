@@ -355,6 +355,15 @@ elsewhere. Those are logistics, not evidence.
   nobody implements. **No Man's Sky, Halo Infinite and Elden Ring are UNDIAGNOSED** — do not
   substitute a new guess. Same error class as "3,983 evaluates": a real log line read as evidence
   for something it does not measure, never controlled against a working title.
+- **Mouse "feel" complaints: the INPUT PATH is not the cause** — measured 2026-09-08 with
+  `tools/mousefeel.sh`. DirectInput (exclusive+relative+buffered, exactly what id Tech 4 asks for)
+  delivered **40,171 px** against the X server's raw device total of **40,233** — 0.15% apart. No
+  spurious motion at rest, no buffer overflows, no lost acquisitions, no clamping. So geometry,
+  pointer confinement, warp feedback and translator involvement are all ruled out; four launches
+  were wasted on the geometry theory first. What the same run found: the compositor applies
+  **2.42x acceleration to the desktop pointer** while the game correctly gets 1:1 raw — a real
+  sensitivity discontinuity, especially on a trackball. **Measure with `mousefeel.sh` before
+  touching resolution, fullscreen or Wine knobs.**
 - **Box64 loses x87 tags across FINCSTP/FDECSTP** — found 2026-09-08. Box64 holds the tag array
   stack-relative and does not rotate it when TOP moves explicitly, so `fld1; fincstp` reports
   `0xfffc` where the SDM says `0x3fff`. FEX is correct. **This is the same root defect as the

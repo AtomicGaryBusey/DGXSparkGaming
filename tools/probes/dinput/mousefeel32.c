@@ -66,6 +66,7 @@
 #define PHASE_MS  5000
 
 static LONG g_rn, g_rsx, g_rsy, g_rabs, g_rmax, g_rabsolute;
+static LONG g_raw_ever, g_di_ever;   /* cumulative, never reset — control liveness */
 
 static void raw_reset(void) { g_rn = g_rsx = g_rsy = g_rabs = g_rmax = g_rabsolute = 0; }
 
@@ -82,7 +83,7 @@ static LRESULT CALLBACK wp(HWND h, UINT m, WPARAM w, LPARAM l) {
                     if (ri->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) g_rabsolute++;
                     if (dx || dy) {
                         LONG a = dx < 0 ? -dx : dx;
-                        g_rn++; g_rsx += dx; g_rsy += dy; g_rabs += a;
+                        g_rn++; g_rsx += dx; g_rsy += dy; g_rabs += a; g_raw_ever++;
                         if (a > g_rmax) g_rmax = a;
                     }
                 }
@@ -139,7 +140,7 @@ static void run_phase(LPDIRECTINPUTDEVICE8A dev, const char *name, const char *a
             LONG d = (LONG)od[i].dwData;
             if (od[i].dwOfs == DIMOFS_X || od[i].dwOfs == DIMOFS_Y) {
                 LONG a = d < 0 ? -d : d;
-                s->ev++;
+                s->ev++; g_di_ever++;
                 if (od[i].dwOfs == DIMOFS_X) { s->sx += d; s->absx += a; if (a > s->maxabs) s->maxabs = a; }
                 else                          { s->sy += d; }
             }
@@ -159,7 +160,7 @@ static void verdict(const char *name, const struct stats *s) {
     long di = s->absx, raw = g_rabs;
     printf("    %-14s ", name);
     if (raw == 0 && di == 0)      printf("both silent\n");
-    else if (raw == 0 && di > 0)  printf("** DI reports %ld px of travel while RAW saw NONE -> spurious/echoed motion **\n", di);
+    else if (raw == 0 && di > 0)  printf("DI %ld px, RAW 0 — see the control check below\n", di);
     else if (di == 0 && raw > 0)  printf("** DI saw NOTHING while RAW saw %ld px -> DirectInput delivered no motion **\n", raw);
     else {
         double r = (double)di / (double)raw;
@@ -188,9 +189,17 @@ int main(void) {
     ShowWindow(hw, SW_SHOW); UpdateWindow(hw); SetForegroundWindow(hw); SetFocus(hw);
     pump();
 
+    /* dwFlags = 0, NOT RIDEV_INPUTSINK.
+     * Measured 2026-09-08: with RIDEV_INPUTSINK this Wine logs
+     *     fixme:rawinput:NtUserRegisterRawInputDevices Unhandled flags 0x230
+     * and delivers NO WM_INPUT at all -- so the control read zero in every
+     * phase while DirectInput logged 5,857 events, and the probe then
+     * confidently reported "spurious/echoed motion" that had not happened.
+     * flags=0 receives only while foreground, which is fine: this probe holds
+     * DISCL_EXCLUSIVE|DISCL_FOREGROUND and is foreground by construction. */
     RAWINPUTDEVICE rid;
     rid.usUsagePage = 0x01; rid.usUsage = 0x02;
-    rid.dwFlags = RIDEV_INPUTSINK; rid.hwndTarget = hw;
+    rid.dwFlags = 0; rid.hwndTarget = hw;
     printf("  raw input registered : %s\n",
            RegisterRawInputDevices(&rid, 1, sizeof rid) ? "yes" : "NO (control unavailable!)");
 
@@ -245,7 +254,19 @@ int main(void) {
     IDirectInputDevice8_Release(dev);
     IDirectInput8_Release(di);
     DestroyWindow(hw);
+    /* THE CONTROL CHECK. A control that never fired is not evidence of anything,
+     * and saying so loudly is the whole point -- an earlier revision reported
+     * "spurious/echoed motion" three times from a control that was simply dead. */
     printf("\n================================================================================\n");
+    if (g_raw_ever == 0 && g_di_ever > 0) {
+        printf("!! CONTROL DEAD: raw input received ZERO events in every phase while\n");
+        printf("   DirectInput received %ld. The comparison is UNINTERPRETABLE -- this\n", g_di_ever);
+        printf("   says nothing about whether DirectInput is correct. Check the Wine\n");
+        printf("   trace for 'NtUserRegisterRawInputDevices Unhandled flags'.\n");
+        printf("   What CAN still be read: the STILL phase. DI events there with the\n");
+        printf("   mouse untouched would mean spurious motion regardless of any control.\n");
+        printf("================================================================================\n");
+    }
     printf("Compare the two runtimes. If DI and RAW agree in BOTH, the input layer is fine\n");
     printf("and the anomaly is above it (engine smoothing / frame timing) or below it\n");
     printf("(Xwayland pointer handling) — go there, do not guess again.\n");

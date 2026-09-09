@@ -50,14 +50,68 @@ grep -hE 'r_customWidth|r_customHeight' \
   "$HOME/.local/share/Steam/steamapps/common/Prey 2006/base/autoexec.cfg" 2>/dev/null \
   | sed 's/^/    game is configured for: /'
 
+# X-SERVER CONTROL. Wine's rawinput is not usable as a control here: with
+# RIDEV_INPUTSINK this Wine logs "Unhandled flags" and delivers nothing, and with
+# flags=0 it still delivers nothing while DirectInput receives thousands of
+# events -- measured 2026-09-08. So the control moves OUTSIDE Wine entirely.
+#
+# `xinput test-xi2 --root` reports each RawMotion with TWO numbers per valuator:
+# the accelerated value and, in parentheses, the RAW device delta. That answers a
+# question no Wine-side probe can: whether pointer acceleration is being applied
+# before the game ever sees the motion.
+#
+# This matters on this machine specifically. `xinput list` shows the pointer
+# devices are `xwayland-pointer` and `xwayland-relative-pointer` -- there is NO
+# physical trackball in X at all. mutter owns the device and synthesises a
+# virtual pointer, so the chain is:
+#     trackball -> libinput -> mutter (accel) -> Xwayland -> Wine -> DI -> game
+xi_start() {
+  XI_LOG="$HOME/dgx-gaming-work/mousefeel-xi2.log"
+  : > "$XI_LOG"
+  if command -v xinput >/dev/null 2>&1; then
+    xinput test-xi2 --root >"$XI_LOG" 2>/dev/null &
+    XI_PID=$!
+  else
+    XI_PID=""; echo "  (xinput missing — no X-server control)"
+  fi
+}
+xi_stop() {
+  [ -n "${XI_PID:-}" ] && kill "$XI_PID" 2>/dev/null
+  [ -s "${XI_LOG:-/nonexistent}" ] || { echo "  X control: no events captured"; return; }
+  awk '
+    /RawMotion/      { inraw=1; next }
+    /^EVENT/         { inraw=0 }
+    inraw && /^ *[01]: / {
+        acc=$2; raw=$3; gsub(/[()]/,"",raw)
+        if (acc<0) acc=-acc; if (raw<0) raw=-raw
+        if ($1=="0:") { ax+=acc; rx+=raw; n++ } else { ay+=acc; ry+=raw }
+    }
+    END {
+      if (n==0) { print "  X control: 0 RawMotion events"; exit }
+      printf "  X control (outside Wine): %d raw motion events\n", n
+      printf "    X accelerated travel |x| : %.0f\n", ax
+      printf "    X RAW device travel  |x| : %.0f\n", rx
+      if (rx>0) printf "    accel factor applied by the compositor: %.2fx\n", ax/rx
+    }' "$XI_LOG"
+}
+
 run_one() {
   local name="$1"; shift
   echo
   echo "=================================================================="
   echo " $name — move the mouse as prompted. Cursor will vanish (~20 s)."
   echo "=================================================================="
+  xi_start
   "$@" 2>"$HOME/dgx-gaming-work/mousefeel-$name.trace"
+  echo
+  xi_stop
   echo "  (wine trace: ~/dgx-gaming-work/mousefeel-$name.trace)"
+  echo "  COMPARE: the probe's DI travel|x| totals against 'X RAW device travel' above."
+  echo "    DI ~= X raw            -> the input path is faithful; look at m_smooth / engine."
+  echo "    DI ~= X accelerated    -> the game is getting COMPOSITOR-ACCELERATED motion,"
+  echo "                              which for a trackball is a real feel problem and has"
+  echo "                              nothing to do with FEX, Box64 or window geometry."
+  echo "    DI far from both       -> the DirectInput path is rescaling; that is a Wine bug."
 }
 
 case "$WHICH" in

@@ -349,7 +349,51 @@ same binary and prefix. Launching from the Steam UI has always worked.
 Likely related to pending work on `NO_STEAM_API` (bypassing the legacy Steam DRM path). **Not
 root-caused, and deliberately not attributed to any of the geometry changes made that evening.**
 
-### The mouse anomaly is STILL UNTESTED — and how four launches failed to test it
+### The mouse anomaly: the INPUT PATH IS EXONERATED — measured 2026-09-08
+
+Settled with `tools/mousefeel.sh`, using an X-server control that bypasses Wine entirely.
+
+| | travel \|x\| |
+|---|---:|
+| DirectInput, summed over all phases (exclusive + relative + buffered, exactly what id Tech 4 asks for) | **40,171** |
+| X server, RAW device delta | **40,233** |
+| X server, accelerated delta | 97,341 |
+
+**DI / X-raw = 0.9985 — 0.15% apart.** DirectInput is delivering the raw device deltas faithfully.
+(X is marginally higher because the X capture runs for the whole script including the gaps between
+phases, while DI counts only during them.) Supporting readings, all clean:
+
+- **STILL phase: 0 DI events** with the ball untouched → no spurious motion, so **warp feedback is
+  ruled out**. This reading needs no control to be valid.
+- `ovf 0`, `lost 0` in every phase → nothing dropped, no lost acquisitions.
+- `max|dx|` 24–27 on flicks, consistent with raw deltas at a high poll rate → **no clamping**.
+
+**Therefore all of these are dead**, and none should be revisited without new evidence: window
+geometry / fullscreen heuristics, pointer confinement, warp feedback, DirectInput rescaling, and
+any FEX/Box64 involvement. Four launches were spent on the geometry theory and it was wrong.
+
+**What the measurement DID turn up.** The compositor applies **2.42x acceleration** to the desktop
+pointer, while the game correctly receives **1:1 raw** motion. That is correct behaviour — games
+want raw deltas — but it means moving from desktop to game is a 2.4x sensitivity discontinuity.
+On a **trackball** (this machine's pointer is a CST Laser Trackball, whose profile is long fast
+spins and abrupt stops) that is a plausible source of "feels odd" with no bug anywhere.
+
+Also worth recording: `xinput list` shows **no physical trackball in X at all** — only
+`xwayland-pointer` and `xwayland-relative-pointer`. Under Xwayland, mutter owns the device and
+synthesises a pointer, so the chain is
+`trackball → libinput → mutter (accel) → Xwayland → Wine → DirectInput → game`.
+
+*Remaining candidates, in order:* engine-side `m_smooth 1` and `sensitivity 5` (both games are at
+stock defaults); frame-timing interaction; and the desktop-vs-game acceleration discontinuity
+above. **Cheapest next test:** set `m_smooth 0` in `autoexec.cfg` and play a minute — one variable,
+no rebuild, instantly reversible.
+
+*Note on the control:* Wine's own raw input is unusable as a control here. With `RIDEV_INPUTSINK`
+it logs `NtUserRegisterRawInputDevices Unhandled flags 0x230` and delivers nothing; with `flags=0`
+it still delivers nothing while DirectInput receives ~15,000 events. `mousefeel.sh` now uses
+`xinput test-xi2 --root`, which reports both accelerated and raw deltas from outside Wine.
+
+### How four launches failed to test this (kept, because the process failure is the lesson)
 
 The 2026-09-08 session set out to test the "window narrower than display breaks pointer
 confinement" hypothesis. It never did. Four launches, four unrelated failures: CDS access
