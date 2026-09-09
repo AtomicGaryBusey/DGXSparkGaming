@@ -96,6 +96,15 @@ static LRESULT CALLBACK wp(HWND h, UINT m, WPARAM w, LPARAM l) {
 
 struct stats {
     long polls, ev, sx, sy, absx, maxabs, overflow, lost, reacq, zero_ev;
+    /* Wall detection. AGB 2026-09-08: the trackball hits a hard stop after 2-3
+     * full revolutions in ONE direction and only recovers by reversing. Every
+     * earlier phase in this probe was back-and-forth, so net displacement never
+     * accumulated (sum x was -39 / -1007 / +1281 against 40,000 px of travel)
+     * and the wall could never be reached. |travel| measures fidelity; only NET
+     * displacement can find a confinement boundary. */
+    long peak_pos, peak_neg;   /* furthest net displacement reached */
+    long stall_polls;          /* consecutive polls with 0 DI events */
+    long max_stall;
 };
 
 static void pump(void) {
@@ -135,13 +144,19 @@ static void run_phase(LPDIRECTINPUTDEVICE8A dev, const char *name, const char *a
         if (hr == DI_BUFFEROVERFLOW) s->overflow++;
         else if (FAILED(hr)) { Sleep(poll_ms); continue; }
 
-        if (n == 0) s->zero_ev++;
+        if (n == 0) { s->zero_ev++; s->stall_polls++;
+                      if (s->stall_polls > s->max_stall) s->max_stall = s->stall_polls; }
+        else s->stall_polls = 0;
         for (DWORD i = 0; i < n; i++) {
             LONG d = (LONG)od[i].dwData;
             if (od[i].dwOfs == DIMOFS_X || od[i].dwOfs == DIMOFS_Y) {
                 LONG a = d < 0 ? -d : d;
                 s->ev++; g_di_ever++;
-                if (od[i].dwOfs == DIMOFS_X) { s->sx += d; s->absx += a; if (a > s->maxabs) s->maxabs = a; }
+                if (od[i].dwOfs == DIMOFS_X) {
+                    s->sx += d; s->absx += a; if (a > s->maxabs) s->maxabs = a;
+                    if (s->sx > s->peak_pos) s->peak_pos = s->sx;
+                    if (s->sx < s->peak_neg) s->peak_neg = s->sx;
+                }
                 else                          { s->sy += d; }
             }
         }
@@ -247,6 +262,28 @@ int main(void) {
 
     run_phase(dev, "FRAMERATE", "move steadily (polled at 16 ms)", 16, &frame);
     report("FRAMERATE", &frame); verdict("FRAMERATE", &frame);
+
+    /* THE PHASE THAT MATTERS for a confinement wall. Keep going ONE way. */
+    struct stats spin;
+    run_phase(dev, "SPIN-ONE-WAY", "keep rotating the SAME way, do not reverse", 4, &spin);
+    report("SPIN", &spin);
+    printf("    %-14s net displacement: %+ld   furthest reached: %+ld / %+ld\n",
+           "SPIN", spin.sx, spin.peak_pos, spin.peak_neg);
+    printf("    %-14s longest run of polls with NO DI events: %ld of %ld\n",
+           "SPIN", spin.max_stall, spin.polls);
+    {
+        long reach = spin.peak_pos > -spin.peak_neg ? spin.peak_pos : -spin.peak_neg;
+        if (spin.max_stall > 25 && reach > 200)
+            printf("    %-14s ** WALL: DI went silent for %ld consecutive polls after reaching\n"
+                   "                   %+ld net. If the X control below still counted motion during\n"
+                   "                   that time, the physical device was moving and DirectInput\n"
+                   "                   stopped -- that is pointer CONFINEMENT, not the device. **\n",
+                   "SPIN", spin.max_stall, reach);
+        else if (reach > 200)
+            printf("    %-14s no wall seen: DI kept reporting to %+ld net with no stall.\n", "SPIN", reach);
+        else
+            printf("    %-14s inconclusive: only %+ld net reached — spin further next time.\n", "SPIN", reach);
+    }
 
     (void)s_still; (void)r_still_n; (void)r_still_abs; (void)r_still_sx; (void)r_still_max; (void)r_still_a;
 

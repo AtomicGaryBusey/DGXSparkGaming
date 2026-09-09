@@ -265,7 +265,16 @@ over a check that was cheap and available. The rules that would have caught them
    ships aarch64 DLSS. Check `file` and `strings` for a `/dvs/p4/build/...` provenance path.
    Reading a repo's own README to decide whether to trust that repo is circular.
 
-Public repo: `https://github.com/AtomicGaryBusey/DGXSparkGaming` (remote `origin`, branch `main`).
+**Remotes (rearranged 2026-09-08 to match `~/ZebethRadio`):**
+
+| remote | URL | role |
+|---|---|---|
+| **`origin`** | `https://hobbygit.aurora.zebeth.ai/HobbyClaude/DGXSparkGaming.git` | **primary** — Forgejo, `main` tracks it |
+| `github` | `https://github.com/AtomicGaryBusey/DGXSparkGaming.git` | secondary — the public mirror |
+
+`git push` alone goes to **Forgejo**. Push to GitHub explicitly with `git push github main`.
+**Keep both in sync** — the GitHub copy is the one strangers read. Both are public; confirm with
+AGB before pushing anything new to either.
 
 ## Project directive: how this project treats NVIDIA's ecosystem
 
