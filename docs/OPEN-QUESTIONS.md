@@ -349,7 +349,50 @@ same binary and prefix. Launching from the Steam UI has always worked.
 Likely related to pending work on `NO_STEAM_API` (bypassing the legacy Steam DRM path). **Not
 root-caused, and deliberately not attributed to any of the geometry changes made that evening.**
 
-### The mouse anomaly: the INPUT PATH IS EXONERATED — measured 2026-09-08
+### The trackball "wall": pointer CONFINEMENT, reproduced outside the game — 2026-09-08
+
+**AGB's report, which is what cracked it:** the trackball can be rotated 2-3 full revolutions in
+one direction before hitting a hard wall; motion only resumes after reversing. His reasoning was
+correct and is worth preserving — a mouse user constantly lifts and re-centres, so net
+displacement never accumulates; a trackball spins continuously and does accumulate. Same bug,
+different human input, which is why it looks like a trackball quirk and is not one.
+
+**Reproduced with `tools/mousefeel.sh`, no game involved:**
+
+| run | phases | DI travel | X raw travel | motion lost |
+|---|---|---:|---:|---:|
+| first | back-and-forth only | 40,171 | 40,233 | **0.15%** |
+| second | **plus a sustained one-direction spin** | 80,008 | 86,809 | **7.8% (6,801 px)** |
+
+Same probe, same machine, same session. The only variable is sustained motion one way. In the
+spin phase DirectInput went silent for **275 consecutive polls out of 816** — roughly 1.1 s of a
+5 s phase — after reaching **+32,446 net displacement**, while the X server kept counting physical
+motion throughout.
+
+**Mechanism.** WineHQ's own patch discussion states it: *"When the cursor is clipped and blocked by
+confine window, Wine receives MotionNotify events with identical position."* Wine derives relative
+motion from position deltas of a confined absolute cursor; once the cursor is pinned against the
+boundary, consecutive events carry the same coordinates, the delta is zero, and the game receives
+nothing until the direction reverses and the cursor leaves the edge.
+
+Under Xwayland this is worse than on plain X: `xinput list` shows **no physical trackball at all**,
+only `xwayland-pointer` (absolute) and `xwayland-relative-pointer`. mutter owns the device and
+synthesises a pointer, and there is an open SDL issue (libsdl-org/SDL#16163) about relative motion
+being corrupted across transitions between exactly those two sources.
+
+**This is NOT** FEX, Box64, id Tech 4, Prey specifically, window geometry, or engine smoothing.
+The earlier finding that DI is faithful (0.15%) still stands — it is faithful right up until the
+cursor reaches the confinement boundary.
+
+*Next test, one variable:* `tools/wine-mouse-knobs.sh set grab` — `GrabPointer=Y` makes Wine take a
+real pointer grab rather than tracking a clipped cursor. Re-run the spin probe and compare the
+stall count. `GrabFullscreen=Y` is the follow-up if that is not enough.
+
+*Independent control if software fails:* AGB owns an Alienware M7700 (Clevo D900T, Pentium 4, XP)
+and can run Prey from original media with the same trackball. That answers "is this era-authentic
+behaviour" — worth doing only if the Wine-side knobs do not resolve it.
+
+### The mouse anomaly: DirectInput FIDELITY is exonerated — measured 2026-09-08
 
 Settled with `tools/mousefeel.sh`, using an X-server control that bypasses Wine entirely.
 
