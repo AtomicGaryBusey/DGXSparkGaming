@@ -562,6 +562,33 @@ run the tool, then act.**
   `steam://install/<appid>` needs Steam **fully loaded** — URLs sent while the UI still says
   "Loading user data…" are silently dropped.
 
+## CodeGraph — what it actually covers HERE (checked 2026-09-09)
+
+A `.codegraph/` index exists, so the global rule ("reach for it before grep/find") applies — but
+its coverage of *this* repo is lopsided, and over-trusting it would be a mistake. Measured:
+
+| | indexed | note |
+|---|---|---|
+| `.c` | **37 / 37** | every probe in `tools/probes/`, `tools/fex-tests/` |
+| `.py` | **9 / 9** | `pick-runtime.py`, `appinfo.py`, `x87-fuzz.py`, `schema/test-guards.py` |
+| `.cpp` | **3 / 3** | |
+| `.js` | **4 / 4** | the `workflows/` multi-agent scripts |
+| **`.sh`** | **0 / 38** | **33 of the 35 tools are bash. `game-run.sh`, `check-stack.sh`, the entire trigger table — invisible to it.** |
+| **`.S`** | **0 / 12** | **the `isa-probe` freestanding probes — the highest-value diagnostics here** |
+| `.md` | 0 / 34 | README, this file, `docs/` — prose, reasonably out of scope |
+| `.sql` | 0 / 1 | `tools/schema/sgl-schema.sql` |
+
+613 symbols, 1503 edges, 53 files.
+
+**So:** `codegraph_explore` first for anything in C, Python or the workflow JS — it returns
+verbatim line-numbered source plus callers in one call, and it correctly surfaces *related*
+symbols you did not name. That last property directly addresses this repo's documented failure of
+rebuilding two probes that already existed. **For bash, assembly and the docs it has nothing**, so
+grep/Read stay the only option there — which is most of `tools/` and all of the narrative.
+
+Do not let a codegraph miss imply absence: asking it about `game-run.sh` returns other files
+without saying the shell script was never indexed.
+
 ## Where everything lives (read this before rebuilding something)
 
 | | |
