@@ -562,38 +562,46 @@ run the tool, then act.**
   `steam://install/<appid>` needs Steam **fully loaded** — URLs sent while the UI still says
   "Loading user data…" are silently dropped.
 
-## CodeGraph — what it actually covers HERE (re-checked 2026-09-10)
+## CodeGraph — coverage is now COMPLETE for every source language here (2026-09-10)
 
-A `.codegraph/` index exists, so the global "reach for it before grep/find" rule applies. **Shell
-was added on 2026-09-09 and this is now the primary way to navigate `tools/`.** Measured:
+A `.codegraph/` index exists, so the global "reach for it before grep/find" rule applies — and as
+of 2026-09-10 it covers **every source file type in this repo**. Verified against `git ls-files`:
 
-| | indexed | note |
-|---|---|---|
-| **`.sh`** | **38 / 38** | **624 bash symbols — the LARGEST language in the graph, ahead of C. Real functions with line numbers, and 443 call edges out / 452 in.** |
-| `.c` | 37 / 37 | every probe in `tools/probes/`, `tools/fex-tests/` |
-| `.py` | 9 / 9 | `pick-runtime.py`, `appinfo.py`, `x87-fuzz.py`, `schema/test-guards.py` |
-| `.cpp` / `.js` | 3 / 3, 4 / 4 | the `workflows/` multi-agent scripts |
-| **`.S`** | **0 / 12** | **still absent — the `isa-probe` freestanding probes and `tools/fex-tests/x87-*.S`** |
-| `.md` | 0 / 34 | prose, reasonably out of scope |
-| `.sql` | 0 / 1 | `tools/schema/sgl-schema.sql` |
+| | indexed | symbols | note |
+|---|---|---|---|
+| `.sh` | **38 / 38** | 624 | the largest language in the graph; real functions, 443 call edges out |
+| `.c` | **37 / 37** | 394 | every probe in `tools/probes/`, `tools/fex-tests/` |
+| `.py` | **9 / 9** | 138 | `pick-runtime.py`, `appinfo.py`, `x87-fuzz.py`, `schema/test-guards.py` |
+| `.js` | **4 / 4** | 42 | the `workflows/` multi-agent scripts |
+| `.cpp` | **3 / 3** | 39 | |
+| `.S` | **12 / 12** | 32 | `isa-probe/`, `fex-tests/x87-*`, `probes/cpuid/` — added last |
+| `.md` / `.sql` | 0 | — | prose and one schema file; out of scope |
 
-91 files, 1237 symbols, 2388 edges.
+103 files, 1269 symbols, 2414 edges.
 
-**Cross-language edges work**, which is the part grep cannot do: it resolves
-`tools/game-run.sh → tools/appinfo.py` and `→ tools/pick-runtime.py`.
+**Use it first for anything in `tools/`.** One call returns verbatim line-numbered source plus the
+callers, and it surfaces *related* symbols you did not name — a query about `detect_jit` also
+returned `tools/dlssnr-control-run.sh:game_pid`, a second independent implementation of "find the
+game process by thread count". This repo has twice paid for exactly that kind of unnoticed
+duplication, so **query before writing a new helper.**
 
-**It also surfaces duplication you did not ask about.** One query about `detect_jit` returned
-`tools/dlssnr-control-run.sh:game_pid` alongside `game-run.sh:game_pids` — two independent
-implementations of "find the game process by thread count". This repo has twice paid for exactly
-that kind of unnoticed duplication (two probes rebuilt from scratch). **Query before writing a new
-helper.**
+**What assembly coverage does and does not buy.** Symbols are labels, so counts are modest (2–7
+per file) and `_start` is usually the only meaningful one. The probes now answer to their names —
+`explore "x87top.32.S"` pins the file and returns its source instead of a nearest-match miss. But
+there are **zero asm↔C edges** here, because these probes are freestanding `_start` programs rather
+than linked against the repo's C (`tools/probes/cpuid/` holds `cpuid.S` and `cpuidprobe.c` as
+separate programs). In a project that *links* the two, those edges resolve.
 
-**The one live gap: `.S` is still 0/12.** For the freestanding assembly probes — which the trigger
-table calls the cheapest diagnostic here — grep/Read remain the only option.
+**Operational rule, because it will recur:** auto-sync reacts to **file changes, not to the indexer
+gaining a language.** When CodeGraph adds language support, nothing on disk changes, so nothing
+triggers a re-index and the existing graph stays silently stale. Run `codegraph index` explicitly
+after any such upgrade. This repo was stale for exactly that reason between the shell and assembly
+additions.
 
-**And the standing trap:** a codegraph miss does not mean absence. Naming an unindexed file returns
-the nearest matches among files it *does* have, with no "not indexed" signal. That is rule 1 of
-*Verifying claims* — a negative is only as good as the name you guessed — applied to a new tool.
+**And the standing trap, unchanged:** a CodeGraph miss does not mean absence. Naming an unindexed
+file returns the nearest matches among files it *does* have, with no "not indexed" signal. That is
+rule 1 of *Verifying claims* — a negative is only as good as the name you guessed — applied to a
+new tool. It bit here twice in two days, once for `.sh` and once for `.S`.
 
 ## Where everything lives (read this before rebuilding something)
 
