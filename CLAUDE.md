@@ -562,32 +562,38 @@ run the tool, then act.**
   `steam://install/<appid>` needs Steam **fully loaded** — URLs sent while the UI still says
   "Loading user data…" are silently dropped.
 
-## CodeGraph — what it actually covers HERE (checked 2026-09-09)
+## CodeGraph — what it actually covers HERE (re-checked 2026-09-10)
 
-A `.codegraph/` index exists, so the global rule ("reach for it before grep/find") applies — but
-its coverage of *this* repo is lopsided, and over-trusting it would be a mistake. Measured:
+A `.codegraph/` index exists, so the global "reach for it before grep/find" rule applies. **Shell
+was added on 2026-09-09 and this is now the primary way to navigate `tools/`.** Measured:
 
 | | indexed | note |
 |---|---|---|
-| `.c` | **37 / 37** | every probe in `tools/probes/`, `tools/fex-tests/` |
-| `.py` | **9 / 9** | `pick-runtime.py`, `appinfo.py`, `x87-fuzz.py`, `schema/test-guards.py` |
-| `.cpp` | **3 / 3** | |
-| `.js` | **4 / 4** | the `workflows/` multi-agent scripts |
-| **`.sh`** | **0 / 38** | **33 of the 35 tools are bash. `game-run.sh`, `check-stack.sh`, the entire trigger table — invisible to it.** |
-| **`.S`** | **0 / 12** | **the `isa-probe` freestanding probes — the highest-value diagnostics here** |
-| `.md` | 0 / 34 | README, this file, `docs/` — prose, reasonably out of scope |
+| **`.sh`** | **38 / 38** | **624 bash symbols — the LARGEST language in the graph, ahead of C. Real functions with line numbers, and 443 call edges out / 452 in.** |
+| `.c` | 37 / 37 | every probe in `tools/probes/`, `tools/fex-tests/` |
+| `.py` | 9 / 9 | `pick-runtime.py`, `appinfo.py`, `x87-fuzz.py`, `schema/test-guards.py` |
+| `.cpp` / `.js` | 3 / 3, 4 / 4 | the `workflows/` multi-agent scripts |
+| **`.S`** | **0 / 12** | **still absent — the `isa-probe` freestanding probes and `tools/fex-tests/x87-*.S`** |
+| `.md` | 0 / 34 | prose, reasonably out of scope |
 | `.sql` | 0 / 1 | `tools/schema/sgl-schema.sql` |
 
-613 symbols, 1503 edges, 53 files.
+91 files, 1237 symbols, 2388 edges.
 
-**So:** `codegraph_explore` first for anything in C, Python or the workflow JS — it returns
-verbatim line-numbered source plus callers in one call, and it correctly surfaces *related*
-symbols you did not name. That last property directly addresses this repo's documented failure of
-rebuilding two probes that already existed. **For bash, assembly and the docs it has nothing**, so
-grep/Read stay the only option there — which is most of `tools/` and all of the narrative.
+**Cross-language edges work**, which is the part grep cannot do: it resolves
+`tools/game-run.sh → tools/appinfo.py` and `→ tools/pick-runtime.py`.
 
-Do not let a codegraph miss imply absence: asking it about `game-run.sh` returns other files
-without saying the shell script was never indexed.
+**It also surfaces duplication you did not ask about.** One query about `detect_jit` returned
+`tools/dlssnr-control-run.sh:game_pid` alongside `game-run.sh:game_pids` — two independent
+implementations of "find the game process by thread count". This repo has twice paid for exactly
+that kind of unnoticed duplication (two probes rebuilt from scratch). **Query before writing a new
+helper.**
+
+**The one live gap: `.S` is still 0/12.** For the freestanding assembly probes — which the trigger
+table calls the cheapest diagnostic here — grep/Read remain the only option.
+
+**And the standing trap:** a codegraph miss does not mean absence. Naming an unindexed file returns
+the nearest matches among files it *does* have, with no "not indexed" signal. That is rule 1 of
+*Verifying claims* — a negative is only as good as the name you guessed — applied to a new tool.
 
 ## Where everything lives (read this before rebuilding something)
 
