@@ -198,10 +198,25 @@ int main(void) {
     wc.lpfnWndProc = wp; wc.hInstance = GetModuleHandleA(NULL);
     wc.lpszClassName = "mousefeel"; wc.hCursor = LoadCursorA(NULL, IDC_ARROW);
     RegisterClassA(&wc);
+    /* WINDOW SIZE IS LOAD-BEARING, and getting it wrong invalidated a whole run.
+     * If Wine confines the cursor to the window, the distance to the confinement
+     * boundary scales with the window. The first version of this probe used a
+     * 547x483 window while the game runs at 2560x1440 -- roughly a fifth of the
+     * travel before hitting an edge. With GrabPointer=Y that small window became
+     * a small cage: the SLOW phase recorded ZERO DirectInput events with the ball
+     * definitely moving, no error and lost=0, because the cursor was pinned
+     * against an edge the entire phase.
+     * So the probe now opens at the GAME's resolution by default. Override with
+     * MOUSEFEEL_W / MOUSEFEEL_H. */
+    int ww = 2560, wh = 1440;
+    if (getenv("MOUSEFEEL_W")) ww = atoi(getenv("MOUSEFEEL_W"));
+    if (getenv("MOUSEFEEL_H")) wh = atoi(getenv("MOUSEFEEL_H"));
     HWND hw = CreateWindowExA(0, "mousefeel", "id Tech 4 mouse probe — keep this focused",
-                              WS_OVERLAPPEDWINDOW, 100, 100, 520, 260,
+                              WS_POPUP, 0, 0, ww, wh,
                               NULL, NULL, wc.hInstance, NULL);
+    printf("  probe window        : %dx%d at 0,0 (game runs 2560x1440; size sets the cage)\n", ww, wh);
     ShowWindow(hw, SW_SHOW); UpdateWindow(hw); SetForegroundWindow(hw); SetFocus(hw);
+    BringWindowToTop(hw);
     pump();
 
     /* dwFlags = 0, NOT RIDEV_INPUTSINK.

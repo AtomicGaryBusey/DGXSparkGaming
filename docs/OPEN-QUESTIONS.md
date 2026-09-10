@@ -384,7 +384,37 @@ being corrupted across transitions between exactly those two sources.
 The earlier finding that DI is faithful (0.15%) still stands — it is faithful right up until the
 cursor reaches the confinement boundary.
 
-*Next test, one variable:* `tools/wine-mouse-knobs.sh set grab` — `GrabPointer=Y` makes Wine take a
+**Knob experiment, 2026-09-08/09 — numbers improved, the stall did not:**
+
+| run | knobs on the 3970 prefix | probe window | motion lost | longest SPIN stall |
+|---|---|---:|---:|---:|
+| 1 | none | 547px | 7.8% | **275** of 816 |
+| 2 | `GrabPointer=Y` | 547px | 6.3% | **36** of 958 |
+| 3 | `GrabPointer=Y` + `MouseWarpOverride=force` | 2560px | **2.4%** | **36** of 956 |
+
+`GrabPointer=Y` cut the stall 275 → 36. `MouseWarpOverride=force` did **not** move it further.
+The larger probe window fixed a separate artefact: run 2's SLOW phase recorded 0 DI events, which
+was the 547px window acting as a cage, not a real finding.
+
+**An observation that argues against the confinement story, recorded because it is inconvenient:**
+the stall is **exactly 36 polls in two different runs**, across a different window size and an
+added knob. A confinement wall should persist as long as you keep pushing into it — a *variable*
+duration. A fixed ~144 ms (36 × 4 ms) looks more like a periodic hitch than an edge. Do not treat
+"confinement" as settled on the strength of the mechanism sounding right.
+
+**Also established by AGB watching the screen, not by any counter:** the probe window (and by
+extension the game) does **not** grab the pointer at all — the cursor roams freely over other
+windows during an exclusive-mode DirectInput session. An exclusive-mode game is supposed to
+confine it. That is either the bug itself or the clearest symptom of it.
+
+**STATE, ready to resume.** Both knobs are SET and persist in
+`~/.local/share/Steam/steamapps/compatdata/3970/pfx`. Prey is on the known-good 2560x1440
+fullscreen config with `sensitivity 12`. **Pending: play Prey and report whether the wall is still
+felt.** The numbers cannot answer that; only a hand on the trackball can. Outcomes:
+gone → bake both knobs into `idtech4-prep.sh`; unchanged → what is being felt is not what these
+probes measure; softer → the residual 2.4% and the 144 ms hitch are what remain.
+
+*Superseded next-step (kept for the trail):* `tools/wine-mouse-knobs.sh set grab` — `GrabPointer=Y` makes Wine take a
 real pointer grab rather than tracking a clipped cursor. Re-run the spin probe and compare the
 stall count. `GrabFullscreen=Y` is the follow-up if that is not enough.
 
