@@ -186,3 +186,19 @@ purpose is legitimate, and a tool that blocks it just gets bypassed.
 
 **It says nothing about speed.** No FEX-vs-Box64 benchmark has ever been run here; every runtime
 claim in this log is functional. For a performance statement use `tools/bench-ab.sh`.
+
+## Late additions (2026-09-08/09)
+
+| tool | what it is for |
+|---|---|
+| `build-box64-symfix.sh` | builds Box64 with this project's two patches. **Prey and Quake 4 do not reach gameplay on stock Box64.** |
+| `box64-swap.sh` | swaps that build in/out of `/usr/local/bin`, which is the only path pressure-vessel's binfmt honours. Refuses to clobber a non-stock backup. |
+| `wine-mouse-knobs.sh` | `GrabPointer` / `GrabFullscreen` / `MouseWarpOverride`, via `wine reg`. One at a time. |
+| `mousefeel.sh` | measures the mouse path against an X-server control **outside Wine**. Includes the `SPIN-ONE-WAY` phase that finds confinement walls. |
+| `x87-fuzz.py` | differential x87 fuzzer (FEX vs Box64) with an SDM occupancy model and minimisation. |
+| `save-workflow-report.sh` | persists workflow output into `notes/` with provenance. |
+
+**A rule the mouse work earned:** an instrument that reports success must be checked for having
+actually produced an artifact. `mousefeel.sh` reported three confident findings from a control
+that was never running, because Wine silently ignored the raw-input flags it registered with. It
+now says `CONTROL DEAD` instead. Apply the same suspicion to any probe added here.

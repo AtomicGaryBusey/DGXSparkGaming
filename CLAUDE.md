@@ -100,6 +100,29 @@ failure it prevents — because that rationale is the point of this repo. Curren
   RootFS and run under both JITs. Seconds, no game, no GPU, no install. Two probes so far and both
   found a real bug (Box64 tag word; FEX CPUID DE/PSE). **Add a probe before installing a 100 GB
   game to test a CPU-semantics hypothesis.**
+- **`tools/build-box64-symfix.sh`** — builds Box64 with the two local patches this project
+  found: four missing box32 libc wrappers (`arc4random`, `strtof128`, `strfromf128`, `strtold`)
+  and the FSAVE tag-word rotation. **Prey and Quake 4 do not reach gameplay on a stock Box64.**
+  Idempotent; both patches documented in the header with why they exist.
+- **`tools/box64-swap.sh {status|install|revert}`** — swap the patched Box64 in and out of
+  `/usr/local/bin`. Necessary because pressure-vessel's binfmt uses that exact path, so `BOX64_BIN`
+  only affects the first process and a run done that way tests **nothing** while looking like a
+  failed fix. Refuses to overwrite a backup that is not stock, and verifies by md5.
+- **`tools/wine-mouse-knobs.sh {show|set|clear} grab|grabfs|warp|all`** — the three Wine registry
+  levers for old exclusive-mode DirectInput games (`GrabPointer`, `GrabFullscreen`,
+  `MouseWarpOverride`), applied via `wine reg` and never by editing `user.reg`. Nags if you set
+  all three at once, because then a win teaches you nothing.
+- **`tools/mousefeel.sh`** + **`tools/probes/dinput/mousefeel32.c`** — measures the mouse instead
+  of describing it: DirectInput in the game's exact mode against an **X-server control outside
+  Wine** (`xinput test-xi2`, which reports accelerated *and* raw deltas). Has a `SPIN-ONE-WAY`
+  phase because every earlier phase was back-and-forth and could never accumulate the net
+  displacement a confinement wall needs. Shouts `CONTROL DEAD` rather than inventing findings when
+  the control sees nothing.
+- **`tools/x87-fuzz.py`** — differential x87 fuzzer, FEX vs Box64, with an SDM model of stack
+  occupancy and delta-debug minimisation. Found the FINCSTP/FDECSTP tag bug. **Its generated
+  programs must never contain a `.data` section** — see the FEX `a3`-store signature.
+- **`tools/save-workflow-report.sh`** — persists a workflow's output into `notes/` with a
+  provenance header, so multi-agent results stop living only in a transcript.
 - **`tools/pick-runtime.py <exe> [--gamedir DIR]`** — reads a title's import tables *and* its
   binaries' strings (the Quake lineage `LoadLibrary`s its renderer, so an import scan alone calls
   Daikatana "no OpenGL") and says which JIT can actually run it. Prints `VERDICT=box64|fex|either`.
@@ -545,9 +568,10 @@ run the tool, then act.**
 |---|---|
 | `README.md` | the compatibility log — results, per title |
 | **`docs/SPARK-PLATFORM.md`** | **the hardware. Single source of truth for specs — CPU/GPU/memory/networking, the DGX Spark vs ZGX matrix, what carries to RTX Spark, and the hardware gotchas. Never restate a hardware fact elsewhere; link here.** |
+| **`docs/HANDOFF-2026-09-09.md`** | **the last session's hand-off: machine state, what was settled, exactly where to resume. Read after this file.** |
 | **`docs/OPEN-QUESTIONS.md`** | **what is settled / open / ruled out, each with its next step. Read FIRST when resuming work.** |
 | `docs/DIAGNOSTICS.md` | where every log and dump lives, per engine and per layer |
-| `tools/` | 29 scripts; `tools/README.md` indexes them by what you are trying to do |
+| `tools/` | 35 scripts; `tools/README.md` indexes them by what you are trying to do |
 | `tools/probes/` | hand-written probes — **check here before writing a new one** |
 | `tools/isa-probe/` | freestanding SDK-answer probes + runner |
 | `tools/patches/` | GPL-3.0 OptiScaler patches (the rest of the repo is MIT) |

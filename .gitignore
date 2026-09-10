@@ -4,3 +4,6 @@ __pycache__/
 tools/fex-tests/*.exe
 tools/fex-tests/*.dll
 .claude/settings.local.json
+
+# Local tooling cache — a code-index database, not project content.
+.codegraph/
