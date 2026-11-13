@@ -103,8 +103,14 @@ day-one order and `Check-IsaProbe.ps1` grading the isa-probes on Windows.
   The Box64-hosted arm could not run from the agent shell ("Could not open
   '/lib64/ld-linux-x86-64.so.2'", outside pressure-vessel), so it was removed rather than left
   printing an empty column.
-- **`Check-IsaProbe.ps1` has never run.** There is no PowerShell on this box. It uses only Windows
-  PowerShell 5.1 built-ins, but its first run on the laptop is also its test.
+- **`Check-IsaProbe.ps1` was tested under PowerShell 7.6 on Linux**, after AGB installed it the
+  same evening. Each probe was stood in for by a script replaying real probe bytes, covering the
+  pass, mismatch, no-output, missing-variant and zero-run paths. For the mismatch case it replayed
+  Box64's real `x87top.32` answers, and all three wrong tags were caught. The test found two defects,
+  both fixed: a run where nothing executed exited 0 (now exit 2, "no verdict"), and every value was
+  labelled `Prism=` even on an x64 PC, where the run is a native-silicon control (now labelled from
+  `PROCESSOR_ARCHITECTURE`). **Still unproven on Windows itself:** launching a real PE and the
+  Windows PowerShell 5.1 dialect.
 - **Found on the way: `isa-probe.sh` had been silently blind to FEX.** fex-emu **2611.1** (installed
   now) ships only `/usr/bin/FEX`; the `FEXInterpreter` alias is gone. The runner defaulted to the old
   name, so every probe reported FEX as "missing" with no error, and the suite still exited as if it

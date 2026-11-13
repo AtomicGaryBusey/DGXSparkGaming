@@ -31,7 +31,11 @@ USAGE
   .\Check-IsaProbe.ps1 -Variant fp80      # run the *-fp80.exe copies
   If scripts are blocked:  powershell -ExecutionPolicy Bypass -File .\Check-IsaProbe.ps1
 
-EXIT  0 = every probe matches the SDM   1 = at least one mismatch   2 = a probe failed to run
+EXIT  0 = every probe matches the SDM   1 = at least one mismatch
+      2 = a probe failed to run, or nothing ran at all (never a silent pass)
+TESTED 2026-11-12 under PowerShell 7.6 on Linux, with each probe stood in for by a
+script that replays real probe bytes: pass, mismatch (Box64's real x87top answers),
+no-output, missing-variant and zero-run paths. Not yet run on Windows itself.
 #>
 param(
   [string]$Filter = "",
@@ -64,15 +68,27 @@ function Read-Records([byte[]]$d) {
 
 # Record the conditions, because on RTX Spark they are variables, not constants.
 $arch = $env:PROCESSOR_ARCHITECTURE
-$os = (Get-CimInstance Win32_OperatingSystem)
-$cs = (Get-CimInstance Win32_ComputerSystem)
-Write-Host ("host: {0} / {1} / {2} build {3} / native arch {4}" -f $cs.Manufacturer, $cs.SystemFamily, $os.Caption, $os.BuildNumber, $arch)
+# Name what actually executed the probe. On an ARM64 Windows host an x86 probe runs
+# under Prism; on an x64 PC it runs on real silicon, which is a useful CONTROL and
+# must never be written up as Prism.
+$who = switch ($arch) { "ARM64" { "Prism" } "AMD64" { "native" } "x86" { "native" } default { "got" } }
+# Fail soft: a missing host description must never stop the grading. (CIM does
+# not exist in PowerShell on Linux, which is where this script was first tested.)
+$osBuild = "unknown"
+try {
+  $os = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+  $cs = Get-CimInstance Win32_ComputerSystem -ErrorAction Stop
+  $osBuild = $os.BuildNumber
+  Write-Host ("host: {0} / {1} / {2} build {3} / native arch {4}" -f $cs.Manufacturer, $cs.SystemFamily, $os.Caption, $osBuild, $arch)
+} catch {
+  Write-Host ("host: (no CIM: {0}) / {1}" -f [System.Runtime.InteropServices.RuntimeInformation]::OSDescription, $arch)
+}
 $label = if ($Variant) { $Variant } else { "default" }
 Write-Host "variant: $label"
 Write-Host ""
 
 $tsv = Join-Path $here "results.tsv"
-if (-not (Test-Path $tsv)) { "time`tvariant`tbuild`tprobe`ttag`texpect`tgot`tverdict" | Out-File $tsv -Encoding ascii }
+if (-not (Test-Path $tsv)) { "time`tvariant`truntime`tbuild`tprobe`ttag`texpect`tgot`tverdict" | Out-File $tsv -Encoding ascii }
 $stamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssK")
 
 $bad = 0; $broken = 0; $ran = 0
@@ -117,8 +133,8 @@ foreach ($p in $probes) {
     }
     if ($verdict -eq "MISMATCH" -or $verdict -eq "missing") { $pbad++ }
     $mark = if ($verdict -eq "ok" -or $verdict -eq "info") { "" } else { "  <-- $verdict" }
-    Write-Host ("  {0,-6} expect {1,-8} Prism={2}{3}" -f $tag, $spec, $got, $mark)
-    "$stamp`t$label`t$($os.BuildNumber)`t$base`t$tag`t$spec`t$got`t$verdict" | Out-File $tsv -Append -Encoding ascii
+    Write-Host ("  {0,-6} expect {1,-8} {2}={3}{4}" -f $tag, $spec, $who, $got, $mark)
+    "$stamp`t$label`t$who`t$osBuild`t$base`t$tag`t$spec`t$got`t$verdict" | Out-File $tsv -Append -Encoding ascii
   }
   if ($pbad) { $bad++ ; Write-Host "  -> $pbad mismatch(es)" } else { Write-Host "  -> all match" }
   Write-Host ""
@@ -129,6 +145,8 @@ Write-Host "probes run: $ran   with mismatches: $bad   failed to run: $broken   
 Write-Host "Before calling a mismatch a Prism bug: cpuid.32 checks what Prism ADVERTISES,"
 Write-Host "which is a policy choice (DE/PSE are implied by SSE2 on real parts, not mandated"
 Write-Host "for an emulator). The x87 and a3store probes have one right answer."
+# Zero probes run is "nothing to conclude", never a pass (the repo's signature-check rule).
+if ($ran -eq 0) { Write-Host "NOTHING RAN - no verdict. Check -Filter / -Variant."; exit 2 }
 if ($broken) { exit 2 }
 if ($bad) { exit 1 }
 exit 0
