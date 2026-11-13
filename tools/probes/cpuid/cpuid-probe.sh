@@ -33,7 +33,7 @@ decode(){ python3 "$D/decode.py"; }
 for rt in FEX BOX64; do
   echo "=== $rt ==="
   case $rt in
-    FEX)   out=$(FEXInterpreter "$D/cpuid.elf" 2>/dev/null);;
+    FEX)   out=$("$(command -v FEXInterpreter || command -v FEX)" "$D/cpuid.elf" 2>/dev/null);;  # 2611 ships only `FEX`
     BOX64) out=$(box64 "$D/cpuid.elf" 2>/dev/null | grep -E '^[0-9a-f]{8} ');;
   esac
   echo "$out"; echo "$out" | decode

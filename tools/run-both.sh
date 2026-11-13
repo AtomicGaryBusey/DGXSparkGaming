@@ -76,7 +76,8 @@ run_under() {   # $1 = fex|box64
       WINEDEBUG="${WINEDEBUG:--all}" "$PROTON" "$@" 2>&1
     fi
   else
-    if [ "$who" = fex ]; then FEXInterpreter "$@" 2>&1
+    # fex-emu 2611 ships only `FEX`; older builds only `FEXInterpreter`.
+    if [ "$who" = fex ]; then "$(command -v FEXInterpreter || command -v FEX)" "$@" 2>&1
     else                      box64 "$@" 2>&1; fi
   fi
 }

@@ -54,6 +54,11 @@ if [ -n "${FEX_BIN:-}" ]; then
   echo "  using FEX build: $FEX_INTERP"
   export FEX_INTERP
 fi
+# fex-emu 2611 dropped the `FEXInterpreter` alias and ships only `FEX`. The old
+# default made every probe report FEX as "missing" with no error at all, found
+# 2026-11-12. Resolve whichever name exists instead of assuming one.
+: "${FEX_INTERP:=$(command -v FEXInterpreter || command -v FEX)}"
+[ -n "$FEX_INTERP" ] || { echo "!! neither FEXInterpreter nor FEX on PATH"; exit 2; }
 command -v box64   >/dev/null 2>&1 || echo "  ! box64 not found — FEX only, so no cross-check"
 
 RED=$'\033[31m'; YEL=$'\033[33m'; GRN=$'\033[32m'; OFF=$'\033[0m'

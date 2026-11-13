@@ -1,0 +1,44 @@
+# tools/isa-probe.sh, 2026-11-12T16:59:15-08:00, fex-emu 2611.1-1~n, box64=/usr/local/bin/box64 md5 89cd9de8969162b14d0a9f36b799ab9e
+== a3store.32 ==
+  ADD1   expect 0x3801    FEX=0x3801  Box64=0x3801
+  INC1   expect 0x1       FEX=0x0001  Box64=0x0001
+  SHR1   expect 0x7       FEX=0x0007  Box64=0x0007
+  EDX1   expect 0x3801    FEX=0x3801  Box64=0x3801
+  -> all match
+
+== cpuid.32 ==
+  MAXL   expect !0        FEX=0x0016  Box64=0x0016
+  FPU    expect 0x1       FEX=0x0001  Box64=0x0001
+  DE     expect 0x1       FEX=0x0001  Box64=0x0001
+  PSE    expect 0x1       FEX=0x0001  Box64=0x0001
+  TSC    expect 0x1       FEX=0x0001  Box64=0x0001
+  CX8    expect 0x1       FEX=0x0001  Box64=0x0001
+  CMOV   expect 0x1       FEX=0x0001  Box64=0x0001
+  MMX    expect 0x1       FEX=0x0001  Box64=0x0001
+  SSE    expect 0x1       FEX=0x0001  Box64=0x0001
+  SSE2   expect 0x1       FEX=0x0001  Box64=0x0001
+  SSE3   expect 0x1       FEX=0x0001  Box64=0x0001
+  -> all match
+
+== x87tags.32 ==
+  CWD0   expect 0x037f    FEX=0x037f  Box64=0x037f
+  TAG0   expect 0xffff    FEX=0xffff  Box64=0xffff
+  TAG3   expect 0x03ff    FEX=0x03ff  Box64=0x03ff
+  TOP3   expect 0x5       FEX=0x0005  Box64=0x0005
+  TAGB   expect 0xffff    FEX=0xffff  Box64=0xffff
+  FIP1   expect *         FEX=0x0000  Box64=0x0000
+  TAG7   expect 0x0003    FEX=0x0003  Box64=0x0003
+  TOP7   expect 0x1       FEX=0x0001  Box64=0x0001
+  -> all match
+
+== x87top.32 ==
+  INC1   expect 0x3fff    FEX=0x3fff  Box64=0xfffc  <-- MISMATCH
+  DEC1   expect 0x3fff    FEX=0x3fff  Box64=0xcfff  <-- MISMATCH
+  RT1    expect 0x3fff    FEX=0x3fff  Box64=0x3fff
+  IN7    expect 0x0003    FEX=0x0003  Box64=0x000c  <-- MISMATCH
+  -> 3 mismatch(es)
+
+==================================================================
+probes run: 4   probes with mismatches: 1
+A mismatch on ONE runtime = that translator is implicated.
+A mismatch on BOTH, identically = suspect the probe before the JITs.
