@@ -104,6 +104,7 @@ under both JITs because it clobbered its own jump target.
 | **`fex-build.sh`** | Building FEX from source. clang only; never installs over `/usr`; **gates the result on `isa-probe.sh`**. |
 | **`make-launcher-shim.sh <launcher> <target>`** | The engine works but the launcher doesn't. Builds a ~10 KB stand-in that starts the real exe and waits. |
 | **`fex-inject-tests.sh`** | Testing whether Windows-side injection survives translation. |
+| **`build-rtx-spark-kit.sh`** | Preparing for the RTX Spark (Windows on Arm, Prism). Builds the isa-probes as PE32 (only their two syscalls rewritten), plus the WGL/CPUID/x87-context/namedobj/hook probes, into one folder with a PowerShell grader. `SMOKE=1` verifies the port under Wine/FEX first. |
 | **`build-optiscaler-nr.sh` / `build-dlssnr-addon.sh`** | The DLSS-5 Neural Rendering work. |
 
 ---

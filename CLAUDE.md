@@ -145,6 +145,11 @@ failure it prevents — because that rationale is the point of this repo. Curren
 - **`tools/appinfo.py <appid> --launch|--name|--json`** — now a CLI as well as a library. `--launch`
   lists every launch entry, which is how `game-run.sh` resolves the real exe instead of guessing,
   and how NBA 2K27's "without EAC (offline only)" entry was found.
+- **`tools/build-rtx-spark-kit.sh`** — the RTX Spark (Windows on Arm, **Prism**) day-one kit: the
+  isa-probes rebuilt as PE32 (only their `int $0x80` write/exit rewritten; `SMOKE=1` proves the port
+  under Wine/FEX), plus the WGL, CPUID, x87-context, namedobj and inline-hook probes, and a
+  PowerShell grader that A/Bs Prism's per-exe emulation settings. Plan and predictions:
+  `notes/2026-11-12-rtx-spark-transfer-research.md`. **Nothing in it has been measured on an RTX Spark yet.**
 - **`tools/dlssnr-control-run.sh`** — bisects the DLSS-5 NR injection chain against a game hang:
   arms one of four layers (`baseline`/`reshade`/`probe`/`nr`) by file, then samples CPU until it can
   say HUNG or EXITED. Run the layers in that order and **stop at the first that hangs** — that layer

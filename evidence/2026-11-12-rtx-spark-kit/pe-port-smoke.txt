@@ -1,0 +1,49 @@
+# SMOKE=1 tools/build-rtx-spark-kit.sh, 2026-11-12T16:59:16-08:00, Proton 11.0 wine under FEX
+=== isa-probe suite -> PE32 (graded by Check-IsaProbe.ps1) ===
+  built a3store.32.exe
+  built cpuid.32.exe
+  built x87tags.32.exe
+  built x87top.32.exe
+=== existing PE probes (each prints its own verdict) ===
+  built cpuidprobe32.exe
+  built cpuidprobe64.exe
+  built wglpf32.exe
+  built fmt32.exe
+  built fmt64.exe
+  built x87ctx32.exe
+  built namedobj32.exe
+  built hook64.exe
+=== SMOKE: ported isa-probes under Proton Wine, FEX-hosted ===
+  a3store.32
+    ADD1   expect 0x3801   FEX=0x3801
+    INC1   expect 0x1      FEX=0x0001
+    SHR1   expect 0x7      FEX=0x0007
+    EDX1   expect 0x3801   FEX=0x3801
+  cpuid.32
+    MAXL   expect !0       FEX=0x0016
+    FPU    expect 0x1      FEX=0x0001
+    DE     expect 0x1      FEX=0x0001
+    PSE    expect 0x1      FEX=0x0001
+    TSC    expect 0x1      FEX=0x0001
+    CX8    expect 0x1      FEX=0x0001
+    CMOV   expect 0x1      FEX=0x0001
+    MMX    expect 0x1      FEX=0x0001
+    SSE    expect 0x1      FEX=0x0001
+    SSE2   expect 0x1      FEX=0x0001
+    SSE3   expect 0x1      FEX=0x0001
+  x87tags.32
+    CWD0   expect 0x037f   FEX=0x037f
+    TAG0   expect 0xffff   FEX=0xffff
+    TAG3   expect 0x03ff   FEX=0x03ff
+    TOP3   expect 0x5      FEX=0x0005
+    TAGB   expect 0xffff   FEX=0xffff
+    FIP1   expect *        FEX=0x0000
+    TAG7   expect 0x0003   FEX=0x0003
+    TOP7   expect 0x1      FEX=0x0001
+  x87top.32
+    INC1   expect 0x3fff   FEX=0x3fff
+    DEC1   expect 0x3fff   FEX=0x3fff
+    RT1    expect 0x3fff   FEX=0x3fff
+    IN7    expect 0x0003   FEX=0x0003
+  SMOKE OK: the PE port matches the SDM under FEX on every probe
+kit: /home/aharmon/dgx-gaming-work/rtx-spark-kit  (/home/aharmon/dgx-gaming-work/rtx-spark-kit.zip)

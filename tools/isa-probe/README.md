@@ -31,6 +31,15 @@ investigator's own hypotheses on the way. The first run of the suite found a
 Box64 bug in a bare 32-bit ELF that had previously been misattributed to Wine's
 32<->64-bit CONTEXT conversion.
 
+## Windows / Prism (RTX Spark)
+
+The probes are Linux ELFs, so they cannot run under Prism as-is. `tools/build-rtx-spark-kit.sh`
+rewrites each probe's two `int $0x80` instructions (write, then exit) into calls to
+`win/pe-stub32.S` and changes nothing else. It refuses any probe with a different syscall count
+rather than guessing. `win/Check-IsaProbe.ps1` grades the result on Windows against these same
+`.expect` files, and `-MakeVariant`/`-Variant` A/B Prism's per-exe emulation settings.
+**So keep new probes to exactly one write and one exit**, or extend the rewrite.
+
 ## Expect-file syntax
 
     TAG  0x037f     # must equal exactly

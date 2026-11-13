@@ -1267,6 +1267,8 @@ look wrong.
 whichever runtime ran first, so it is a valid conformance suite for **any** x86 implementation —
 no game, no GPU, no install, seconds to run. It would say immediately whether Prism shares the
 x87 or CPUID defects found here. Bank it in `docs/OPEN-QUESTIONS.md` now.
+*(Correction 2026-11-12: as written the probes are Linux ELFs and cannot run under Prism; the PE
+build is `tools/build-rtx-spark-kit.sh`. See `docs/OPEN-QUESTIONS.md`.)*
 
 **The rest, each with its cheapest settling experiment:**
 

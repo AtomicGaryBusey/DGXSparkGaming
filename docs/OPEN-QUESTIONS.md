@@ -304,9 +304,16 @@ Expected to carry: the method, the per-title profile structure, GPU/driver-layer
 `tools/isa-probe/` (whose expected answers come from the Intel SDM, so it is a valid test suite
 for *any* x86 implementation — including Prism, on day one).
 
-*Cheapest experiment when hardware exists:* run `tools/isa-probe/` under Prism. It needs no game,
+*Cheapest experiment when hardware exists:* run the isa-probe suite under Prism. It needs no game,
 no GPU and no install, and it would immediately say whether Prism shares any of the x87/CPUID
-defects found here. Until then, do not write anything in this repo that implies the translator
+defects found here. **Correction, 2026-11-12:** the probes in `tools/isa-probe/` are Linux ELFs that
+end in `int $0x80`, so they could never have run under Prism as written. `tools/build-rtx-spark-kit.sh`
+now builds them as PE32 with only the two syscalls rewritten (smoke-tested under Wine/FEX: every tag
+matches the ELF build), together with the WGL, CPUID, x87-context, namedobj and inline-hook probes,
+and `Check-IsaProbe.ps1` grades them on Windows with no install. Microsoft documents x87 as a 64-bit
+approximation by default in Prism, and NVIDIA's porting guide warns that emulated x87 may lack
+"correct status flags", so run the suite at Default **and** with *Disable floating point
+optimization*. The plan is in `notes/2026-11-12-rtx-spark-transfer-research.md`. Until then, do not write anything in this repo that implies the translator
 findings apply to RTX Spark. See `docs/SPARK-PLATFORM.md`.
 
 ### id Tech 4 fullscreen at a wide native mode: ChangeDisplaySettings ACCESS-VIOLATES — CONFIRMED
